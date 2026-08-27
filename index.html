@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#111827" />
+    <meta name="description" content="SiteLedger — UK contractor operating system for construction site management, daily logs, evidence, workforce, variations, and procurement." />
+    <meta name="keywords" content="construction,site management,contractor,UK,subcontractor,daily logs,health and safety,RAMS,variations,procurement" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>SiteLedger — UK Contractor Operating System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.min.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Service Worker registration
+      if ('serviceWorker' in navigator) {
+        let updateReady = false;
+        window.__swUpdateReady = false;
+
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then(function(reg) {
+            reg.addEventListener('updatefound', function() {
+              var newWorker = reg.installing;
+              if (!newWorker) return;
+
+              newWorker.addEventListener('statechange', function() {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.__swUpdateReady = true;
+                  var event = new CustomEvent('sw-update-ready');
+                  window.dispatchEvent(event);
+                }
+              });
+            });
+          })
+          .catch(function() {
+            // Service worker registration failed — app still works fine
+          });
+
+        // Listen for online/offline events
+        window.addEventListener('online', function() {
+          window.dispatchEvent(new CustomEvent('connectivity-change', { detail: { online: true } }));
+        });
+        window.addEventListener('offline', function() {
+          window.dispatchEvent(new CustomEvent('connectivity-change', { detail: { online: false } }));
+        });
+      }
+
+      // Beforeinstallprompt handling — don't nag, just store for manual trigger
+      window.__beforeInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__beforeInstallPrompt = e;
+      });
+    </script>
+  </body>
+</html>
