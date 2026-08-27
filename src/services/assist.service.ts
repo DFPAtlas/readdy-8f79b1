@@ -1,4 +1,4 @@
-// SiteLedger Assist — AI service layer
+// BuildNerve AI — AI service layer
 // Handles conversations, chat, settings, usage, feedback
 
 import { getSupabase } from '@/lib/supabase';

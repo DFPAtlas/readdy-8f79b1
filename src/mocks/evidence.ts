@@ -625,8 +625,8 @@ export const demoDailyLogs: DailySiteLog[] = [
     siteOpenTime: '07:45',
     siteCloseTime: '16:30',
     attendance: [
-      { personId: 'worker-1', name: 'Martin Hewett', initials: 'MH', company: 'SiteLedger Demo Construction', role: 'Project Manager', startTime: '07:45', finishTime: '16:30', hours: 8.75, category: 'employee' },
-      { personId: 'worker-2', name: 'James Lawrence', initials: 'JL', company: 'SiteLedger Demo Construction', role: 'Carpenter', startTime: '08:00', finishTime: '16:00', hours: 8, category: 'employee' },
+      { personId: 'worker-1', name: 'Martin Hewett', initials: 'MH', company: 'BuildNerve Demo Construction', role: 'Project Manager', startTime: '07:45', finishTime: '16:30', hours: 8.75, category: 'employee' },
+      { personId: 'worker-2', name: 'James Lawrence', initials: 'JL', company: 'BuildNerve Demo Construction', role: 'Carpenter', startTime: '08:00', finishTime: '16:00', hours: 8, category: 'employee' },
       { personId: 'worker-3', name: 'Aisha Khan', initials: 'AK', company: 'AK Groundworks Ltd', role: 'Groundworker', startTime: '08:00', finishTime: '15:30', hours: 7.5, category: 'subcontractor' },
     ],
     totalLabourHours: 24.25,
@@ -667,8 +667,8 @@ export const demoDailyLogs: DailySiteLog[] = [
     siteOpenTime: '07:30',
     siteCloseTime: '17:00',
     attendance: [
-      { personId: 'worker-1', name: 'Martin Hewett', initials: 'MH', company: 'SiteLedger Demo Construction', role: 'Project Manager', hours: 9.5, category: 'employee' },
-      { personId: 'worker-2', name: 'James Lawrence', initials: 'JL', company: 'SiteLedger Demo Construction', role: 'Carpenter', hours: 8, category: 'employee' },
+      { personId: 'worker-1', name: 'Martin Hewett', initials: 'MH', company: 'BuildNerve Demo Construction', role: 'Project Manager', hours: 9.5, category: 'employee' },
+      { personId: 'worker-2', name: 'James Lawrence', initials: 'JL', company: 'BuildNerve Demo Construction', role: 'Carpenter', hours: 8, category: 'employee' },
       { personId: 'worker-3', name: 'Aisha Khan', initials: 'AK', company: 'AK Groundworks Ltd', role: 'Groundworker', hours: 8, category: 'subcontractor' },
       { personId: 'worker-4', name: 'Daniel Hughes', initials: 'DH', company: 'D. Hughes Electrical', role: 'Electrician', hours: 4, category: 'subcontractor' },
     ],
@@ -699,8 +699,8 @@ export const demoDailyLogs: DailySiteLog[] = [
     status: 'complete',
     supervisor: 'Martin Hewett',
     attendance: [
-      { personId: 'worker-1', name: 'Martin Hewett', initials: 'MH', company: 'SiteLedger Demo Construction', role: 'Project Manager', hours: 9, category: 'employee' },
-      { personId: 'worker-2', name: 'James Lawrence', initials: 'JL', company: 'SiteLedger Demo Construction', role: 'Carpenter', hours: 8, category: 'employee' },
+      { personId: 'worker-1', name: 'Martin Hewett', initials: 'MH', company: 'BuildNerve Demo Construction', role: 'Project Manager', hours: 9, category: 'employee' },
+      { personId: 'worker-2', name: 'James Lawrence', initials: 'JL', company: 'BuildNerve Demo Construction', role: 'Carpenter', hours: 8, category: 'employee' },
       { personId: 'worker-3', name: 'Aisha Khan', initials: 'AK', company: 'AK Groundworks Ltd', role: 'Groundworker', hours: 8, category: 'subcontractor' },
     ],
     totalLabourHours: 25,

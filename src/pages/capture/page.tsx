@@ -116,7 +116,7 @@ export default function SiteCapture() {
               <i className="ri-arrow-left-line text-lg text-main"></i>
             </button>
             <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">SL</span>
+              <span className="text-white text-xs font-bold">BN</span>
             </div>
           </div>
           <h1 className="text-lg font-bold text-main">{job.project}</h1>

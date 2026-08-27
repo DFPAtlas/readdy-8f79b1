@@ -1,4 +1,4 @@
-// SiteLedger Service Worker — Phase 17
+// BuildNerve Service Worker — Phase 17
 // Caches app shell and selected static resources only.
 // Never caches: auth, API, secrets, tokens, signed URLs.
 

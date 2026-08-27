@@ -297,7 +297,7 @@ export const demoWorkforcePeople: WorkforcePerson[] = [
     nextExpiryLabel: 'CSCS card',
     nextExpiryDate: '2026-11-18',
     phone: '07912 345601',
-    email: 'martin.taylor@siteledger.co.uk',
+    email: 'martin.taylor@buildnerve.co.uk',
     siteInductionComplete: true,
     ramsAcknowledged: true,
     updatedAt: '2026-08-04',
@@ -325,7 +325,7 @@ export const demoWorkforcePeople: WorkforcePerson[] = [
       utr: '1234567890',
       vatStatus: 'Not registered',
       phone: '07912 345601',
-      email: 'martin.taylor@siteledger.co.uk',
+      email: 'martin.taylor@buildnerve.co.uk',
     },
     emergencySiteInfo: {
       emergencyContact: 'Emma Taylor',
@@ -429,7 +429,7 @@ export const demoWorkforcePeople: WorkforcePerson[] = [
     restricted: false,
     bankDetailsStatus: 'recorded',
     phone: '07789 123456',
-    email: 'james.lewis@siteledger.co.uk',
+    email: 'james.lewis@buildnerve.co.uk',
     identity: {
       legalName: 'James Anthony Lewis',
       preferredName: 'James Lewis',
@@ -451,7 +451,7 @@ export const demoWorkforcePeople: WorkforcePerson[] = [
       utr: '3456789012',
       vatStatus: 'Not registered',
       phone: '07789 123456',
-      email: 'james.lewis@siteledger.co.uk',
+      email: 'james.lewis@buildnerve.co.uk',
     },
     emergencySiteInfo: {
       emergencyContact: 'Sophie Lewis',
@@ -539,7 +539,7 @@ export const demoWorkforcePeople: WorkforcePerson[] = [
     restricted: false,
     bankDetailsStatus: 'recorded',
     phone: '07555 246801',
-    email: 'chloe.williams@siteledger.co.uk',
+    email: 'chloe.williams@buildnerve.co.uk',
     identity: {
       legalName: 'Chloe Elizabeth Williams',
       preferredName: 'Chloe Williams',
@@ -561,7 +561,7 @@ export const demoWorkforcePeople: WorkforcePerson[] = [
       utr: '5678901234',
       vatStatus: 'Not registered',
       phone: '07555 246801',
-      email: 'chloe.williams@siteledger.co.uk',
+      email: 'chloe.williams@buildnerve.co.uk',
     },
     emergencySiteInfo: {
       emergencyContact: 'Rachel Williams',
@@ -1142,7 +1142,7 @@ export const demoAuditEvents: Record<string, AuditEvent[]> = {
       id: 'ae-5',
       timestamp: '2026-08-05T08:00:00Z',
       event: 'Insurance reminder sent',
-      actor: 'SiteLedger automation',
+      actor: 'BuildNerve automation',
       recordAffected: 'Public liability insurance',
       note: 'Automated reminder: public liability expires in 8 days.',
       source: 'Automated',

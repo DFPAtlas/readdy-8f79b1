@@ -66,7 +66,7 @@ export default function ReconciliationPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-foreground-950 mb-1">Reconciliation</h2>
-          <p className="text-sm text-foreground-600">Resolve data differences between SiteLedger and your accounting software.</p>
+          <p className="text-sm text-foreground-600">Resolve data differences between BuildNerve and your accounting software.</p>
         </div>
         <div className="flex items-center gap-2">
           <select value={filter} onChange={e => setFilter(e.target.value)} className="px-3 py-2 rounded-lg border border-background-200/70 text-sm bg-white text-foreground-950">
@@ -101,7 +101,7 @@ export default function ReconciliationPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-foreground-500 text-xs mb-0.5">SiteLedger</p>
+                    <p className="text-foreground-500 text-xs mb-0.5">BuildNerve</p>
                     <p className="text-foreground-950">{item.local_reference || '—'}</p>
                   </div>
                   <div>

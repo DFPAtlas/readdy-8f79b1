@@ -39,7 +39,7 @@ export default function PlatformAdminLoginPage() {
           <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-6">
             <i className="ri-shield-user-line text-3xl text-amber-400"></i>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">SiteLedger Platform Admin</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">BuildNerve Platform Admin</h1>
           <p className="text-slate-400 text-sm">Restricted access. MFA required for all platform operations.</p>
         </div>
 
@@ -58,7 +58,7 @@ export default function PlatformAdminLoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@siteledger.co.uk"
+              placeholder="admin@buildnerve.co.uk"
               className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-colors"
               autoComplete="email"
               autoFocus

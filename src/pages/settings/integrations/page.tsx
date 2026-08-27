@@ -79,7 +79,7 @@ export default function IntegrationsHub() {
       {/* Header */}
       <div className="mb-8">
         <h2 className="text-2xl font-semibold text-foreground-950 mb-1">Integrations</h2>
-        <p className="text-foreground-600 text-sm">Connect SiteLedger to your accounting software, HMRC tools, and import data.</p>
+        <p className="text-foreground-600 text-sm">Connect BuildNerve to your accounting software, HMRC tools, and import data.</p>
       </div>
 
       {/* Summary cards */}

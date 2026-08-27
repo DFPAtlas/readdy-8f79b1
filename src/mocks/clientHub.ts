@@ -295,5 +295,5 @@ export const projectTeam: TeamMember = {
   role: 'Lead Project Manager',
   initials: 'MV',
   phone: '020 7946 0912',
-  email: 'marcus.vance@sterlinglet.co.uk',
+  email: 'marcus.vance@buildnerve.co.uk',
 };

@@ -44,7 +44,7 @@ export default function PlatformAdminLayout() {
               <i className="ri-admin-line text-xl text-amber-400"></i>
             </div>
             <div>
-              <p className="text-white font-semibold text-sm">SiteLedger</p>
+              <p className="text-white font-semibold text-sm">BuildNerve</p>
               <p className="text-amber-400/80 text-[11px] font-medium tracking-wider uppercase">Platform Admin</p>
             </div>
           </div>

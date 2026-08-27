@@ -94,7 +94,7 @@ export default function MobileMorePage() {
         ))}
 
         {/* App version */}
-        <p className="text-center text-xs text-foreground-400">SiteLedger v2.18.0</p>
+        <p className="text-center text-xs text-foreground-400">BuildNerve v2.18.0</p>
       </div>
 
       <MobileBottomNav jobId={selectedJob.id} />

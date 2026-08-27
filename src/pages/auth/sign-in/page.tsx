@@ -25,7 +25,7 @@ export default function SignInPage() {
     return (
       <div className="min-h-screen bg-page flex items-center justify-center">
         <div className="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center">
-          <span className="text-white font-bold text-sm">SL</span>
+          <span className="text-white font-bold text-sm">BN</span>
         </div>
       </div>
     );
@@ -60,7 +60,7 @@ export default function SignInPage() {
   }
 
   return (
-    <AuthLayout title="Sign in to SiteLedger" subtitle="Access your contractor workspace.">
+    <AuthLayout title="Sign in to BuildNerve" subtitle="Access your contractor workspace.">
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         {error && (
           <div className="bg-status-red-pale border border-status-red/20 rounded-xl p-3 flex items-start gap-3">

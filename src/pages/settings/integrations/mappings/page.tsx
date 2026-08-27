@@ -64,7 +64,7 @@ export default function MappingsPage() {
       </button>
 
       <h2 className="text-2xl font-semibold text-foreground-950 mb-1">Entity mappings</h2>
-      <p className="text-sm text-foreground-600 mb-6">Map SiteLedger codes to your accounting software.</p>
+      <p className="text-sm text-foreground-600 mb-6">Map BuildNerve codes to your accounting software.</p>
 
       {/* Connection selector */}
       {connections.length > 0 && (
@@ -125,7 +125,7 @@ export default function MappingsPage() {
       {activeTab === 'tax' && (
         <div className="bg-background-50 border border-background-200/70 rounded-xl overflow-hidden">
           <div className="grid grid-cols-12 gap-3 px-5 py-3 text-xs font-medium text-foreground-500 uppercase tracking-wider border-b border-background-200/70">
-            <div className="col-span-4">SiteLedger tax treatment</div>
+            <div className="col-span-4">BuildNerve tax treatment</div>
             <div className="col-span-4">Provider tax code</div>
             <div className="col-span-4">Rate</div>
           </div>

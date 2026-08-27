@@ -15,7 +15,7 @@ export default function TrustFooter() {
           Start managing your jobs with confidence
         </h2>
         <p className="text-sm text-muted mt-3 max-w-xl mx-auto leading-relaxed">
-          Join 500+ UK contractors already running procurement, compliance and payments on SterlingLet Contractor.
+          Join 500+ UK contractors already running procurement, compliance and payments on BuildNerve.
         </p>
 
         <div className="mt-8">

@@ -315,7 +315,7 @@ export default function JobPaymentsPage() {
         <i className="ri-information-line mt-0.5 flex-shrink-0"></i>
         <div>
           <p className="font-medium">Construction payment applications</p>
-          <p className="mt-0.5">These are job-specific payment applications between contractor and client. They are separate from SiteLedger subscription billing. CIS deductions and subcontractor payments are managed separately.</p>
+          <p className="mt-0.5">These are job-specific payment applications between contractor and client. They are separate from BuildNerve subscription billing. CIS deductions and subcontractor payments are managed separately.</p>
         </div>
       </div>
     </div>

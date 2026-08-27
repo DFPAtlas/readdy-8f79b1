@@ -25,7 +25,7 @@ export default function AuthConfirmedPage() {
           <div>
             <p className="text-sm text-main font-medium">You&apos;re all set</p>
             <p className="text-sm text-muted mt-1">
-              Your email has been verified and your SiteLedger account is now active. You can sign in and start managing your construction projects.
+              Your email has been verified and your BuildNerve account is now active. You can sign in and start managing your construction projects.
             </p>
           </div>
         </div>

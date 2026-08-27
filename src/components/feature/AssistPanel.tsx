@@ -224,7 +224,7 @@ export default function AssistPanel({ isOpen, onClose, scopeType, scopeId, scope
               <i className="ri-robot-line text-white text-sm"></i>
             </div>
             <div>
-              <h2 className="text-foreground-950 font-semibold text-sm">SiteLedger Assist</h2>
+              <h2 className="text-foreground-950 font-semibold text-sm">BuildNerve AI</h2>
               {scopeLabel && (
                 <p className="text-foreground-500 text-[11px] flex items-center gap-1">
                   <i className="ri-focus-3-line text-[10px]"></i>
@@ -345,7 +345,7 @@ export default function AssistPanel({ isOpen, onClose, scopeType, scopeId, scope
               </div>
               <h3 className="text-sm font-semibold text-foreground-800 mb-1">How can I help?</h3>
               <p className="text-xs text-foreground-500 max-w-[260px]">
-                Ask me about jobs, documents, tasks, or anything in your SiteLedger workspace.
+                Ask me about jobs, documents, tasks, or anything in your BuildNerve workspace.
               </p>
               <div className="flex flex-wrap gap-1.5 mt-3 justify-center">
                 {['Summarise today\'s site activity', 'What safety actions are open?', 'Show outstanding variations'].map((q) => (
@@ -479,7 +479,7 @@ export default function AssistPanel({ isOpen, onClose, scopeType, scopeId, scope
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={aiEnabled ? "Ask SiteLedger Assist..." : "AI is not enabled for your organisation"}
+              placeholder={aiEnabled ? "Ask BuildNerve AI..." : "AI is not enabled for your organisation"}
               disabled={!aiEnabled}
               className="flex-1 resize-none rounded-xl border border-background-200 bg-background-50 px-3 py-2.5 text-sm focus:outline-none focus:border-primary-300 min-h-[44px] max-h-28 disabled:opacity-50 disabled:cursor-not-allowed"
               rows={1}
@@ -497,7 +497,7 @@ export default function AssistPanel({ isOpen, onClose, scopeType, scopeId, scope
             </button>
           </div>
           <p className="text-[10px] text-foreground-400 mt-1.5 text-center">
-            SiteLedger Assist is AI-assisted. A competent person must review safety decisions.
+            BuildNerve AI is AI-assisted. A competent person must review safety decisions.
           </p>
         </div>
       </div>

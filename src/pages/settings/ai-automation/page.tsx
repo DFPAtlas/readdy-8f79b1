@@ -121,7 +121,7 @@ export default function AiAutomationSettingsPage() {
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-foreground-950">AI &amp; Automation</h1>
-        <p className="text-sm text-foreground-500 mt-1">Configure SiteLedger Assist for your organisation</p>
+        <p className="text-sm text-foreground-500 mt-1">Configure BuildNerve AI for your organisation</p>
       </div>
 
       {!isAdmin && (
@@ -134,7 +134,7 @@ export default function AiAutomationSettingsPage() {
       <section className="bg-white rounded-2xl border border-background-200 p-5 mb-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-foreground-950">Enable SiteLedger Assist</h2>
+            <h2 className="text-sm font-semibold text-foreground-950">Enable BuildNerve AI</h2>
             <p className="text-xs text-foreground-500 mt-0.5">AI is disabled by default for all organisations</p>
           </div>
           <button

@@ -93,7 +93,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         <div className={`pt-6 pb-5 ${expanded ? 'px-4' : 'px-0 flex justify-center'}`}>
           <div className={`flex items-center ${expanded ? 'gap-3' : 'gap-0 justify-center'}`}>
             <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm tracking-tight">SL</span>
+              <span className="text-white font-bold text-sm tracking-tight">BN</span>
             </div>
             <div className={`flex-col leading-tight overflow-hidden transition-all duration-300 ${expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'}`}>
               <span className="text-white font-semibold text-base whitespace-nowrap">{t('dashboard.brand')}</span>

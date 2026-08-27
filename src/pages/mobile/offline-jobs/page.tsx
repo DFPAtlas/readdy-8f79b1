@@ -173,7 +173,7 @@ export default function OfflineJobsPage() {
           <h4 className="text-xs font-semibold text-amber-800 mb-2">Important</h4>
           <ul className="text-xs text-amber-700 space-y-1.5">
             <li>· Data is stored on this device and may be accessible if the device is unlocked.</li>
-            <li>· SiteLedger does not encrypt stored offline data.</li>
+            <li>· BuildNerve does not encrypt stored offline data.</li>
             <li>· Data is removed on sign-out or device revocation.</li>
             <li>· Never store billing, accounting, or sensitive investigation data offline.</li>
           </ul>

@@ -1,4 +1,4 @@
-// SiteLedger Connectivity & Sync Context
+// BuildNerve Connectivity & Sync Context
 // Provides online/offline state, sync queue info, and sync triggers
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';

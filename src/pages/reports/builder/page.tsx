@@ -241,7 +241,7 @@ export default function ReportBuilder() {
               <div className="max-w-2xl mx-auto bg-white p-8 border border-border rounded-lg">
                 <div className="text-center mb-6">
                   <div className="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center mx-auto mb-3">
-                    <span className="text-white font-bold text-sm">SL</span>
+                    <span className="text-white font-bold text-sm">BN</span>
                   </div>
                   <h2 className="text-lg font-bold text-foreground-950">{reportTitle || 'Untitled Report'}</h2>
                   <p className="text-xs text-foreground-400 mt-1">

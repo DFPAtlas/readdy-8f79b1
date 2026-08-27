@@ -41,7 +41,7 @@ export default function Features() {
             One platform for the whole job
           </h2>
           <p className="mt-4 text-base text-muted leading-relaxed">
-            Stop stitching together spreadsheets, email chains and paper dockets. SterlingLet gives every part of your
+            Stop stitching together spreadsheets, email chains and paper dockets. BuildNerve gives every part of your
             business a single source of truth.
           </p>
         </div>

@@ -22,7 +22,7 @@ export default function PlatformAdminDashboard() {
       {/* Page header */}
       <div>
         <h1 className="text-xl font-bold text-white">Platform Administration</h1>
-        <p className="text-slate-400 text-sm mt-1">Operational overview of the SiteLedger platform.</p>
+        <p className="text-slate-400 text-sm mt-1">Operational overview of the BuildNerve platform.</p>
       </div>
 
       {/* Metric cards */}

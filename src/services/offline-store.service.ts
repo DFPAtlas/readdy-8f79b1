@@ -1,4 +1,4 @@
-// SiteLedger Offline Store — IndexedDB-based local storage
+// BuildNerve Offline Store — IndexedDB-based local storage
 // Tenant-scoped, versioned, with sync queue management
 // Never stores secrets, tokens, or cross-tenant data
 

@@ -28,7 +28,7 @@ export default function InviteSubcontractor() {
   const [expiryDays, setExpiryDays] = useState('7');
   const [reminderSchedule, setReminderSchedule] = useState('3 days, 1 day');
   const [reviewer, setReviewer] = useState('Amelia Brooks');
-  const [privacyLink, setPrivacyLink] = useState('https://siteledger.co.uk/privacy');
+  const [privacyLink, setPrivacyLink] = useState('https://buildnerve.co.uk/privacy');
   const [sent, setSent] = useState(false);
 
   const totalSteps = 4;

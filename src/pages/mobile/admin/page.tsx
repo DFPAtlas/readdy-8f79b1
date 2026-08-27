@@ -208,7 +208,7 @@ export default function MobileAdminPage() {
           <ul className="text-xs text-foreground-500 space-y-2">
             <li className="flex gap-2">
               <i className="ri-information-line flex-shrink-0 mt-0.5"></i>
-              <span>Browser storage is device-local and potentially readable by anyone using an unlocked browser profile. SiteLedger does not encrypt IndexedDB data.</span>
+              <span>Browser storage is device-local and potentially readable by anyone using an unlocked browser profile. BuildNerve does not encrypt IndexedDB data.</span>
             </li>
             <li className="flex gap-2">
               <i className="ri-information-line flex-shrink-0 mt-0.5"></i>

@@ -6,19 +6,43 @@ const NEWSLETTER_FORM_URL = 'https://readdy.ai/api/form/da7c0cmij9sffln41rr0';
 const columns = [
   {
     title: 'Product',
-    links: ['Features', 'Procurement', 'Valuations', 'CIS Compliance', 'Client Portal', 'Pricing'],
+    links: [
+      { label: 'Features', href: '#' },
+      { label: 'Procurement', href: '#' },
+      { label: 'Valuations', href: '#' },
+      { label: 'CIS Compliance', href: '#' },
+      { label: 'Client Portal', href: '#' },
+      { label: 'Pricing', href: '/pricing' },
+    ],
   },
   {
     title: 'Company',
-    links: ['About us', 'Customers', 'Careers', 'Partners', 'Contact'],
+    links: [
+      { label: 'About us', href: '#' },
+      { label: 'Customers', href: '#' },
+      { label: 'Careers', href: '#' },
+      { label: 'Partners', href: '#' },
+      { label: 'Contact', href: '#' },
+    ],
   },
   {
     title: 'Resources',
-    links: ['Help centre', 'API documentation', 'Status', 'Changelog'],
+    links: [
+      { label: 'Help centre', href: '#' },
+      { label: 'API documentation', href: '#' },
+      { label: 'Status', href: '#' },
+      { label: 'Changelog', href: '#' },
+    ],
   },
   {
     title: 'Legal',
-    links: ['Privacy policy', 'Terms of service', 'Security', 'Cookies'],
+    links: [
+      { label: 'Privacy', href: '/legal/privacy' },
+      { label: 'Terms', href: '/legal/terms' },
+      { label: 'Cookies', href: '/legal/cookies' },
+      { label: 'Security', href: '/legal/security' },
+      { label: 'Legal & Trust Centre', href: '/legal' },
+    ],
   },
 ];
 
@@ -83,9 +107,9 @@ export default function Footer() {
           <div className="lg:col-span-2">
             <Link to="/" className="flex items-center gap-2.5 cursor-pointer">
               <span className="w-9 h-9 rounded-xl bg-primary-500 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">SL</span>
+                <span className="text-white font-bold text-sm">BN</span>
               </span>
-              <span className="font-display font-semibold text-base whitespace-nowrap">SterlingLet Contractor</span>
+              <span className="font-display font-semibold text-base whitespace-nowrap">BuildNerve</span>
             </Link>
             <p className="mt-4 text-sm text-white/60 leading-relaxed max-w-sm">
               The operating system for UK contractors. Run your procurement, commercial, compliance and field operations
@@ -135,13 +159,22 @@ export default function Footer() {
               <h4 className="text-sm font-semibold text-white">{col.title}</h4>
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href={link === 'Pricing' ? '/pricing' : '#'}
-                      className="text-sm text-white/60 hover:text-white transition-colors whitespace-nowrap"
-                    >
-                      {link}
-                    </a>
+                  <li key={link.label}>
+                    {link.href === '#' ? (
+                      <a
+                        href="#"
+                        className="text-sm text-white/60 hover:text-white transition-colors whitespace-nowrap"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        to={link.href}
+                        className="text-sm text-white/60 hover:text-white transition-colors whitespace-nowrap"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -150,7 +183,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-white/50">© 2026 SterlingLet Contractor Ltd. All rights reserved.</p>
+          <p className="text-xs text-white/50">© 2026 BuildNerve Ltd. All rights reserved.</p>
           <div className="flex items-center gap-3">
             {['ri-linkedin-fill', 'ri-twitter-x-line', 'ri-youtube-line'].map((icon) => (
               <a

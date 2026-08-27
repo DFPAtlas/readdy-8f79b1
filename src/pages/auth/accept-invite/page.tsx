@@ -8,7 +8,7 @@ export default function AcceptInvitePage() {
   return (
     <AuthLayout
       title={accepted ? 'Invitation accepted' : 'Accept your invitation'}
-      subtitle={accepted ? 'Your account is ready.' : 'You\'ve been invited to join an organisation on SiteLedger.'}
+      subtitle={accepted ? 'Your account is ready.' : 'You\'ve been invited to join an organisation on BuildNerve.'}
     >
       <div className="bg-primary-50 border border-primary-200 rounded-xl p-5">
         <div className="flex items-start gap-3">

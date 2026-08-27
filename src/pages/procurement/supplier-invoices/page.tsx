@@ -63,7 +63,7 @@ export default function ProcurementSupplierInvoices() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-foreground-950">Supplier Invoices</h1>
-          <p className="text-sm text-foreground-600 mt-1">{invoices.length} invoices — separate from SiteLedger subscriptions and construction payment applications</p>
+          <p className="text-sm text-foreground-600 mt-1">{invoices.length} invoices — separate from BuildNerve subscriptions and construction payment applications</p>
         </div>
       </div>
 

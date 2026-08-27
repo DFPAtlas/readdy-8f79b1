@@ -36,10 +36,10 @@ export default function Testimonials() {
         <div className="text-center max-w-2xl mx-auto">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary-500">Trusted by contractors</span>
           <h2 className="mt-3 text-3xl md:text-4xl font-bold text-main font-display tracking-tight">
-            The teams running on SterlingLet
+            The teams running on BuildNerve
           </h2>
           <p className="mt-4 text-base text-muted leading-relaxed">
-            From main contractors to specialist subcontractors, teams choose SterlingLet to replace the chaos of spreadsheets and emails.
+            From main contractors to specialist subcontractors, teams choose BuildNerve to replace the chaos of spreadsheets and emails.
           </p>
         </div>
 

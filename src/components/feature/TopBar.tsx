@@ -56,7 +56,7 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
         {/* Mobile brand */}
         <div className="lg:hidden flex items-center gap-2 flex-shrink-0">
           <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
-            <span className="text-white font-bold text-[11px]">SL</span>
+            <span className="text-white font-bold text-[11px]">BN</span>
           </div>
           <span className="text-main font-semibold text-sm">{t('dashboard.brand')}</span>
         </div>
@@ -90,7 +90,7 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
                   {organisation?.name?.charAt(0) || 'S'}
                 </span>
               </span>
-              <span className="max-w-[100px] truncate">{organisation?.trading_name || organisation?.name || 'SiteLedger'}</span>
+              <span className="max-w-[100px] truncate">{organisation?.trading_name || organisation?.name || 'BuildNerve'}</span>
               <i className="ri-arrow-down-s-line text-muted text-sm"></i>
             </button>
           </div>
@@ -103,7 +103,7 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
             <button
               className="h-9 px-3 bg-background-100 hover:bg-primary-100 text-foreground-600 hover:text-primary-600 text-xs font-semibold rounded-xl transition-colors whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
               onClick={onAssistToggle}
-              title="SiteLedger Assist"
+              title="BuildNerve AI"
             >
               <i className="ri-robot-line text-base"></i>
               <span className="hidden sm:inline">Assist</span>

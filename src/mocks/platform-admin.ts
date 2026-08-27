@@ -1,4 +1,4 @@
-// SiteLedger Phase 13 — Platform Admin Mock Data
+// BuildNerve Phase 13 — Platform Admin Mock Data
 // Types and demo data for the platform administration control centre
 
 export type PlatformRole =
@@ -190,7 +190,7 @@ export const demoPlatformStaff: PlatformStaffMember[] = [
     id: 'ps-001',
     userId: 'user-admin-001',
     name: 'James Mitchell',
-    email: 'james.mitchell@siteledger-platform.co.uk',
+    email: 'james.mitchell@buildnerve.co.uk',
     role: 'platform_owner',
     mfaEnrolled: true,
     status: 'active',
@@ -203,7 +203,7 @@ export const demoPlatformStaff: PlatformStaffMember[] = [
     id: 'ps-002',
     userId: 'user-admin-002',
     name: 'Sarah Okonkwo',
-    email: 'sarah.okonkwo@siteledger-platform.co.uk',
+    email: 'sarah.okonkwo@buildnerve.co.uk',
     role: 'platform_admin',
     mfaEnrolled: true,
     status: 'active',
@@ -216,7 +216,7 @@ export const demoPlatformStaff: PlatformStaffMember[] = [
     id: 'ps-003',
     userId: 'user-admin-003',
     name: 'David Chen',
-    email: 'david.chen@siteledger-platform.co.uk',
+    email: 'david.chen@buildnerve.co.uk',
     role: 'platform_support',
     mfaEnrolled: true,
     status: 'active',
@@ -229,7 +229,7 @@ export const demoPlatformStaff: PlatformStaffMember[] = [
     id: 'ps-004',
     userId: 'user-admin-004',
     name: 'Priya Patel',
-    email: 'priya.patel@siteledger-platform.co.uk',
+    email: 'priya.patel@buildnerve.co.uk',
     role: 'platform_security',
     mfaEnrolled: true,
     status: 'active',
@@ -242,7 +242,7 @@ export const demoPlatformStaff: PlatformStaffMember[] = [
     id: 'ps-005',
     userId: 'user-admin-005',
     name: 'Tom Williams',
-    email: 'tom.williams@siteledger-platform.co.uk',
+    email: 'tom.williams@buildnerve.co.uk',
     role: 'platform_billing',
     mfaEnrolled: true,
     status: 'active',
@@ -255,7 +255,7 @@ export const demoPlatformStaff: PlatformStaffMember[] = [
     id: 'ps-006',
     userId: 'user-admin-006',
     name: 'Emma Taylor',
-    email: 'emma.taylor@siteledger-platform.co.uk',
+    email: 'emma.taylor@buildnerve.co.uk',
     role: 'platform_read_only',
     mfaEnrolled: true,
     status: 'active',
@@ -268,7 +268,7 @@ export const demoPlatformStaff: PlatformStaffMember[] = [
     id: 'ps-007',
     userId: 'user-admin-007',
     name: 'Mark Harrison',
-    email: 'mark.harrison@siteledger-platform.co.uk',
+    email: 'mark.harrison@buildnerve.co.uk',
     role: 'platform_support',
     mfaEnrolled: false,
     status: 'suspended',
@@ -282,7 +282,7 @@ export const demoPlatformStaff: PlatformStaffMember[] = [
 export const demoStaffInvitations: PlatformStaffInvitation[] = [
   {
     id: 'inv-001',
-    email: 'new.security@siteledger-platform.co.uk',
+    email: 'new.security@buildnerve.co.uk',
     role: 'platform_security',
     invitedBy: 'user-admin-001',
     invitedByName: 'James Mitchell',
@@ -792,7 +792,7 @@ export const demoAnnouncements: PlatformAnnouncement[] = [
   {
     id: 'ann-001',
     title: 'Scheduled Maintenance — 12 August 2026',
-    body: 'SiteLedger will undergo scheduled maintenance on Saturday 12 August from 02:00 to 04:00 BST. The platform may be briefly unavailable during this window. All data will be preserved.',
+    body: 'BuildNerve will undergo scheduled maintenance on Saturday 12 August from 02:00 to 04:00 BST. The platform may be briefly unavailable during this window. All data will be preserved.',
     status: 'active',
     targetType: 'all',
     scheduledAt: '2026-08-10T09:00:00Z',

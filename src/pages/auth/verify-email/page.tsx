@@ -12,7 +12,7 @@ export default function VerifyEmailPage() {
           <div>
             <p className="text-sm text-main font-medium">Check your inbox</p>
             <p className="text-sm text-muted mt-1">
-              We&apos;ve sent a verification link to your email address. Click the link to activate your account and get started with SiteLedger.
+              We&apos;ve sent a verification link to your email address. Click the link to activate your account and get started with BuildNerve.
             </p>
             <p className="text-xs text-muted mt-2">
               If you don&apos;t see the email, check your spam folder. The link expires after 24 hours.

@@ -46,7 +46,7 @@ export default function ContractorOnboard() {
           <div>
             <h2 className="text-xl font-bold text-main">{t('onboard.passportSubmitted')}</h2>
             <p className="text-sm text-muted mt-2">
-              {t('onboard.submittedDesc', { company: 'SiteLedger Demo Construction Ltd' })}
+              {t('onboard.submittedDesc', { company: 'BuildNerve Demo Construction Ltd' })}
             </p>
           </div>
 
@@ -97,9 +97,9 @@ export default function ContractorOnboard() {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
-              <span className="text-white font-bold text-xs">SL</span>
+              <span className="text-white font-bold text-xs">BN</span>
             </div>
-            <span className="text-main font-semibold text-sm">SiteLedger</span>
+            <span className="text-main font-semibold text-sm">BuildNerve</span>
           </div>
           <span className="text-xs text-muted">{t('onboard.stepCounter', { current: step + 1, total: totalSteps })}</span>
         </div>
@@ -120,7 +120,7 @@ export default function ContractorOnboard() {
         {/* Invitation info */}
         <div className="bg-white border border-border rounded-xl p-5 space-y-3">
           <p className="text-sm text-muted">{t('onboard.invitationFrom')}</p>
-          <p className="text-base font-semibold text-main">SiteLedger Demo Construction Ltd</p>
+          <p className="text-base font-semibold text-main">BuildNerve Demo Construction Ltd</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-xs text-muted">{t('onboard.proposedJob')}</p>

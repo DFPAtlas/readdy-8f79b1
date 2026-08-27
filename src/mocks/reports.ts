@@ -789,7 +789,7 @@ export const demoReportSchedules: ReportSchedule[] = [
     reportName: 'Monthly management report',
     frequency: 'monthly',
     dayOfMonth: 1,
-    recipients: ['martin@siteledger.co.uk', 'amelia@siteledger.co.uk'],
+    recipients: ['martin@buildnerve.co.uk', 'amelia@buildnerve.co.uk'],
     deliveryTime: '08:00',
     timezone: 'Europe/London',
     outputFormat: 'pdf',
@@ -829,7 +829,7 @@ export const demoReportRuns: ReportRun[] = [
     status: 'completed',
     outputFormat: 'pdf',
     outputPath: 'org-001/reports/run-1-monthly-management-aug-2026.pdf',
-    createdBy: 'SiteLedger automation',
+    createdBy: 'BuildNerve automation',
   },
   {
     id: 'run-2',
@@ -853,7 +853,7 @@ export const demoReportRuns: ReportRun[] = [
     status: 'failed',
     outputFormat: 'pdf',
     errorCategory: 'provider_timeout',
-    createdBy: 'SiteLedger automation',
+    createdBy: 'BuildNerve automation',
   },
 ];
 

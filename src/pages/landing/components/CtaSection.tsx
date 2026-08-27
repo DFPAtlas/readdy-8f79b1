@@ -94,7 +94,7 @@ export default function CtaSection() {
             Ready to run your business with clarity?
           </h2>
           <p className="mt-4 text-base text-white/70 leading-relaxed max-w-lg">
-            See how SterlingLet Contractor can tighten your commercial control, speed up your valuations and keep you
+            See how BuildNerve can tighten your commercial control, speed up your valuations and keep you
             compliant — in a free 14-day trial with no credit card required.
           </p>
           <ul className="mt-6 space-y-3">

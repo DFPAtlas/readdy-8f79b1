@@ -12,7 +12,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-slate-400 text-xs mb-1.5">Platform Name</label>
-            <input type="text" value="SiteLedger" readOnly className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm cursor-not-allowed opacity-60" />
+            <input type="text" value="BuildNerve" readOnly className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm cursor-not-allowed opacity-60" />
           </div>
           <div>
             <label className="block text-slate-400 text-xs mb-1.5">Default Currency</label>

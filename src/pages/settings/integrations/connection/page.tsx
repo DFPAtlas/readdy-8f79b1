@@ -20,8 +20,8 @@ const ENTITY_LABELS: Record<string, string> = {
 };
 
 const DIRECTION_LABELS: Record<string, string> = {
-  siteledger_to_provider: 'SiteLedger → Accounting',
-  provider_to_siteledger: 'Accounting → SiteLedger',
+  siteledger_to_provider: 'BuildNerve → Accounting',
+  provider_to_siteledger: 'Accounting → BuildNerve',
   two_way: 'Two-way sync',
   disabled: 'Disabled',
 };

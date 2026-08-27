@@ -190,7 +190,7 @@ export default function DesktopMobileAdminPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
           <h3 className="text-sm font-semibold text-amber-800 mb-3">Security &amp; Privacy Notes</h3>
           <ul className="text-xs text-amber-700 space-y-2">
-            <li className="flex gap-2"><i className="ri-information-line flex-shrink-0 mt-0.5"></i><span>Browser storage is device-local and potentially accessible if the device is unlocked. SiteLedger does not encrypt IndexedDB data.</span></li>
+            <li className="flex gap-2"><i className="ri-information-line flex-shrink-0 mt-0.5"></i><span>Browser storage is device-local and potentially accessible if the device is unlocked. BuildNerve does not encrypt IndexedDB data.</span></li>
             <li className="flex gap-2"><i className="ri-information-line flex-shrink-0 mt-0.5"></i><span>Offline data is removed on sign-out, device revocation, or organisation removal. Unsaved drafts are preserved where possible.</span></li>
             <li className="flex gap-2"><i className="ri-information-line flex-shrink-0 mt-0.5"></i><span>Never store billing details, accounting data, OAuth tokens, incident investigations, or medical records offline.</span></li>
           </ul>

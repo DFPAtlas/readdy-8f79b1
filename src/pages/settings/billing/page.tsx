@@ -135,7 +135,7 @@ export default function BillingSettingsPage() {
             <i className="ri-bank-card-line text-2xl text-status-amber"></i>
           </div>
           <h2 className="text-lg font-semibold text-main mb-2">No subscription found</h2>
-          <p className="text-sm text-muted mb-6">Choose a plan to get started with SiteLedger.</p>
+          <p className="text-sm text-muted mb-6">Choose a plan to get started with BuildNerve.</p>
           <a href="/pricing" className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors whitespace-nowrap">
             <i className="ri-store-2-line"></i>
             View plans

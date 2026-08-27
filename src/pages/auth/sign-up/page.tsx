@@ -78,7 +78,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="Start managing your construction projects with SiteLedger.">
+    <AuthLayout title="Create your account" subtitle="Start managing your construction projects with BuildNerve.">
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         {error && (
           <div className="bg-status-red-pale border border-status-red/20 rounded-xl p-3 flex items-start gap-3">

@@ -14,6 +14,10 @@
   font-family: var(--font-body);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -108,5 +112,15 @@ input[name="contact_alt"] {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles for legal pages */
+@media print {
+  .legal-hero {
+    background: #ffffff !important;
+  }
+  .legal-hero * {
+    color: #17211f !important;
   }
 }

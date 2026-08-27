@@ -76,7 +76,7 @@ export const plans: PlanTier[] = [
       'Custom API Access & Backend Database Connectors',
     ],
     cta: 'Contact Sales / Request Demo',
-    ctaHref: 'mailto:sales@sterlinglet.co.uk',
+    ctaHref: 'mailto:sales@buildnerve.co.uk',
   },
 ];
 

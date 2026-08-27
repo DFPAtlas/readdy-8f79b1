@@ -40,10 +40,10 @@ export default function ValuationsLedger() {
         <div className="max-w-[1200px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="w-9 h-9 flex items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold">
-              SL
+              BN
             </span>
             <div className="leading-tight">
-              <p className="text-sm font-semibold">SterlingLet Contractor</p>
+              <p className="text-sm font-semibold">BuildNerve</p>
               <p className="text-[10px] text-slate-400">Client &amp; Tenant Portal</p>
             </div>
           </div>
@@ -114,7 +114,7 @@ export default function ValuationsLedger() {
       {/* Footer */}
       <footer className="mt-8 pb-8">
         <div className="max-w-[1200px] mx-auto px-4 md:px-6 text-center text-xs text-slate-400">
-          © 2026 SterlingLet Contractor · This ledger is for authorised client access only.
+          © 2026 BuildNerve · This ledger is for authorised client access only.
         </div>
       </footer>
     </div>

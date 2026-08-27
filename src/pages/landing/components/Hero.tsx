@@ -21,12 +21,13 @@ export default function Hero() {
           </span>
 
           <h1 className="mt-6 text-4xl md:text-6xl font-bold text-white tracking-tight font-display leading-[1.05]">
-            Run your entire contracting business from one command center
+            Run your entire contracting business from one command centre
           </h1>
 
           <p className="mt-6 text-base md:text-lg text-white/80 leading-relaxed max-w-2xl mx-auto">
-            SterlingLet Contractor brings your procurement, valuations, variations, retention, CIS compliance and field
-            operations into one real-time workspace — so every job is delivered on budget, on time and fully accounted for.
+            BuildNerve brings your projects, procurement, valuations, variations, retention, CIS compliance, workforce
+            and field operations into one real-time workspace — so every job stays connected, controlled and fully
+            accounted for.
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">

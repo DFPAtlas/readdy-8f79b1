@@ -203,7 +203,7 @@ export default function BillingInvoicesPage() {
       <div className="bg-status-blue-pale text-status-blue p-4 rounded-xl text-sm flex items-start gap-3">
         <i className="ri-information-line mt-0.5 flex-shrink-0"></i>
         <div>
-          <p className="font-medium">These are your SiteLedger subscription invoices</p>
+          <p className="font-medium">These are your BuildNerve subscription invoices</p>
           <p className="mt-0.5">Construction payment applications, CIS records, and subcontractor payments are managed separately under Jobs and Payments.</p>
         </div>
       </div>

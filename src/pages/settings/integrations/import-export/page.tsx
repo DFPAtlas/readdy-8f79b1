@@ -121,7 +121,7 @@ export default function ImportExportPage() {
             <ol className="text-sm text-foreground-600 space-y-1 list-decimal list-inside">
               <li>Upload your CSV file</li>
               <li>Auto-detect headers and preview data</li>
-              <li>Map columns to SiteLedger fields</li>
+              <li>Map columns to BuildNerve fields</li>
               <li>Validate records for errors</li>
               <li>Preview creates, updates, and skips</li>
               <li>Confirm and process in batches</li>

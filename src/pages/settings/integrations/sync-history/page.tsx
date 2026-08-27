@@ -53,7 +53,7 @@ export default function SyncHistoryPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-foreground-950 mb-1">Sync history</h2>
-          <p className="text-sm text-foreground-600">Track all data synchronisation activity between SiteLedger and connected accounting software.</p>
+          <p className="text-sm text-foreground-600">Track all data synchronisation activity between BuildNerve and connected accounting software.</p>
         </div>
       </div>
 

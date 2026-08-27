@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const DEMO_EMAIL = "demo@sterlinglet.co.uk";
+const DEMO_EMAIL = "demo@buildnerve.co.uk";
 const DEMO_PASSWORD = "Demo1234!";
 
 serve(async (req) => {
@@ -56,13 +56,13 @@ serve(async (req) => {
   <div style="max-width:520px;margin:0 auto;padding:32px 20px;">
     <div style="background:#ffffff;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
       <div style="background:#0F172A;padding:28px 32px;">
-        <div style="color:#ffffff;font-size:20px;font-weight:700;">SterlingLet Contractor</div>
+        <div style="color:#ffffff;font-size:20px;font-weight:700;">BuildNerve</div>
         <div style="color:#94A3B8;font-size:13px;margin-top:4px;">Your demo is ready</div>
       </div>
       <div style="padding:32px;">
         <p style="margin:0 0 18px;color:#0F172A;font-size:16px;line-height:1.6;">
           Hi ${firstName},<br/><br/>
-          Thanks for requesting a demo. You can jump straight in and explore SterlingLet Contractor right now &mdash; your login details are below.
+          Thanks for requesting a demo. You can jump straight in and explore BuildNerve right now &mdash; your login details are below.
         </p>
         <div style="background:#F1F5F9;border:1px solid #E2E8F0;border-radius:8px;padding:20px;margin:0 0 24px;">
           <div style="font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Your demo login</div>
@@ -77,7 +77,7 @@ serve(async (req) => {
       </div>
     </div>
     <p style="text-align:center;color:#94A3B8;font-size:12px;margin:20px 0 0;">
-      SterlingLet Contractor &middot; Run your business with clarity
+      BuildNerve &middot; Run your business with clarity
     </p>
   </div>
 </body>
@@ -92,7 +92,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from,
         to: [email],
-        subject: "Your SterlingLet Contractor demo login",
+        subject: "Your BuildNerve demo login",
         html,
       }),
     });

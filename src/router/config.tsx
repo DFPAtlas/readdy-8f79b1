@@ -1,5 +1,5 @@
 import type { RouteObject } from "react-router-dom";
-import { Outlet } from "react-router-dom";
+import { Outlet, Navigate } from "react-router-dom";
 import NotFound from "@/pages/NotFound";
 import Home from "@/pages/home/page";
 import LandingPage from "@/pages/landing/page";
@@ -71,6 +71,20 @@ import PlatformBillingSubscriptions from "@/pages/platform-admin/billing/subscri
 import PlatformBillingEvents from "@/pages/platform-admin/billing/events/page";
 import PlatformBillingDiscounts from "@/pages/platform-admin/billing/discounts/page";
 import PricingPage from "@/pages/pricing/page";
+import PrivacyPolicyPage from "@/pages/legal/privacy/page";
+import TermsOfServicePage from "@/pages/legal/terms/page";
+import SecurityPage from "@/pages/legal/security/page";
+import CookiePolicyPage from "@/pages/legal/cookies/page";
+import LegalCentrePage from "@/pages/legal/page";
+import AcceptableUsePage from "@/pages/legal/acceptable-use/page";
+import BillingPolicyPage from "@/pages/legal/billing/page";
+import CompanyInformationPage from "@/pages/legal/company-information/page";
+import DpaPage from "@/pages/legal/dpa/page";
+import SubprocessorsPage from "@/pages/legal/subprocessors/page";
+import DataRetentionPage from "@/pages/legal/data-retention/page";
+import AiPolicyPage from "@/pages/legal/ai/page";
+import VulnerabilityDisclosurePage from "@/pages/legal/vulnerability-disclosure/page";
+import AccessibilityPage from "@/pages/legal/accessibility/page";
 import BillingSettingsPage from "@/pages/settings/billing/page";
 import BillingPlanPage from "@/pages/settings/billing/plan/page";
 import BillingUsagePage from "@/pages/settings/billing/usage/page";
@@ -134,6 +148,26 @@ const routes: RouteObject[] = [
   // Public routes (no auth required)
   { path: "/", element: <LandingPage /> },
   { path: "/pricing", element: <PricingPage /> },
+  { path: "/legal", element: <LegalCentrePage /> },
+  { path: "/legal/terms", element: <TermsOfServicePage /> },
+  { path: "/legal/acceptable-use", element: <AcceptableUsePage /> },
+  { path: "/legal/billing", element: <BillingPolicyPage /> },
+  { path: "/legal/company-information", element: <CompanyInformationPage /> },
+  { path: "/legal/privacy", element: <PrivacyPolicyPage /> },
+  { path: "/legal/cookies", element: <CookiePolicyPage /> },
+  { path: "/legal/dpa", element: <DpaPage /> },
+  { path: "/legal/subprocessors", element: <SubprocessorsPage /> },
+  { path: "/legal/data-retention", element: <DataRetentionPage /> },
+  { path: "/legal/security", element: <SecurityPage /> },
+  { path: "/legal/ai", element: <AiPolicyPage /> },
+  { path: "/legal/vulnerability-disclosure", element: <VulnerabilityDisclosurePage /> },
+  { path: "/legal/accessibility", element: <AccessibilityPage /> },
+
+  // Legacy redirects from previous top-level legal routes
+  { path: "/privacy", element: <Navigate to="/legal/privacy" replace /> },
+  { path: "/terms", element: <Navigate to="/legal/terms" replace /> },
+  { path: "/security", element: <Navigate to="/legal/security" replace /> },
+  { path: "/cookies", element: <Navigate to="/legal/cookies" replace /> },
 
   // Public auth routes
   { path: "/sign-in", element: <SignInPage /> },

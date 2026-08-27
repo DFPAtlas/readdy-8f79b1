@@ -214,7 +214,7 @@ export default function BillingPlanPage() {
                 </button>
               ) : (
                 <button
-                  onClick={() => plan.plan_key === 'enterprise' ? window.location.href = 'mailto:sales@siteledger.co.uk' : handleCheckout(plan.plan_key)}
+                  onClick={() => plan.plan_key === 'enterprise' ? window.location.href = 'mailto:sales@buildnerve.co.uk' : handleCheckout(plan.plan_key)}
                   disabled={checkoutLoading}
                   className="w-full py-2.5 rounded-lg text-sm font-medium bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50 whitespace-nowrap"
                 >

@@ -323,7 +323,7 @@ export default function VoiceLogTab() {
           </p>
           <div className="flex items-center gap-2 mt-4 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
             <i className="ri-cloud-line"></i>
-            Synced to SterlingLet Contractor
+            Synced to BuildNerve
           </div>
           <button
             onClick={resetLog}

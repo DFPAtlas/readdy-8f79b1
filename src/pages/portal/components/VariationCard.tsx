@@ -161,7 +161,7 @@ export default function VariationCard() {
               </label>
             </div>
             <p className="text-[10px] text-slate-400 mt-3">
-              By signing you authorise SterlingLet Contractor to proceed. This action is audit-logged and time-stamped.
+              By signing you authorise BuildNerve to proceed. This action is audit-logged and time-stamped.
             </p>
             <div className="flex gap-3 mt-5">
               <button
