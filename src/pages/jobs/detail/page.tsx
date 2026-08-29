@@ -6,8 +6,12 @@ import { useToast } from '@/components/base/Toast';
 import type { FullJob } from '@/mocks/jobs';
 import { getVariationsByJob, getVariationStatusLabel, getVariationStatusColor, getPortalAccessByClientId, getPortalStatusLabel } from '@/mocks/clients';
 import { getEvidenceByJob, getEvidenceTypeLabel, getEvidenceTypeIcon, getReviewStatusLabel, getReviewStatusColor, getVisibilityLabel, getVisibilityColor, getTimelineEventsByJob, getEventCategoryLabel, getEventCategoryColor } from '@/mocks/evidence';
+import { getActiveFindingsForRecord, hasHighSeverityFindings } from '@/mocks/photo-analysis';
+import { demoContractTerms, confidenceLabel } from '@/mocks/contracts';
+import HealthSafetyTab from './components/HealthSafetyTab';
+import SnaggingTab from './components/SnaggingTab';
 
-const TABS = ['overview', 'timeline', 'schedule', 'team', 'variations', 'evidence', 'financials', 'documents', 'compliance', 'clientPortal'];
+const TABS = ['overview', 'timeline', 'schedule', 'team', 'variations', 'evidence', 'financials', 'documents', 'healthSafety', 'snagging', 'compliance', 'clientPortal'];
 
 const statusColorMap: Record<string, string> = {
   green: 'bg-primary-50 text-primary-700',
@@ -460,6 +464,17 @@ export default function JobDetail() {
                   <div className="absolute top-2 right-2">
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${getVisibilityColor(ev.visibility)}`}>{getVisibilityLabel(ev.visibility)}</span>
                   </div>
+                  {(() => {
+                    const count = getActiveFindingsForRecord(ev.id).length;
+                    if (count === 0) return null;
+                    const high = hasHighSeverityFindings(ev.id);
+                    return (
+                      <div className={`absolute bottom-2 left-2 flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white ${high ? 'bg-status-red' : 'bg-status-amber'}`}>
+                        <i className="ri-shield-flash-line text-xs"></i>
+                        {count} AI {count > 1 ? 'findings' : 'finding'}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="p-3">
                   <p className="text-xs text-main leading-snug line-clamp-2">{ev.caption}</p>
@@ -531,6 +546,74 @@ export default function JobDetail() {
       );
     };
 
+    const renderDocuments = () => {
+      const docs = job.documents || [];
+      const contractDoc = docs.find((d) => d.category === 'Contract');
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted">{docs.length} documents</span>
+          </div>
+
+          {contractDoc && (
+            <div className="bg-white border border-border rounded-2xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center">
+                  <i className="ri-file-text-line text-xl text-primary-600"></i>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-main">{contractDoc.name}</h3>
+                  <p className="text-xs text-muted">Terms extracted by Nerve · {demoContractTerms.length} fields</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {demoContractTerms.map((term) => {
+                  const label = confidenceLabel(term.confidence_score);
+                  const cls = label === 'High' ? 'bg-primary-50 text-primary-700' : label === 'Medium' ? 'bg-status-amber-pale text-status-amber' : 'bg-status-red-pale text-status-red';
+                  return (
+                    <div key={term.field_name} className="p-3.5 border border-border rounded-xl">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-xs font-semibold text-main">{term.field_label}</span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${cls}`}>{label}</span>
+                      </div>
+                      <p className="text-sm text-main">{term.extracted_value || '—'}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {docs.length === 0 ? (
+            <div className="flex items-center justify-center min-h-[30vh]">
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-2xl bg-page flex items-center justify-center mx-auto mb-4">
+                  <i className="ri-folder-line text-2xl text-muted"></i>
+                </div>
+                <h3 className="text-base font-semibold text-main">No documents yet</h3>
+                <p className="text-sm text-muted mt-1">Upload documents to keep the project record together.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {docs.map((d) => (
+                <div key={d.id} className="flex items-center gap-3 p-4 bg-white border border-border rounded-2xl hover:border-primary-200 transition-colors cursor-pointer">
+                  <div className="w-10 h-10 rounded-xl bg-page flex items-center justify-center flex-shrink-0">
+                    <i className="ri-file-text-line text-lg text-muted"></i>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-main truncate">{d.name}</p>
+                    <p className="text-xs text-muted">{d.type} · {d.size}</p>
+                  </div>
+                  <span className="text-[10px] font-medium text-muted bg-page px-2 py-0.5 rounded-full whitespace-nowrap">{d.category}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6 space-y-6">
         {/* Breadcrumb + Back */}
@@ -567,6 +650,13 @@ export default function JobDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                className="h-9 px-4 border border-border text-main text-sm font-medium rounded-xl hover:bg-page transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+                onClick={() => navigate('/deadlines')}
+              >
+                <i className="ri-calendar-2-line text-sm"></i>
+                Deadlines
+              </button>
               <button
                 className="h-9 px-4 border border-border text-main text-sm font-medium rounded-xl hover:bg-page transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5"
                 onClick={() => showToast('Edit will be added in the next build.', 'info')}
@@ -609,6 +699,9 @@ export default function JobDetail() {
          activeTab === 'timeline' ? renderTimelineTab() :
          activeTab === 'evidence' ? renderEvidenceTab() :
          activeTab === 'variations' ? renderVariations() :
+         activeTab === 'documents' ? renderDocuments() :
+         activeTab === 'healthSafety' ? <HealthSafetyTab jobId={jobId || ''} job={job} /> :
+         activeTab === 'snagging' ? <SnaggingTab jobId={jobId || ''} job={job} /> :
          activeTab === 'clientPortal' ? renderClientPortalTab() :
          renderPlaceholder()}
       </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { BNWordmarkLight } from '@/components/base/BuildNerveLogo';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/base/Toast';
 import { ledgerEntries, type LedgerStatus } from '@/mocks/valuationsLedger';
@@ -39,13 +40,8 @@ export default function ValuationsLedger() {
       <nav className="bg-slate-900 text-white">
         <div className="max-w-[1200px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 flex items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold">
-              BN
-            </span>
-            <div className="leading-tight">
-              <p className="text-sm font-semibold">BuildNerve</p>
-              <p className="text-[10px] text-slate-400">Client &amp; Tenant Portal</p>
-            </div>
+            <BNWordmarkLight height={26} />
+            <span className="text-slate-500 text-[10px] border-l border-slate-600 pl-3 whitespace-nowrap">Client &amp; Tenant Portal</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-300">

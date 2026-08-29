@@ -6,7 +6,7 @@ function formatMoney(v: number): string {
   return '£' + v.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default function VariationCard() {
+export default function VariationCard({ accessToken }: { accessToken?: string }) {
   const { showToast } = useToast();
   const [queryOpen, setQueryOpen] = useState(false);
   const [queryText, setQueryText] = useState('');
@@ -31,11 +31,19 @@ export default function VariationCard() {
 
   return (
     <div className="bg-white border border-amber-200 rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center justify-between mb-4">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
           <i className="ri-error-warning-line"></i>
           Action Required
         </span>
+        {accessToken && (
+          <a
+            href={`/client/${accessToken}/variations/${hubVariation.reference}`}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+          >
+            View Full Breakdown <i className="ri-arrow-right-line"></i>
+          </a>
+        )}
       </div>
 
       <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">{hubVariation.reference}</p>

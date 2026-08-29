@@ -1426,6 +1426,7 @@ export const evidenceQuickFilters = [
   { id: 'inspections', label: 'Inspections' },
   { id: 'client_visible', label: 'Client visible' },
   { id: 'needs_review', label: 'Needs review' },
+  { id: 'ai_findings', label: 'AI findings' },
   { id: 'offline_queue', label: 'Offline queue' },
 ];
 

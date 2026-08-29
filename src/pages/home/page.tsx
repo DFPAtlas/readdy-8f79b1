@@ -1,5 +1,6 @@
 import DashboardLayout from '@/components/feature/DashboardLayout';
 import KpiBar from './components/KpiBar';
+import DeadlineWidget from './components/DeadlineWidget';
 import CommercialHealthMatrix from './components/CommercialHealthMatrix';
 import PendingApprovals from './components/PendingApprovals';
 import FieldFeed from './components/FieldFeed';
@@ -31,6 +32,9 @@ export default function Home() {
 
         {/* Section 1 — Executive KPI command bar */}
         <KpiBar />
+
+        {/* Statutory deadline banner */}
+        <DeadlineWidget />
 
         {/* Section 2 — Main dashboard grid */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">

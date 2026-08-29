@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthLayout from '@/components/feature/AuthLayout';
+import { BNIcon } from '@/components/base/BuildNerveLogo';
 
 export default function SignInPage() {
   const { signIn, user, loading: authLoading, error, clearError } = useAuth();
@@ -24,8 +25,8 @@ export default function SignInPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-page flex items-center justify-center">
-        <div className="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center">
-          <span className="text-white font-bold text-sm">BN</span>
+        <div className="w-12 h-12 rounded-xl bg-[#1B2A3E] flex items-center justify-center">
+          <BNIcon height={28} />
         </div>
       </div>
     );

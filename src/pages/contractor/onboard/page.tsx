@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/components/base/Toast';
 import { getInvitationByToken } from '@/mocks/workforce';
+import { BNWordmarkDark } from '@/components/base/BuildNerveLogo';
 
 export default function ContractorOnboard() {
   const { t } = useTranslation();
@@ -95,11 +96,8 @@ export default function ContractorOnboard() {
       {/* Header */}
       <header className="bg-white border-b border-border sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
-              <span className="text-white font-bold text-xs">BN</span>
-            </div>
-            <span className="text-main font-semibold text-sm">BuildNerve</span>
+          <div className="flex items-center">
+            <BNWordmarkDark height={24} />
           </div>
           <span className="text-xs text-muted">{t('onboard.stepCounter', { current: step + 1, total: totalSteps })}</span>
         </div>

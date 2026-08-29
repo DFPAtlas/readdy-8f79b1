@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- BuildNerve icon mark — navy/blue -->
+  <rect width="48" height="48" rx="10" fill="#1B2A3E"/>
+  <!-- Rising bars (blue) -->
+  <rect x="3" y="22" width="8" height="23" rx="1.5" fill="#2563EB"/>
+  <rect x="14" y="14" width="8" height="31" rx="1.5" fill="#2563EB"/>
+  <!-- B letterform (white) -->
+  <path d="M25 4 h9 a9 9 0 0 1 0 18 h-9 V4z" fill="#FFFFFF"/>
+  <path d="M25 22 h10 a10 10 0 0 1 0 20 H25 V22z" fill="#FFFFFF"/>
+  <rect x="25" y="4" width="5" height="38" fill="#FFFFFF"/>
+</svg>

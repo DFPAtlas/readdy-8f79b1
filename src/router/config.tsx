@@ -20,8 +20,13 @@ import VariationsWorkspace from "@/pages/variations/page";
 import NewVariationWizard from "@/pages/variations/new/page";
 import VariationDetail from "@/pages/variations/detail/page";
 import ClientPortal from "@/pages/portal/page";
+import FullSchedulePage from "@/pages/portal/schedule/page";
 import ClientVariationDetail from "@/pages/portal/variation/page";
 import ValuationsLedger from "@/pages/portal/valuations-ledger/page";
+import DisputeResolutionCentre from "@/pages/disputes/page";
+import DisputeDetailPage from "@/pages/disputes/detail/page";
+import RaiseDisputePage from "@/pages/disputes/new/page";
+import LegalGuidancePage from "@/pages/disputes/legal-guidance/page";
 import EvidenceWorkspace from "@/pages/evidence/page";
 import EvidenceDetail from "@/pages/evidence/detail/page";
 import SiteCapture from "@/pages/capture/page";
@@ -61,6 +66,9 @@ import PlatformSupport from "@/pages/platform-admin/support/page";
 import PlatformAccessRequests from "@/pages/platform-admin/access-requests/page";
 import PlatformSecurity from "@/pages/platform-admin/security/page";
 import PlatformAudit from "@/pages/platform-admin/audit/page";
+import PlatformDisputesPage from "@/pages/platform-admin/disputes/page";
+import PlatformDisputeCasePage from "@/pages/platform-admin/disputes/case/page";
+import PlatformDisputesLaunchReadiness from "@/pages/platform-admin/disputes/launch-readiness/page";
 import PlatformCommunications from "@/pages/platform-admin/communications/page";
 import PlatformFeatureFlags from "@/pages/platform-admin/feature-flags/page";
 import PlatformSystem from "@/pages/platform-admin/system/page";
@@ -135,6 +143,7 @@ import CompliancePage from "@/pages/compliance/page";
 import PaymentsPage from "@/pages/payments/page";
 import RetentionLifecyclePage from "@/pages/retention/page";
 import ProcurementPortal from "@/pages/procurement/portal/page";
+import DeadlinesPage from "@/pages/deadlines/page";
 
 const ProtectedLayout = () => (
   <AuthGuard>
@@ -198,6 +207,9 @@ const routes: RouteObject[] = [
       { path: "access-requests", element: <PlatformAccessRequests /> },
       { path: "security", element: <PlatformSecurity /> },
       { path: "audit", element: <PlatformAudit /> },
+      { path: "disputes", element: <PlatformDisputesPage /> },
+      { path: "disputes/launch-readiness", element: <PlatformDisputesLaunchReadiness /> },
+      { path: "disputes/:disputeId", element: <PlatformDisputeCasePage /> },
       { path: "communications", element: <PlatformCommunications /> },
       { path: "feature-flags", element: <PlatformFeatureFlags /> },
       { path: "system", element: <PlatformSystem /> },
@@ -229,6 +241,7 @@ const routes: RouteObject[] = [
 
   // Public client portal (token-based access)
   { path: "/client/:accessToken", element: <ClientPortal /> },
+  { path: "/client/:accessToken/schedule", element: <FullSchedulePage /> },
   { path: "/client/:accessToken/variations/:variationId", element: <ClientVariationDetail /> },
   { path: "/client/:accessToken/valuations-ledger", element: <ValuationsLedger /> },
 
@@ -308,12 +321,25 @@ const routes: RouteObject[] = [
         ],
       },
       {
+        path: "/disputes",
+        children: [
+          { index: true, element: <DisputeResolutionCentre /> },
+          { path: "new", element: <RaiseDisputePage /> },
+          { path: "legal-guidance", element: <LegalGuidancePage /> },
+          { path: ":disputeId", element: <DisputeDetailPage /> },
+        ],
+      },
+      {
         path: "/payments",
         element: <PaymentsPage />,
       },
       {
         path: "/retention",
         element: <RetentionLifecyclePage />,
+      },
+      {
+        path: "/deadlines",
+        element: <DeadlinesPage />,
       },
       {
         path: "/procurement",

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { BNWordmarkLight } from '@/components/base/BuildNerveLogo';
 
 export default function PlatformAdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -39,7 +40,10 @@ export default function PlatformAdminLoginPage() {
           <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-6">
             <i className="ri-shield-user-line text-3xl text-amber-400"></i>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">BuildNerve Platform Admin</h1>
+          <div className="flex justify-center mb-2">
+            <BNWordmarkLight height={28} />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Platform Admin</h1>
           <p className="text-slate-400 text-sm">Restricted access. MFA required for all platform operations.</p>
         </div>
 

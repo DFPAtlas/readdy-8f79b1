@@ -893,6 +893,7 @@ export function getPlatformNavItems(role: PlatformRole) {
     { id: 'support', label: 'Support', icon: 'ri-customer-service-2-line', path: '/platform-admin/support' },
     { id: 'access-requests', label: 'Access Requests', icon: 'ri-key-2-line', path: '/platform-admin/access-requests' },
     { id: 'security', label: 'Security', icon: 'ri-shield-check-line', path: '/platform-admin/security' },
+    { id: 'disputes', label: 'Disputes', icon: 'ri-scales-3-line', path: '/platform-admin/disputes' },
     { id: 'audit', label: 'Audit Log', icon: 'ri-file-list-3-line', path: '/platform-admin/audit' },
     { id: 'communications', label: 'Communications', icon: 'ri-mail-send-line', path: '/platform-admin/communications' },
     { id: 'feature-flags', label: 'Feature Flags', icon: 'ri-toggle-line', path: '/platform-admin/feature-flags' },

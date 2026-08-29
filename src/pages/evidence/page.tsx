@@ -17,6 +17,7 @@ import {
   evidenceQuickFilters,
   type EvidenceRecord,
 } from '@/mocks/evidence';
+import { getActiveFindingsForRecord, hasHighSeverityFindings } from '@/mocks/photo-analysis';
 
 type ViewMode = 'grid' | 'list' | 'timeline';
 
@@ -106,6 +107,9 @@ export default function EvidenceWorkspace() {
         result = result.filter(
           (e) => e.reviewStatus === 'awaiting_review' || e.reviewStatus === 'submitted',
         );
+      }
+      if (activeFilters.includes('ai_findings')) {
+        result = result.filter((e) => getActiveFindingsForRecord(e.id).length > 0);
       }
       if (activeFilters.includes('offline_queue')) {
         result = [];
@@ -326,6 +330,8 @@ function renderEvidenceCard(
 ) {
   const hasImage = ev.attachments?.some((a) => a.previewUrl) ?? false;
   const previewUrl = ev.attachments?.find((a) => a.previewUrl)?.previewUrl;
+  const aiCount = getActiveFindingsForRecord(ev.id).length;
+  const aiHigh = hasHighSeverityFindings(ev.id);
   return (
     <div
       key={ev.id}
@@ -350,6 +356,12 @@ function renderEvidenceCard(
             {getVisibilityLabel(ev.visibility)}
           </span>
         </div>
+        {aiCount > 0 && (
+          <div className={`absolute bottom-2 left-2 flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white ${aiHigh ? 'bg-status-red' : 'bg-status-amber'}`}>
+            <i className="ri-shield-flash-line text-xs"></i>
+            {aiCount} AI {aiCount > 1 ? 'findings' : 'finding'}
+          </div>
+        )}
       </div>
       <div className="p-3">
         <p className="text-xs text-main leading-snug line-clamp-2">{ev.caption}</p>
@@ -377,6 +389,8 @@ function renderEvidenceRow(
   navigate: (path: string) => void,
   t: (key: string) => string,
 ) {
+  const aiCount = getActiveFindingsForRecord(ev.id).length;
+  const aiHigh = hasHighSeverityFindings(ev.id);
   return (
     <div
       key={ev.id}
@@ -409,6 +423,11 @@ function renderEvidenceRow(
       <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${getVisibilityColor(ev.visibility)}`}>
         {getVisibilityLabel(ev.visibility)}
       </span>
+      {aiCount > 0 && (
+        <span className={`flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full text-white ${aiHigh ? 'bg-status-red' : 'bg-status-amber'}`}>
+          <i className="ri-shield-flash-line text-[10px]"></i>{aiCount}
+        </span>
+      )}
       <span className="hidden sm:block text-[10px] text-muted">{ev.capturedBy}</span>
       <span className="text-[10px] text-muted whitespace-nowrap">
         {new Date(ev.capturedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}

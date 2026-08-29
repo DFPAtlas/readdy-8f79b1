@@ -74,6 +74,13 @@ export interface JobProgramme {
   clientMilestones: string[];
 }
 
+export interface ContractDraftSummary {
+  fileName?: string;
+  contractType?: string;
+  termCount?: number;
+  documentId?: string;
+}
+
 export interface WizardDraft {
   step1?: {
     clientType: 'existing' | 'new';
@@ -105,6 +112,7 @@ export interface WizardDraft {
     leadWorker?: string;
   };
   step3?: {
+    contractType?: string;
     detailedScope?: string;
     includedWork?: string;
     excludedWork?: string;
@@ -141,6 +149,7 @@ export interface WizardDraft {
     ramsRequired?: 'yes' | 'no' | 'tbc';
     principalContractorRole?: 'our_company' | 'another' | 'client' | 'tbc';
   };
+  contract?: ContractDraftSummary;
 }
 
 export interface FullJob {

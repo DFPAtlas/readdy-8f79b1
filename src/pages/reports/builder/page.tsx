@@ -240,8 +240,14 @@ export default function ReportBuilder() {
 
               <div className="max-w-2xl mx-auto bg-white p-8 border border-border rounded-lg">
                 <div className="text-center mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center mx-auto mb-3">
-                    <span className="text-white font-bold text-sm">BN</span>
+                  <div className="w-12 h-12 rounded-xl bg-[#1B2A3E] flex items-center justify-center mx-auto mb-3">
+                    <svg width="24" height="24" viewBox="0 0 46 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="BuildNerve">
+                      <rect x="2" y="22" width="9" height="26" rx="1.5" fill="#2563EB" />
+                      <rect x="14" y="12" width="9" height="36" rx="1.5" fill="#2563EB" />
+                      <path d="M26 0 h10 a10 10 0 0 1 0 20 h-10 V0z" fill="#FFFFFF" />
+                      <path d="M26 20 h11 a11 11 0 0 1 0 22 H26 V20z" fill="#FFFFFF" />
+                      <rect x="26" y="0" width="5" height="42" fill="#FFFFFF" />
+                    </svg>
                   </div>
                   <h2 className="text-lg font-bold text-foreground-950">{reportTitle || 'Untitled Report'}</h2>
                   <p className="text-xs text-foreground-400 mt-1">

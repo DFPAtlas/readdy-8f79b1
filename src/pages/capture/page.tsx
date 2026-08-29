@@ -115,8 +115,14 @@ export default function SiteCapture() {
             >
               <i className="ri-arrow-left-line text-lg text-main"></i>
             </button>
-            <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">BN</span>
+            <div className="w-8 h-8 rounded-lg bg-[#1B2A3E] flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 46 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="BuildNerve">
+                <rect x="2" y="22" width="9" height="26" rx="1.5" fill="#2563EB" />
+                <rect x="14" y="12" width="9" height="36" rx="1.5" fill="#2563EB" />
+                <path d="M26 0 h10 a10 10 0 0 1 0 20 h-10 V0z" fill="#FFFFFF" />
+                <path d="M26 20 h11 a11 11 0 0 1 0 22 H26 V20z" fill="#FFFFFF" />
+                <rect x="26" y="0" width="5" height="42" fill="#FFFFFF" />
+              </svg>
             </div>
           </div>
           <h1 className="text-lg font-bold text-main">{job.project}</h1>

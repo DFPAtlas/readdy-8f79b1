@@ -77,6 +77,39 @@ export interface TeamMember {
   email: string;
 }
 
+export type CalendarEventType = 'site_visit' | 'milestone' | 'payment' | 'meeting' | 'handover';
+
+export interface ProjectCalendarEvent {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  time?: string;
+  type: CalendarEventType;
+  location?: string;
+}
+
+export const calendarEventMeta: Record<CalendarEventType, { label: string; dot: string; chip: string }> = {
+  site_visit: { label: 'Site Visit', dot: 'bg-emerald-500', chip: 'bg-emerald-50 text-emerald-700' },
+  milestone: { label: 'Milestone', dot: 'bg-indigo-500', chip: 'bg-indigo-50 text-indigo-700' },
+  payment: { label: 'Payment', dot: 'bg-amber-500', chip: 'bg-amber-50 text-amber-700' },
+  meeting: { label: 'Meeting', dot: 'bg-slate-400', chip: 'bg-slate-100 text-slate-700' },
+  handover: { label: 'Handover', dot: 'bg-rose-500', chip: 'bg-rose-50 text-rose-700' },
+};
+
+export const projectCalendarEvents: ProjectCalendarEvent[] = [
+  { id: 'ev-01', date: '2026-09-02', title: 'Site visit — MEP first fix review', time: '10:00', type: 'site_visit', location: '42 Park Lane' },
+  { id: 'ev-02', date: '2026-09-05', title: 'Phase 4 target — MEP & plastering complete', type: 'milestone' },
+  { id: 'ev-03', date: '2026-09-10', title: 'Interim Valuation #4 due', time: '17:00', type: 'payment' },
+  { id: 'ev-04', date: '2026-09-12', title: 'Kitchen design final sign-off', time: '11:30', type: 'meeting', location: 'Showroom' },
+  { id: 'ev-05', date: '2026-09-15', title: 'Site visit — second fix walkthrough', time: '14:00', type: 'site_visit', location: '42 Park Lane' },
+  { id: 'ev-06', date: '2026-09-18', title: 'Joinery measuring on site', time: '09:30', type: 'site_visit', location: '42 Park Lane' },
+  { id: 'ev-07', date: '2026-09-22', title: 'Second fix & joinery begins', type: 'milestone' },
+  { id: 'ev-08', date: '2026-09-28', title: 'Client progress meeting', time: '15:00', type: 'meeting', location: 'Video call' },
+  { id: 'ev-09', date: '2026-10-05', title: 'Kitchen installation begins', type: 'milestone' },
+  { id: 'ev-10', date: '2026-10-12', title: 'Final snagging inspection', time: '10:00', type: 'site_visit', location: '42 Park Lane' },
+  { id: 'ev-11', date: '2026-10-24', title: 'Practical completion & handover', time: '13:00', type: 'handover', location: '42 Park Lane' },
+];
+
 // ─── Client context ─────────────────────────────────────
 
 export const hubClient: HubClient = {

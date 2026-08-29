@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/base/Toast';
+import { useOrg } from '@/contexts/OrgContext';
+import ContractStep from './components/ContractStep';
 import {
   demoClients, demoTeamMembers,
   jobCategories, primaryTrades, pricingTypes, vatTreatments, paymentSchedules,
@@ -9,7 +11,7 @@ import {
 } from '@/mocks/jobs';
 import type { WizardDraft, SiteAddress, JobDocument, ComplianceItem } from '@/mocks/jobs';
 
-const STEPS = ['step1', 'step2', 'step3', 'step4', 'step5', 'step6'] as const;
+const STEPS = ['step1', 'step2', 'contract', 'step3', 'step4', 'step5', 'step6'] as const;
 
 function generateReference(): string {
   const num = 1055 + Math.floor(Math.random() * 20);
@@ -20,6 +22,8 @@ export default function NewJobWizard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { organisation } = useOrg();
+  const orgId = organisation?.id;
 
   const [currentStep, setCurrentStep] = useState(0);
   const [draft, setDraft] = useState<WizardDraft>({});
@@ -32,7 +36,7 @@ export default function NewJobWizard() {
   // Load draft from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('siteLedger_jobDraft');
+      const saved = localStorage.getItem('buildnerve_jobDraft') || localStorage.getItem('siteLedger_jobDraft');
       if (saved) {
         const parsed = JSON.parse(saved) as { draft: WizardDraft; step: number };
         setDraft(parsed.draft || {});
@@ -44,7 +48,7 @@ export default function NewJobWizard() {
   // Save draft on changes
   const saveDraft = (d: WizardDraft, step?: number) => {
     try {
-      localStorage.setItem('siteLedger_jobDraft', JSON.stringify({ draft: d, step: step ?? currentStep }));
+      localStorage.setItem('buildnerve_jobDraft', JSON.stringify({ draft: d, step: step ?? currentStep }));
     } catch { /* ignore */ }
   };
 
@@ -58,7 +62,7 @@ export default function NewJobWizard() {
   };
 
   const goNext = () => {
-    if (currentStep < 5) setCurrentStep((p) => { saveDraft(draft, p + 1); return p + 1; });
+    if (currentStep < 6) setCurrentStep((p) => { saveDraft(draft, p + 1); return p + 1; });
   };
 
   const goBack = () => {
@@ -76,7 +80,7 @@ export default function NewJobWizard() {
     setTimeout(() => {
       setCreating(false);
       setCreatedJobRef(ref);
-      localStorage.removeItem('siteLedger_jobDraft');
+      localStorage.removeItem('buildnerve_jobDraft');
     }, 1200);
   };
 
@@ -108,7 +112,7 @@ export default function NewJobWizard() {
             <button
               className="w-full sm:w-auto h-10 px-5 border border-border text-main text-sm font-medium rounded-xl hover:bg-page transition-colors cursor-pointer whitespace-nowrap"
               onClick={() => {
-                localStorage.removeItem('siteLedger_jobDraft');
+                localStorage.removeItem('buildnerve_jobDraft');
                 setCreatedJobRef(null);
                 setDraft({});
                 setCurrentStep(0);
@@ -375,6 +379,18 @@ export default function NewJobWizard() {
           <textarea value={s2.description || ''} onChange={(e) => updateDraft('step2', { description: e.target.value })} rows={3} className="w-full px-3.5 py-2.5 bg-page rounded-xl text-sm text-main border border-transparent focus:border-primary-200 focus:ring-2 focus:ring-primary-50 outline-none resize-none" />
         </div>
       </div>
+    );
+  };
+
+  const renderContract = () => {
+    return (
+      <ContractStep
+        orgId={orgId}
+        onApply={(commercial, summary) => {
+          updateDraft('step3', commercial);
+          updateDraft('contract', { ...summary });
+        }}
+      />
     );
   };
 
@@ -790,19 +806,23 @@ export default function NewJobWizard() {
         content: <p className="text-sm text-main">{s2.jobName || '—'} · {s2.jobReference || '—'} · {s2.jobCategory || '—'}</p>,
       },
       {
-        key: 'scope', label: t('dashboard.scopeSection'), step: 2,
+        key: 'contract', label: 'Contract', step: 2,
+        content: <p className="text-sm text-main">{draft.contract?.fileName ? `${draft.contract.fileName} · ${draft.contract.termCount || 0} terms` : 'No contract uploaded'}</p>,
+      },
+      {
+        key: 'scope', label: t('dashboard.scopeSection'), step: 3,
         content: <p className="text-sm text-main truncate max-w-xs">{s3.detailedScope || '—'}</p>,
       },
       {
-        key: 'commercial', label: t('dashboard.commercialSection'), step: 2,
+        key: 'commercial', label: t('dashboard.commercialSection'), step: 3,
         content: <p className="text-sm font-semibold text-main">£{(s3.estimatedValue || 0).toLocaleString()} · {s3.pricingType || '—'}</p>,
       },
       {
-        key: 'programme', label: t('dashboard.programmeSection'), step: 3,
+        key: 'programme', label: t('dashboard.programmeSection'), step: 4,
         content: <p className="text-sm text-main">{s4.startDate || '—'} → {s4.targetCompletion || '—'} ({s4.estimatedDuration || 0} {s4.durationUnit || 'days'})</p>,
       },
       {
-        key: 'team', label: t('dashboard.teamSection'), step: 3,
+        key: 'team', label: t('dashboard.teamSection'), step: 4,
         content: (
           <div className="flex -space-x-1">
             {(s4.assignedEmployees || []).map((id) => {
@@ -889,9 +909,9 @@ export default function NewJobWizard() {
     );
   };
 
-  const stepRenderers = [renderStep1, renderStep2, renderStep3, renderStep4, renderStep5, renderStep6];
-  const stepTitles = ['step1Title', 'step2Title', 'step3Title', 'step4Title', 'step5Title', 'step6Title'];
-  const stepNumbers = ['step1number', 'step2number', 'step3number', 'step4number', 'step5number', 'step6number'];
+  const stepRenderers = [renderStep1, renderStep2, renderContract, renderStep3, renderStep4, renderStep5, renderStep6];
+  const stepTitles = ['step1Title', 'step2Title', 'contractStepTitle', 'step3Title', 'step4Title', 'step5Title', 'step6Title'];
+  const stepNumbers = ['step1number', 'step2number', 'contractStepNumber', 'step3number', 'step4number', 'step5number', 'step6number'];
 
   // ─── Main Render ─────────────────────────────────────
   return (
@@ -940,7 +960,7 @@ export default function NewJobWizard() {
             {t('dashboard.backBtn')}
           </button>
 
-          {currentStep < 5 ? (
+          {currentStep < 6 ? (
             <button
               className="h-10 px-5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap flex items-center gap-2"
               onClick={goNext}

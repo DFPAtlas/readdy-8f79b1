@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPlatformNavItems, getRoleLabel } from '@/mocks/platform-admin';
+import { BNWordmarkLight } from '@/components/base/BuildNerveLogo';
 
 export default function PlatformAdminLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -39,15 +40,8 @@ export default function PlatformAdminLayout() {
       >
         {/* Brand */}
         <div className="px-5 pt-6 pb-5 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
-              <i className="ri-admin-line text-xl text-amber-400"></i>
-            </div>
-            <div>
-              <p className="text-white font-semibold text-sm">BuildNerve</p>
-              <p className="text-amber-400/80 text-[11px] font-medium tracking-wider uppercase">Platform Admin</p>
-            </div>
-          </div>
+          <BNWordmarkLight height={26} />
+          <p className="text-amber-400/80 text-[10px] font-semibold tracking-widest uppercase mt-2">Platform Admin</p>
         </div>
 
         {/* Nav */}

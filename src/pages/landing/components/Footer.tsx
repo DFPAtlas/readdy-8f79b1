@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { BNWordmarkLight } from '@/components/base/BuildNerveLogo';
 
 const NEWSLETTER_FORM_URL = 'https://readdy.ai/api/form/da7c0cmij9sffln41rr0';
 
@@ -105,11 +106,8 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-14 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
           <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-2.5 cursor-pointer">
-              <span className="w-9 h-9 rounded-xl bg-primary-500 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">BN</span>
-              </span>
-              <span className="font-display font-semibold text-base whitespace-nowrap">BuildNerve</span>
+            <Link to="/" className="flex items-center cursor-pointer">
+              <BNWordmarkLight height={28} />
             </Link>
             <p className="mt-4 text-sm text-white/60 leading-relaxed max-w-sm">
               The operating system for UK contractors. Run your procurement, commercial, compliance and field operations

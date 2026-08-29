@@ -52,6 +52,14 @@ const groups: PolicyGroup[] = [
         icon: 'ri-building-2-line',
         ready: false,
       },
+      {
+        title: 'UK Legal Guidance',
+        description: 'General guidance on common dispute procedures for England and Wales.',
+        to: '/disputes/legal-guidance',
+        icon: 'ri-scales-3-line',
+        ready: true,
+        updated: '27 Aug 2026',
+      },
     ],
   },
   {

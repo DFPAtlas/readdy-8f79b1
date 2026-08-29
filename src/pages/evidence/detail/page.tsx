@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getEvidenceById, getEvidenceTypeLabel, getEvidenceTypeIcon, getReviewStatusLabel, getReviewStatusColor, getVisibilityLabel, getVisibilityColor, getDelayCategoryLabel, getDelayStatusLabel, type EvidenceRecord } from '@/mocks/evidence';
 import { useToast } from '@/components/base/Toast';
 import ConfirmDialog from '@/components/base/ConfirmDialog';
+import PhotoAnalysisPanel from './components/PhotoAnalysisPanel';
 
 export default function EvidenceDetail() {
   const { t } = useTranslation();
@@ -114,6 +115,9 @@ export default function EvidenceDetail() {
           </div>
         </div>
       )}
+
+      {/* AI Photo Analysis */}
+      <PhotoAnalysisPanel evidence={evidence} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Info */}

@@ -2,6 +2,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { sidebarNavItems, businessPulse, userProfile } from '@/mocks/dashboard';
+import { BNWordmarkLight, BNIcon } from '@/components/base/BuildNerveLogo';
+import { useAuth } from '@/contexts/AuthContext';
+import { disputesService } from '@/services/disputes.service';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -12,13 +15,34 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [disputeActionCount, setDisputeActionCount] = useState(0);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
 
+  useEffect(() => {
+    if (!user) {
+      setDisputeActionCount(0);
+      return;
+    }
+    let cancelled = false;
+    disputesService
+      .listDisputes()
+      .then((items) => {
+        if (!cancelled) setDisputeActionCount(items.filter((d) => d.action_required).length);
+      })
+      .catch(() => {
+        if (!cancelled) setDisputeActionCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const currentPath = location.pathname;
-  const activeId = currentPath === '/app' ? 'overview' : currentPath.startsWith('/jobs') ? 'jobs' : currentPath.startsWith('/workforce') ? 'workforce' : currentPath.startsWith('/clients') ? 'clients' : currentPath.startsWith('/variations') ? 'variations' : currentPath.startsWith('/evidence') ? 'evidence' : currentPath.startsWith('/messages') ? 'messages' : currentPath.startsWith('/reports') ? 'reports' : currentPath.startsWith('/notifications') ? 'notifications' : currentPath.startsWith('/app/procurement') ? 'app/procurement' : currentPath.startsWith('/app/suppliers') ? 'app/procurement' : currentPath.startsWith('/app/documents/ingestion') ? 'app/documents/ingestion' : currentPath.startsWith('/app/settings/integrations') ? 'app/settings/integrations' : currentPath.startsWith('/app/settings/ai-automation') ? 'app/settings/ai-automation' : currentPath.startsWith('/app/settings/billing') ? 'app/settings/billing' : currentPath.replace('/', '') || 'overview';
+  const activeId = currentPath === '/app' ? 'overview' : currentPath.startsWith('/jobs') ? 'jobs' : currentPath.startsWith('/workforce') ? 'workforce' : currentPath.startsWith('/clients') ? 'clients' : currentPath.startsWith('/variations') ? 'variations' : currentPath.startsWith('/disputes') ? 'disputes' : currentPath.startsWith('/evidence') ? 'evidence' : currentPath.startsWith('/messages') ? 'messages' : currentPath.startsWith('/reports') ? 'reports' : currentPath.startsWith('/notifications') ? 'notifications' : currentPath.startsWith('/app/procurement') ? 'app/procurement' : currentPath.startsWith('/app/suppliers') ? 'app/procurement' : currentPath.startsWith('/app/documents/ingestion') ? 'app/documents/ingestion' : currentPath.startsWith('/app/settings/integrations') ? 'app/settings/integrations' : currentPath.startsWith('/app/settings/ai-automation') ? 'app/settings/ai-automation' : currentPath.startsWith('/app/settings/billing') ? 'app/settings/billing' : currentPath.replace('/', '') || 'overview';
 
   const handleNav = (id: string) => {
     if (id === 'overview') {
@@ -90,22 +114,24 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         onMouseLeave={handleMouseLeave}
       >
         {/* Brand */}
-        <div className={`pt-6 pb-5 ${expanded ? 'px-4' : 'px-0 flex justify-center'}`}>
-          <div className={`flex items-center ${expanded ? 'gap-3' : 'gap-0 justify-center'}`}>
-            <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm tracking-tight">BN</span>
-            </div>
-            <div className={`flex-col leading-tight overflow-hidden transition-all duration-300 ${expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'}`}>
-              <span className="text-white font-semibold text-base whitespace-nowrap">{t('dashboard.brand')}</span>
-              <span className="text-muted text-xs whitespace-nowrap">{t('dashboard.tagline')}</span>
-            </div>
-          </div>
+        <div className={`pt-5 pb-4 ${expanded ? 'px-4' : 'px-0 flex justify-center'}`}>
+          {expanded ? (
+            <BNWordmarkLight height={28} />
+          ) : (
+            <BNIcon height={28} />
+          )}
         </div>
 
         {/* Navigation */}
         <nav className={`flex-1 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-none ${expanded ? 'px-4' : 'px-2.5'}`} aria-label="Primary navigation">
           {sidebarNavItems.map((item) => {
             const isActive = activeId === item.id;
+            const badge =
+              item.id === 'disputes'
+                ? disputeActionCount > 0
+                  ? String(disputeActionCount)
+                  : undefined
+                : item.badge;
             return (
               <button
                 key={item.id}
@@ -132,12 +158,12 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 <span className={`flex-1 text-left overflow-hidden transition-all duration-300 ${expanded ? 'opacity-100 max-w-[160px]' : 'opacity-0 max-w-0'}`}>
                   {item.label}
                 </span>
-                {item.badge && expanded && (
+                {badge && expanded && (
                   <span className="bg-status-amber text-white text-[11px] font-semibold px-2 py-0.5 rounded-full leading-tight flex-shrink-0">
-                    {item.badge}
+                    {badge}
                   </span>
                 )}
-                {item.badge && !expanded && (
+                {badge && !expanded && (
                   <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-status-amber" />
                 )}
               </button>

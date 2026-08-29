@@ -59,7 +59,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       }));
 
       if (orgs.length > 0 && !state.organisation) {
-        const storedOrgId = typeof localStorage !== 'undefined' ? localStorage.getItem('siteLedgerOrgId') : null;
+        const storedOrgId = typeof localStorage !== 'undefined' ? (localStorage.getItem('buildnerveOrgId') || localStorage.getItem('siteLedgerOrgId')) : null;
         const targetOrg = storedOrgId ? orgs.find((o) => o.id === storedOrgId) : null;
         const activeOrg = targetOrg || orgs[0];
         const activeMembership = (memberships || []).find(
@@ -67,7 +67,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         );
 
         if (typeof localStorage !== 'undefined') {
-          localStorage.setItem('siteLedgerOrgId', activeOrg.id);
+          localStorage.setItem('buildnerveOrgId', activeOrg.id);
         }
 
         setState((prev) => ({
@@ -97,7 +97,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     if (!org) return;
 
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('siteLedgerOrgId', orgId);
+      localStorage.setItem('buildnerveOrgId', orgId);
     }
 
     try {

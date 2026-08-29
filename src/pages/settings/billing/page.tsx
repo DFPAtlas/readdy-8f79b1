@@ -53,7 +53,7 @@ export default function BillingSettingsPage() {
       if (!session) throw new Error('Not authenticated');
 
       // We need org context — get from localStorage or first membership
-      const orgId = localStorage.getItem('siteLedgerOrgId');
+      const orgId = localStorage.getItem('buildnerveOrgId') || localStorage.getItem('siteLedgerOrgId');
       if (!orgId) {
         const { data: memberships } = await supabase
           .from('organisation_members')

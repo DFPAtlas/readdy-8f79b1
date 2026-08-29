@@ -24,7 +24,7 @@ export default function BillingPlanPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const orgId = localStorage.getItem('siteLedgerOrgId');
+      const orgId = localStorage.getItem('buildnerveOrgId') || localStorage.getItem('siteLedgerOrgId');
       if (!orgId) {
         const { data: memberships } = await supabase
           .from('organisation_members')

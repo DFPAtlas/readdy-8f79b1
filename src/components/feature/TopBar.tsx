@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { BNWordmarkDark } from '@/components/base/BuildNerveLogo';
 import { useToast } from '@/components/base/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -54,11 +55,8 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
         </button>
 
         {/* Mobile brand */}
-        <div className="lg:hidden flex items-center gap-2 flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
-            <span className="text-white font-bold text-[11px]">BN</span>
-          </div>
-          <span className="text-main font-semibold text-sm">{t('dashboard.brand')}</span>
+        <div className="lg:hidden flex items-center flex-shrink-0">
+          <BNWordmarkDark height={24} />
         </div>
 
         {/* Search */}

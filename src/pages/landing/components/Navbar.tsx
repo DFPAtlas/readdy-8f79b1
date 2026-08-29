@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { BNWordmarkLight, BNWordmarkDark } from '@/components/base/BuildNerveLogo';
 
 const navLinks = [
   { label: 'Features', href: '#features' },
@@ -27,13 +28,12 @@ export default function Navbar() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5 cursor-pointer" onClick={() => setOpen(false)}>
-          <span className="w-9 h-9 rounded-xl bg-primary-500 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">BN</span>
-          </span>
-          <span className={`font-display font-semibold text-base whitespace-nowrap ${scrolled ? 'text-main' : 'text-white'}`}>
-            BuildNerve
-          </span>
+        <Link to="/" className="flex items-center cursor-pointer" onClick={() => setOpen(false)}>
+          {scrolled ? (
+            <BNWordmarkDark height={30} />
+          ) : (
+            <BNWordmarkLight height={30} />
+          )}
         </Link>
 
         <nav className="hidden md:flex items-center gap-7">
