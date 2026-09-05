@@ -50,9 +50,7 @@ export interface EvidenceDetailResponse {
   signedUrl: string | null;
   audit: {
     action: string;
-    actor_user_id: string | null;
     created_at: string;
-    new_value: unknown;
   }[];
 }
 

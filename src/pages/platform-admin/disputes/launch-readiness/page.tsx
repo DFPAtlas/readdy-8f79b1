@@ -53,6 +53,12 @@ function CheckRow({ check }: { check: ReadinessCheck }) {
           <i className={`${check.automated ? 'ri-cpu-line text-emerald-400' : 'ri-user-line text-amber-400'}`}></i>
           {check.automated ? 'Automated' : 'Manual'}
         </span>
+        {check.last_checked && (
+          <span className="inline-flex items-center gap-1">
+            <i className="ri-time-line"></i>
+            Last checked {new Date(check.last_checked).toLocaleString('en-GB')}
+          </span>
+        )}
         {check.status !== 'pass' && (
           <span className="text-slate-400">
             <i className="ri-tools-line mr-1"></i>

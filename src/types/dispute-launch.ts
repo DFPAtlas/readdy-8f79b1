@@ -13,6 +13,16 @@ export interface ReadinessCheck {
   automated: boolean;
   blocking: boolean;
   remediation: string;
+  last_checked: string;
+}
+
+export interface BehaviouralTest {
+  id: string;
+  group: string;
+  title: string;
+  pass: boolean;
+  skipped: boolean;
+  evidence: string;
 }
 
 export interface ManualGate {
@@ -25,11 +35,29 @@ export interface ManualGate {
   note: string | null;
 }
 
+export interface TestSuiteSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  ready: boolean;
+}
+
+export interface TestSuiteResult {
+  summary: TestSuiteSummary;
+  ready: boolean;
+  reason: string;
+  tests: BehaviouralTest[];
+  generated_at: string;
+}
+
 export interface ReadinessResult {
   verdict: ReadinessVerdict;
   blocking: string[];
   controlling: string[];
   checks: ReadinessCheck[];
+  tests: BehaviouralTest[];
+  suiteReady: boolean;
+  suiteReason: string;
   gates: ManualGate[];
   gatesApproved: boolean;
   generated_at: string;

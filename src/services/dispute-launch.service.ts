@@ -4,7 +4,7 @@
 // against the live database. The browser never holds service-role credentials.
 
 import { getSupabase } from '@/lib/supabase';
-import type { ReadinessResult } from '@/types/dispute-launch';
+import type { ReadinessResult, TestSuiteResult } from '@/types/dispute-launch';
 
 const FUNCTION_URL = `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/dispute-launch-check`;
 
@@ -32,6 +32,10 @@ async function call<T>(action: string, payload?: Record<string, unknown>): Promi
 export const disputeLaunchService = {
   async getReadiness(): Promise<ReadinessResult> {
     return call<ReadinessResult>('get_readiness');
+  },
+
+  async runTestSuite(): Promise<TestSuiteResult> {
+    return call<TestSuiteResult>('run_test_suite');
   },
 
   async recordGateApproval(gateKey: string, note?: string): Promise<{ success: boolean; message: string }> {

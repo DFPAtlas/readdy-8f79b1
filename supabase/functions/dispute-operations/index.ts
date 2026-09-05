@@ -844,7 +844,7 @@ serve(async (req) => {
       const [{ data: jobs }, { data: parties }, { data: events }] = await Promise.all([
         supabase.from("jobs").select("id, reference, project_name").in("id", projectIds),
         supabase.from("dispute_parties").select("*").in("dispute_id", disputeIds),
-        supabase.from("dispute_events").select("dispute_id, title, created_at")
+        supabase.from("dispute_events").select("dispute_id, title, created_at, visibility")
           .in("dispute_id", disputeIds).order("created_at", { ascending: false }),
       ]);
 
@@ -858,9 +858,19 @@ serve(async (req) => {
         (partiesByDispute[p.dispute_id] ||= []).push(p);
       });
 
+      const roleByDispute: Record<string, "claimant" | "respondent"> = {};
+      rows.forEach((d) => {
+        if (d.claimant_user_id === user.id) roleByDispute[d.id] = "claimant";
+        else if (d.respondent_user_id === user.id) roleByDispute[d.id] = "respondent";
+      });
+
       const lastEventByDispute: Record<string, { title: string; created_at: string }> = {};
       (events || []).forEach((e) => {
-        if (!lastEventByDispute[e.dispute_id]) lastEventByDispute[e.dispute_id] = e;
+        const role = roleByDispute[e.dispute_id];
+        const visible = role
+          ? (e.visibility === "parties" || (role === "claimant" ? e.visibility === "claimant" : e.visibility === "respondent"))
+          : false;
+        if (visible && !lastEventByDispute[e.dispute_id]) lastEventByDispute[e.dispute_id] = e;
       });
 
       const items = rows.map((d) => {
@@ -920,17 +930,10 @@ serve(async (req) => {
       const isRespondent = dispute.respondent_user_id === user.id;
       const isParty = isClaimant || isRespondent;
 
-      if (!isParty) {
-        const { data: admin } = await supabase
-          .from("organisation_members")
-          .select("id")
-          .eq("organisation_id", dispute.organisation_id)
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .in("role", ["owner", "admin"])
-          .maybeSingle();
-        if (!admin) return fail("Access denied", 403);
-      }
+      // Organisation role alone grants no case access: only the two named
+      // parties read here. Platform staff use the dispute-admin function with
+      // an explicit dispute permission + recorded reason + access log.
+      if (!isParty) return fail("Access denied", 403);
 
       const [{ data: job }, { data: parties }, { data: claims }, { data: events }, { data: clarifications }] = await Promise.all([
         supabase.from("jobs").select("id, reference, project_name").eq("id", dispute.project_id).maybeSingle(),
@@ -992,7 +995,10 @@ serve(async (req) => {
         parties: partiesView,
         claims: claims || [],
         clarifications: clarifications || [],
-        events: events || [],
+        events: (events || []).filter((e) =>
+          isClaimant ? e.visibility === "parties" || e.visibility === "claimant"
+            : e.visibility === "parties" || e.visibility === "respondent"
+        ),
         actions,
         myRole: isClaimant ? "claimant" : isRespondent ? "respondent" : null,
         resolution,
@@ -1142,14 +1148,7 @@ serve(async (req) => {
       if (!dispute) return fail("Dispute not found", 404);
 
       const isParty = dispute.claimant_user_id === user.id || dispute.respondent_user_id === user.id;
-      if (!isParty) {
-        const { data: admin } = await supabase
-          .from("organisation_members").select("id")
-          .eq("organisation_id", dispute.organisation_id)
-          .eq("user_id", user.id).eq("status", "active")
-          .in("role", ["owner", "admin"]).maybeSingle();
-        if (!admin) return fail("Access denied", 403);
-      }
+      if (!isParty) return fail("Access denied", 403);
 
       await supabase.from("dispute_settlement_offers").update({ status: "expired" })
         .eq("dispute_id", disputeId).eq("status", "submitted")

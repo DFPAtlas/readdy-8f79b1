@@ -117,18 +117,6 @@ async function loadWorkspace(supabase: ReturnType<typeof createClient>, disputeI
     updated_by_name: c.updated_by_user_id ? nameMap[c.updated_by_user_id as string] ?? null : null,
   }));
 
-  const lettersView = (letters || []).map((l: Record<string, unknown>) => ({
-    ...l,
-    created_by_name: nameMap[l.created_by_user_id as string] ?? null,
-    created_by_role: roleFor(
-      { claimant_user_id: "", respondent_user_id: "" } as never, "",
-    ) as never,
-  })).map((l: Record<string, unknown>, _i: number) => {
-    // created_by_role resolved below with real dispute context; keep simple null here.
-    return l;
-  });
-
-  // Re-resolve lettersView role using a real role map derived from latest letter ownership.
   const lettersFinal = (letters || []).map((l: Record<string, unknown>) => ({
     ...l,
     created_by_name: nameMap[l.created_by_user_id as string] ?? null,
@@ -194,15 +182,9 @@ serve(async (req) => {
       if (!dispute) return fail("Dispute not found", 404);
 
       const role = roleFor(dispute, user.id);
-      let isAdmin = false;
-      if (!role) {
-        const { data: admin } = await supabase
-          .from("organisation_members").select("id")
-          .eq("organisation_id", dispute.organisation_id).eq("user_id", user.id)
-          .eq("status", "active").in("role", ["owner", "admin"]).maybeSingle();
-        if (!admin) return fail("Access denied", 403);
-        isAdmin = true;
-      }
+      // Organisation role alone grants no case access — only the named parties
+      // may use the Pre-Action Workspace.
+      if (!role) return fail("Access denied", 403);
 
       const gate = eligibility(dispute, role);
       if (!gate.eligible) {
@@ -234,7 +216,7 @@ serve(async (req) => {
         isParty: gate.isParty,
         jurisdiction: gate.jurisdiction,
         ...ws,
-        canGenerate: role === "claimant" && !isAdmin ? true : role === "claimant",
+        canGenerate: role === "claimant",
       });
     }
 

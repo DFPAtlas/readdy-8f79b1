@@ -3,10 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabaseUrl = Deno.env.get("VITE_PUBLIC_SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const BUCKET = "private";
-const EVIDENCE_PREFIX = "dispute-evidence";
+const BUCKET = "dispute-files";
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
-const SIGNED_URL_EXPIRY = 3600; // 1 hour
+const SIGNED_URL_EXPIRY = 900; // 15 minutes — short-lived signed URLs
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -119,7 +118,9 @@ async function enforceSubmissionRateLimit(
   return null;
 }
 
-// Re-validates party / org-admin / platform access on every request.
+// Re-validates party access on every request. Organisation role alone grants
+// no access — only the two named parties read here; platform staff use the
+// dispute-admin function (explicit permission + recorded reason + access log).
 async function authorize(
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -131,21 +132,11 @@ async function authorize(
 
   const isClaimant = dispute.claimant_user_id === userId;
   const isRespondent = dispute.respondent_user_id === userId;
-  let isParty = isClaimant || isRespondent;
+  const isParty = isClaimant || isRespondent;
 
-  if (!isParty) {
-    const { data: admin } = await supabase
-      .from("organisation_members")
-      .select("id")
-      .eq("organisation_id", dispute.organisation_id)
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .in("role", ["owner", "admin"])
-      .maybeSingle();
-    if (!admin) return { dispute, isParty: false, role: null };
-  }
+  if (!isParty) return { dispute, isParty: false, role: null };
 
-  const role = isClaimant ? "claimant" : isRespondent ? "respondent" : "admin";
+  const role = isClaimant ? "claimant" : "respondent";
   return { dispute, isParty, role };
 }
 
@@ -298,7 +289,12 @@ serve(async (req) => {
       const fileHash = await sha256Hex(bytes);
       const canonicalMime = ALLOWED_TYPES[ext];
       const safeName = safeDisplayFilename(file.name);
-      const objectPath = `${EVIDENCE_PREFIX}/${disputeId}/${crypto.randomUUID()}.${ext}`;
+
+      // Server-generated path — the browser never supplies a path. The
+      // evidence_id UUID segment prevents cross-dispute path substitution and,
+      // combined with upsert:false, prevents overwriting a submitted original.
+      const evidenceId = crypto.randomUUID();
+      const objectPath = `${dispute.organisation_id}/${disputeId}/evidence/${evidenceId}/${safeName}`;
 
       const { error: uploadErr } = await supabase.storage
         .from(BUCKET)
@@ -308,6 +304,7 @@ serve(async (req) => {
       const evidenceReference = await generateEvidenceReference(supabase);
 
       const insert: Record<string, unknown> = {
+        id: evidenceId,
         dispute_id: disputeId,
         submitted_by_user_id: user.id,
         evidence_reference: evidenceReference,
@@ -322,7 +319,10 @@ serve(async (req) => {
         mime_type: canonicalMime,
         file_size: file.size,
         file_hash: fileHash,
-        captured_metadata: { original_mime: file.type || null },
+        captured_metadata: {
+          original_mime: file.type || null,
+          malware_scan: { status: "pending", scanner: null, scanned: false },
+        },
         visibility: "shared",
         submission_status: "pending_validation", // no malware scanner available
         supersedes_evidence_id: supersedesId || null,
@@ -406,7 +406,7 @@ serve(async (req) => {
       return ok({ items: enriched, counts });
     }
 
-    // detail — protected evidence view with signed URL + versions + audit.
+    // detail — protected evidence view with signed URL + versions + party-safe audit.
     if (action === "detail") {
       const evidenceId = typeof body?.evidenceId === "string" ? body.evidenceId : "";
       if (!evidenceId) return fail("evidenceId is required");
@@ -475,8 +475,11 @@ serve(async (req) => {
 
       const labels = await resolveLinkedRecordLabels(supabase, [evidence]);
 
+      // Party-safe audit summary: only the case-history action + timestamp.
+      // request_metadata, previous/new values and internal reasons are never
+      // returned to parties (restricted to authorised audit staff).
       const { data: audit } = await supabase
-        .from("dispute_audit_log").select("action, actor_user_id, created_at, new_value")
+        .from("dispute_audit_log").select("action, created_at")
         .eq("dispute_id", evidence.dispute_id)
         .eq("target_type", "dispute_evidence")
         .eq("target_id", evidence.id)
@@ -496,7 +499,7 @@ serve(async (req) => {
           versions,
         },
         signedUrl,
-        audit: audit || [],
+        audit: (audit || []).map((a) => ({ action: a.action, created_at: a.created_at })),
       });
     }
 

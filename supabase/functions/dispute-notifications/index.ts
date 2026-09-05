@@ -385,12 +385,9 @@ serve(async (req) => {
       if (!dispute) return fail("Dispute not found", 404);
 
       const isParty = dispute.claimant_user_id === user.id || dispute.respondent_user_id === user.id;
-      if (!isParty) {
-        const { data: admin } = await supabase.from("organisation_members").select("id")
-          .eq("organisation_id", dispute.organisation_id).eq("user_id", user.id).eq("status", "active")
-          .in("role", ["owner", "admin"]).maybeSingle();
-        if (!admin) return fail("Access denied", 403);
-      }
+      // Organisation role alone grants no case access — only the named parties
+      // read here; platform staff use the dispute-admin function.
+      if (!isParty) return fail("Access denied", 403);
 
       await refreshDeadlines(supabase, dispute);
 

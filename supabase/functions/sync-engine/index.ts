@@ -114,7 +114,6 @@ Deno.serve(async (req: Request) => {
       let query = supabase.from("integration_sync_jobs")
         .select("*")
         .in("status", ["pending", "retry_scheduled"])
-        .lt("attempt_count", supabase.raw ? null : null)
         .order("scheduled_at", { ascending: true })
         .limit(limit);
 

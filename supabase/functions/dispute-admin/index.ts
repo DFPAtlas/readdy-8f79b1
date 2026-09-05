@@ -3,8 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabaseUrl = Deno.env.get("VITE_PUBLIC_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const BUCKET = "private";
-const SIGNED_URL_EXPIRY = 3600;
+const BUCKET = "dispute-files";
+const SIGNED_URL_EXPIRY = 900; // 15 minutes — short-lived signed URLs
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

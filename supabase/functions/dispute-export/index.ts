@@ -5,9 +5,9 @@ import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const supabaseUrl = Deno.env.get("VITE_PUBLIC_SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const BUCKET = "private";
-const EXPORT_PREFIX = "dispute-exports";
-const SIGNED_URL_EXPIRY = 3600; // 1 hour
+const BUCKET = "dispute-files";
+const SIGNED_URL_EXPIRY = 900; // 15 minutes — short-lived signed URLs
+const EXPORT_RETENTION_DAYS = 30; // generated copies are eligible for purge after this
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,7 +74,9 @@ function fmtDateTime(iso: string | null | undefined): string {
   });
 }
 
-// Re-validates party / org-admin access on every request.
+// Re-validates party access on every request. Organisation role alone grants
+// no access — only the two named parties read here; platform staff use the
+// dispute-admin function (explicit permission + recorded reason + access log).
 async function authorize(supabase: ReturnType<typeof createClient>, userId: string, disputeId: string) {
   const { data: dispute } = await supabase
     .from("disputes").select("*").eq("id", disputeId).maybeSingle();
@@ -82,18 +84,25 @@ async function authorize(supabase: ReturnType<typeof createClient>, userId: stri
 
   const isClaimant = dispute.claimant_user_id === userId;
   const isRespondent = dispute.respondent_user_id === userId;
-  let isParty = isClaimant || isRespondent;
+  const isParty = isClaimant || isRespondent;
 
-  if (!isParty) {
-    const { data: admin } = await supabase
-      .from("organisation_members").select("id")
-      .eq("organisation_id", dispute.organisation_id).eq("user_id", userId)
-      .eq("status", "active").in("role", ["owner", "admin"]).maybeSingle();
-    if (!admin) return { dispute, isParty: false, role: null };
-  }
+  if (!isParty) return { dispute, isParty: false, role: null };
 
-  const role = isClaimant ? "claimant" : isRespondent ? "respondent" : "admin";
+  const role = isClaimant ? "claimant" : "respondent";
   return { dispute, isParty, role };
+}
+
+// Minimal staff resolution for the retention-purge sweep (operational staff).
+async function resolveStaff(supabase: ReturnType<typeof createClient>, userId: string) {
+  const { data: staff } = await supabase
+    .from("platform_staff").select("role, status")
+    .eq("user_id", userId).eq("status", "active").maybeSingle();
+  if (!staff) return null;
+  const { data: perms } = await supabase
+    .from("platform_role_permissions")
+    .select("permission_definitions(permission_key)").eq("role", staff.role);
+  const permissions = (perms || []).map((p: any) => p.permission_definitions?.permission_key);
+  return { role: staff.role as string, permissions: permissions as string[] };
 }
 
 async function recordActivity(
@@ -494,9 +503,7 @@ serve(async (req) => {
 
       // 2. Contents page (filled after sections built — collect section page numbers)
       const sections: SectionEntry[] = [];
-      const contentsPageIndex = 0; // contents starts on page 2
 
-      // Track contents by building sections, capturing page numbers before each.
       const beginSection = (num: number, titleStr: string) => {
         lay.newPage();
         lay.heading(`Section ${num}. ${titleStr}`);
@@ -649,13 +656,11 @@ serve(async (req) => {
       for (const e of selectedEvidence) {
         exhibitNo += 1;
         if (e.source_type !== "file_upload" || !e.storage_path) {
-          // Linked record or text note — index only.
           lay.text(`Exhibit ${exhibitNo}. ${e.evidence_reference} — ${e.title}`, { bold: true });
           lay.text("Linked project record or text note. No original file is attached in the ZIP.", { size: 8.5, color: rgb(0.45, 0.45, 0.45) });
           lay.gap(4);
           continue;
         }
-        // Download the file from private storage.
         const { data: blob, error: dlErr } = await supabase.storage.from(BUCKET).download(e.storage_path);
         if (dlErr || !blob) {
           missingItems.push({ evidence_reference: e.evidence_reference, reason: "File could not be retrieved" });
@@ -760,10 +765,6 @@ serve(async (req) => {
       lay.text(DISCLAIMER, { size: 8.5, color: rgb(0.4, 0.4, 0.4) });
 
       // Now build the contents page (insert as page 2 by drawing directly).
-      // We already used page 1 (cover). We'll render contents on a new page now
-      // and note it references section page numbers (approximate).
-      // To keep numbering stable, we render contents on the current final page set.
-      // (Simplification: contents lists sections with their page numbers.)
       lay.newPage();
       lay.heading("Section 2. Contents");
       for (const s of sections) {
@@ -833,8 +834,9 @@ serve(async (req) => {
 
       // ── Store privately + create the export record ──────────────────────
       const exportId = crypto.randomUUID();
-      const pdfPath = `${EXPORT_PREFIX}/${disputeId}/${exportId}/pack.pdf`;
-      const zipPath = `${EXPORT_PREFIX}/${disputeId}/${exportId}/pack.zip`;
+      const pdfPath = `${dispute.organisation_id}/${disputeId}/exports/${exportId}/pack.pdf`;
+      const zipPath = `${dispute.organisation_id}/${disputeId}/exports/${exportId}/originals.zip`;
+      const expiresAt = new Date(Date.now() + EXPORT_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
       const [upPdf, upZip] = await Promise.all([
         supabase.storage.from(BUCKET).upload(pdfPath, pdfBytes, { contentType: "application/pdf", upsert: false }),
@@ -862,6 +864,8 @@ serve(async (req) => {
           missing_items: missingItems.length ? missingItems : null,
           declared_at: now,
           generated_at: now,
+          expires_at: expiresAt,
+          retention_status: "active",
         })
         .select()
         .single();
@@ -871,7 +875,7 @@ serve(async (req) => {
         supabase, dispute, user.id, role,
         "export_generated", "Evidence pack generated", title,
         exportId, "export.generated",
-        { version, purpose, perspective, item_count: exportRow.item_count, file_count: exportRow.file_count },
+        { version, purpose, perspective, item_count: exportRow.item_count, file_count: exportRow.file_count, expires_at: expiresAt },
       );
 
       const [signedPdf, signedZip] = await Promise.all([
@@ -900,6 +904,7 @@ serve(async (req) => {
       if (!dispute) return fail("Dispute not found", 404);
       if (!isParty) return fail("Access denied", 403);
       if (exportRow.status !== "ready") return fail("This pack is not available for download", 409);
+      if (exportRow.retention_status === "deleted") return fail("This pack has been purged under the retention policy", 410);
 
       const path = kind === "zip" ? exportRow.zip_storage_path : exportRow.pdf_storage_path;
       if (!path) return fail("File not found", 404);
@@ -919,6 +924,53 @@ serve(async (req) => {
 
       const ext = kind === "zip" ? "zip" : "pdf";
       return ok({ url: signed.signedUrl, filename: `BuildNerve_Evidence_Pack_v${exportRow.version}.${ext}` });
+    }
+
+    // ── purge_expired ──────────────────────────────────────────────────────
+    // Retention cleanup: removes generated copies (PDF + ZIP) only, preserves
+    // the export record, marks it deleted, and writes an audit event. Requires
+    // operational audit-view staff (same least-privilege gate as other ops).
+    if (action === "purge_expired") {
+      const staff = await resolveStaff(supabase, user.id);
+      if (!staff || !staff.permissions.includes("disputes_view_audit")) {
+        return fail("Forbidden — requires disputes_view_audit", 403);
+      }
+
+      const nowIso = new Date().toISOString();
+      const { data: expired } = await supabase
+        .from("dispute_exports")
+        .select("id, dispute_id, pdf_storage_path, zip_storage_path")
+        .eq("retention_status", "active")
+        .eq("status", "ready")
+        .lt("expires_at", nowIso);
+
+      const purged: string[] = [];
+      const failedIds: string[] = [];
+      for (const ex of expired || []) {
+        const paths = [ex.pdf_storage_path, ex.zip_storage_path].filter(Boolean);
+        if (paths.length === 0) continue;
+        const results = await Promise.all(paths.map((p: string) => supabase.storage.from(BUCKET).remove([p])));
+        if (results.some((r) => r.error)) { failedIds.push(ex.id); continue; }
+
+        await supabase.from("dispute_exports").update({
+          retention_status: "deleted",
+          deleted_at: nowIso,
+          status: "expired",
+        }).eq("id", ex.id);
+
+        await supabase.from("dispute_audit_log").insert({
+          dispute_id: ex.dispute_id,
+          actor_user_id: user.id,
+          action: "export.purged",
+          target_type: "dispute_export",
+          target_id: ex.id,
+          new_value: { deleted_at: nowIso, retention_status: "deleted" },
+        });
+
+        purged.push(ex.id);
+      }
+
+      return ok({ purged: purged.length, failed: failedIds });
     }
 
     return fail("Unknown action");
