@@ -17,6 +17,13 @@ export type JobWithClient = Job & {
   clients: JobClientRef | null;
 };
 
+export interface JobMember {
+  job_id: string;
+  user_id: string;
+  role: string;
+  full_name: string | null;
+}
+
 export const jobsService = {
   async getJobs(orgId: string): Promise<Job[]> {
     const supabase = getSupabase();
@@ -120,5 +127,36 @@ export const jobsService = {
 
     if (error) throw error;
     return data || [];
+  },
+
+  async getJobMembers(orgId: string): Promise<JobMember[]> {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Backend is not available');
+
+    const { data: members, error } = await supabase
+      .from('job_members')
+      .select('job_id, user_id, role')
+      .eq('organisation_id', orgId);
+
+    if (error) throw error;
+    if (!members || members.length === 0) return [];
+
+    const userIds = [...new Set(members.map((m) => m.user_id))];
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', userIds);
+
+    if (profileError) throw profileError;
+
+    const nameMap = new Map<string, string>();
+    (profiles || []).forEach((p) => nameMap.set(p.id, p.full_name ?? ''));
+
+    return members.map((m) => ({
+      job_id: m.job_id,
+      user_id: m.user_id,
+      role: m.role,
+      full_name: nameMap.get(m.user_id) ?? '',
+    }));
   },
 };

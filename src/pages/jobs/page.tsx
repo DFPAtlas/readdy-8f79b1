@@ -8,10 +8,12 @@ import { formatPenceGBP } from '@/lib/money';
 import {
   jobQuickFilters,
   mapJobToWorkspaceItem,
+  mapMembersToTeam,
   isWithinNextDays,
   isNotFinished,
   formatRelativeTime,
   type JobWorkspaceItem,
+  type TeamMember,
 } from './jobs-workspace.adapter';
 
 const statusColorMap: Record<string, string> = {
@@ -59,7 +61,14 @@ export default function JobsWorkspace() {
     setLoadError(null);
     try {
       const data = await jobsService.getJobsWithClients(orgId);
-      setJobs(data.map(mapJobToWorkspaceItem));
+      let teamMap: Record<string, TeamMember[]> = {};
+      try {
+        const members = await jobsService.getJobMembers(orgId);
+        teamMap = mapMembersToTeam(members);
+      } catch (memberErr) {
+        console.error('Failed to load team members', memberErr);
+      }
+      setJobs(data.map((job) => mapJobToWorkspaceItem(job, teamMap[job.id] ?? [])));
     } catch (err) {
       console.error('Failed to load jobs', err);
       setLoadError(t('dashboard.jobsLoadError'));
@@ -286,7 +295,26 @@ export default function JobsWorkspace() {
                     <p className="text-xs text-muted font-medium">—</p>
                   </div>
                   <div onClick={() => navigate(`/jobs/${job.id}`)}>
-                    <span className="text-xs text-muted">—</span>
+                    {job.team.length > 0 ? (
+                      <div className="flex items-center -space-x-2">
+                        {job.team.slice(0, 3).map((member) => (
+                          <div
+                            key={member.userId}
+                            title={member.fullName || member.role}
+                            className="w-6 h-6 rounded-full bg-primary-50 text-primary-700 text-[10px] font-semibold flex items-center justify-center ring-2 ring-white"
+                          >
+                            {member.initials}
+                          </div>
+                        ))}
+                        {job.team.length > 3 && (
+                          <div className="w-6 h-6 rounded-full bg-page text-muted text-[10px] font-semibold flex items-center justify-center ring-2 ring-white">
+                            +{job.team.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted">—</span>
+                    )}
                   </div>
                   <div onClick={() => navigate(`/jobs/${job.id}`)}>
                     <p className="text-sm font-semibold text-main">{formatPenceGBP(job.estimatedValuePence)}</p>

@@ -1,4 +1,4 @@
-import type { JobWithClient, JobClientRef } from '@/services/jobs.service';
+import type { JobWithClient, JobClientRef, JobMember } from '@/services/jobs.service';
 
 // View-model used by the Jobs Workspace, mapped from real database rows.
 export interface JobWorkspaceItem {
@@ -18,6 +18,14 @@ export interface JobWorkspaceItem {
   proposedStartDate: string | null;
   targetCompletionDate: string | null;
   updatedAt: string;
+  team: TeamMember[];
+}
+
+export interface TeamMember {
+  userId: string;
+  role: string;
+  fullName: string;
+  initials: string;
 }
 
 export type StatusColor = 'green' | 'amber' | 'blue' | 'red' | 'neutral';
@@ -65,7 +73,40 @@ function formatSitePostcode(client: JobClientRef | null): string {
   return client.site_postcode || client.billing_postcode || '—';
 }
 
-export function mapJobToWorkspaceItem(job: JobWithClient): JobWorkspaceItem {
+function getInitials(fullName: string): string {
+  const trimmed = fullName.trim();
+  if (!trimmed) return '?';
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  const single = parts[0] || '';
+  if (single.includes('@')) {
+    const local = single.split('@')[0];
+    return (local[0] || '?').toUpperCase();
+  }
+  return (single[0] || '?').toUpperCase();
+}
+
+export function mapMembersToTeam(members: JobMember[]): Record<string, TeamMember[]> {
+  const grouped: Record<string, TeamMember[]> = {};
+  const seen = new Set<string>();
+  members.forEach((member) => {
+    const key = `${member.job_id}:${member.user_id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    if (!grouped[member.job_id]) grouped[member.job_id] = [];
+    grouped[member.job_id].push({
+      userId: member.user_id,
+      role: member.role,
+      fullName: member.full_name ?? '',
+      initials: getInitials(member.full_name ?? ''),
+    });
+  });
+  return grouped;
+}
+
+export function mapJobToWorkspaceItem(job: JobWithClient, team: TeamMember[] = []): JobWorkspaceItem {
   const meta = getStatusMeta(job.status);
   const progress = Number.isFinite(job.progress)
     ? Math.max(0, Math.min(100, job.progress))
@@ -88,6 +129,7 @@ export function mapJobToWorkspaceItem(job: JobWithClient): JobWorkspaceItem {
     proposedStartDate: job.proposed_start_date,
     targetCompletionDate: job.target_completion_date,
     updatedAt: job.updated_at,
+    team,
   };
 }
 
