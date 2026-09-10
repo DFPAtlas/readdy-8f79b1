@@ -3,6 +3,20 @@ import type { Database } from '@/types/supabase';
 
 type Job = Database['public']['Tables']['jobs']['Row'];
 
+export interface JobClientRef {
+  id: string;
+  client_type: string | null;
+  company_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  site_postcode: string | null;
+  billing_postcode: string | null;
+}
+
+export type JobWithClient = Job & {
+  clients: JobClientRef | null;
+};
+
 export const jobsService = {
   async getJobs(orgId: string): Promise<Job[]> {
     const supabase = getSupabase();
@@ -15,6 +29,21 @@ export const jobsService = {
 
     if (error) throw error;
     return data || [];
+  },
+
+  async getJobsWithClients(orgId: string): Promise<JobWithClient[]> {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Backend is not available');
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*, clients(id, client_type, company_name, first_name, last_name, site_postcode, billing_postcode)')
+      .eq('organisation_id', orgId)
+      .is('archived_at', null)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data as unknown as JobWithClient[]) || [];
   },
 
   async getJob(jobId: string, orgId: string): Promise<Job | null> {
