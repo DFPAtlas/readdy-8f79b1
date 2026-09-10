@@ -1,15 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/base/Toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { clientsService } from '@/services/clients.service';
+import { jobsService } from '@/services/jobs.service';
+import { poundsToPence } from '@/lib/money';
+import type { Database } from '@/types/supabase';
 import ContractStep from './components/ContractStep';
 import {
-  demoClients, demoTeamMembers,
+  demoTeamMembers,
   jobCategories, primaryTrades, pricingTypes, vatTreatments, paymentSchedules,
   priorityOptions, workingDaysOptions, defaultComplianceChecklist,
 } from '@/mocks/jobs';
-import type { WizardDraft, SiteAddress, JobDocument, ComplianceItem } from '@/mocks/jobs';
+import type { WizardDraft, SiteAddress, ComplianceItem } from '@/mocks/jobs';
+
+type Client = Database['public']['Tables']['clients']['Row'];
 
 const STEPS = ['step1', 'step2', 'contract', 'step3', 'step4', 'step5', 'step6'] as const;
 
@@ -28,10 +34,43 @@ export default function NewJobWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [draft, setDraft] = useState<WizardDraft>({});
   const [creating, setCreating] = useState(false);
-  const [createdJobRef, setCreatedJobRef] = useState<string | null>(null);
+  const [createdJob, setCreatedJob] = useState<{ id: string; reference: string } | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [clientsError, setClientsError] = useState<string | null>(null);
+  const [clientSearch, setClientSearch] = useState('');
   const [step2Ref, setStep2Ref] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const step3Ref = useRef<HTMLDivElement>(null);
+  const creatingRef = useRef(false);
+
+  const clientType = draft.step1?.clientType || 'new';
+
+  const loadClients = useCallback(async () => {
+    if (!orgId) {
+      setClients([]);
+      return;
+    }
+    setClientsLoading(true);
+    setClientsError(null);
+    try {
+      const rows = await clientsService.getClients(orgId);
+      setClients(rows);
+    } catch (err) {
+      console.error('Failed to load clients:', err);
+      setClientsError(err instanceof Error ? err.message : 'Failed to load clients');
+    } finally {
+      setClientsLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    if (clientType === 'existing') {
+      loadClients();
+    } else {
+      setClients([]);
+    }
+  }, [clientType, loadClients]);
 
   // Load draft from localStorage
   useEffect(() => {
@@ -74,14 +113,121 @@ export default function NewJobWizard() {
     saveDraft(draft, stepIdx);
   };
 
-  const handleCreateJob = () => {
+  const handleCreateJob = async () => {
+    if (creatingRef.current) return;
+    if (!orgId) {
+      showToast('No organisation selected. Please set up an organisation before creating a job.', 'error');
+      return;
+    }
+
+    const s1 = draft.step1 || {};
+    const s2 = draft.step2 || {};
+    const s3 = draft.step3 || {};
+    const s4 = draft.step4 || {};
+    const s5 = draft.step5 || {};
+
+    const projectName = (s2.jobName || '').trim();
+    if (!projectName) {
+      showToast('Please enter a job name.', 'error');
+      return;
+    }
+
+    const reference = (s2.jobReference || '').trim() || generateReference();
+
+    creatingRef.current = true;
     setCreating(true);
-    const ref = draft.step2?.jobReference || generateReference();
-    setTimeout(() => {
-      setCreating(false);
-      setCreatedJobRef(ref);
+
+    try {
+      const duplicate = await jobsService.referenceExists(orgId, reference);
+      if (duplicate) {
+        showToast(`Reference "${reference}" is already in use. Please choose another.`, 'error');
+        return;
+      }
+
+      let clientId: string | null = null;
+      if (s1.clientType === 'existing') {
+        clientId = s1.existingClientId || null;
+        if (!clientId) {
+          showToast('Please select an existing client.', 'error');
+          return;
+        }
+      } else {
+        const billing = s1.billingAddress;
+        const site = s1.useBillingAsSite ? billing : s1.siteAddress;
+        const created = await clientsService.createClient({
+          organisation_id: orgId,
+          client_type: s1.clientTypeEntity === 'business' ? 'business' : 'individual',
+          first_name: s1.firstName?.trim() || null,
+          last_name: s1.lastName?.trim() || null,
+          company_name: s1.companyName?.trim() || null,
+          email: s1.email?.trim() || null,
+          phone: s1.mobile?.trim() || null,
+          preferred_contact: s1.preferredContact || null,
+          billing_address_line1: billing?.addressLine1?.trim() || null,
+          billing_address_line2: billing?.addressLine2?.trim() || null,
+          billing_town_city: billing?.town?.trim() || null,
+          billing_county: billing?.county?.trim() || null,
+          billing_postcode: billing?.postcode?.trim() || null,
+          site_address_line1: site?.addressLine1?.trim() || null,
+          site_address_line2: site?.addressLine2?.trim() || null,
+          site_town_city: site?.town?.trim() || null,
+          site_county: site?.county?.trim() || null,
+          site_postcode: site?.postcode?.trim() || null,
+        });
+        clientId = created.id;
+      }
+
+      const jobInput: Database['public']['Tables']['jobs']['Insert'] = {
+        organisation_id: orgId,
+        client_id: clientId,
+        reference,
+        project_name: projectName,
+        trade: s2.primaryTrade || null,
+        work_type: s2.jobCategory || s2.workType || null,
+        status: 'enquiry',
+        short_description: s2.description || null,
+        scope_of_works: s3.detailedScope || null,
+        pricing_type: s3.pricingType || null,
+        estimated_value_pence: poundsToPence(s3.estimatedValue),
+        vat_treatment: s3.vatTreatment || null,
+        deposit_pence: poundsToPence(s3.depositAmount),
+        retention_applies: !!s3.retentionApplies,
+        retention_percentage: s3.retentionPercentage ?? null,
+        payment_terms: s3.paymentTerms || s3.paymentSchedule || null,
+        proposed_start_date: s4.startDate || null,
+        estimated_duration: s4.estimatedDuration ?? null,
+        duration_unit: s4.durationUnit || null,
+        target_completion_date: s4.targetCompletion || null,
+        site_working_hours: s4.siteWorkingHours || null,
+        project_manager_id: null,
+        rams_required: s5.ramsRequired || null,
+        principal_contractor: s5.principalContractorRole || null,
+        access_notes: s1.accessNotes || null,
+        parking_notes: null,
+        waste_notes: null,
+        building_control_ref: null,
+      };
+      if (s3.contractType) {
+        jobInput.contract_type = s3.contractType;
+      }
+
+      const created = await jobsService.createJob(jobInput);
+
+      setCreatedJob({ id: created.id, reference: created.reference });
       localStorage.removeItem('buildnerve_jobDraft');
-    }, 1200);
+      localStorage.removeItem('siteLedger_jobDraft');
+    } catch (err) {
+      console.error('Failed to create job:', err);
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('duplicate') || message.includes('23505')) {
+        showToast(`Reference "${reference}" is already in use. Please choose another.`, 'error');
+      } else {
+        showToast('Could not create the job. Please try again.', 'error');
+      }
+    } finally {
+      creatingRef.current = false;
+      setCreating(false);
+    }
   };
 
   const handleSaveDraft = () => {
@@ -91,7 +237,7 @@ export default function NewJobWizard() {
   };
 
   // ─── Success Screen ──────────────────────────────────
-  if (createdJobRef) {
+  if (createdJob) {
     return (
       <div className="max-w-[720px] mx-auto px-4 md:px-6 py-12">
         <div className="bg-white border border-border rounded-2xl p-8 md:p-12 text-center">
@@ -100,20 +246,27 @@ export default function NewJobWizard() {
           </div>
           <h2 className="text-xl font-bold text-main mb-2">{t('dashboard.jobCreated')}</h2>
           <p className="text-muted">
-            <strong className="text-main">{createdJobRef}</strong> {t('dashboard.jobCreatedDesc')}
+            <strong className="text-main">{createdJob.reference}</strong> {t('dashboard.jobCreatedDesc')}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
             <button
               className="w-full sm:w-auto h-10 px-5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
-              onClick={() => navigate('/jobs')}
+              onClick={() => navigate(`/jobs/${createdJob.id}`)}
             >
-              {t('dashboard.openJobWorkspace')}
+              {t('dashboard.openJob')}
             </button>
             <button
               className="w-full sm:w-auto h-10 px-5 border border-border text-main text-sm font-medium rounded-xl hover:bg-page transition-colors cursor-pointer whitespace-nowrap"
+              onClick={() => navigate('/jobs')}
+            >
+              {t('dashboard.returnToJobs')}
+            </button>
+            <button
+              className="w-full sm:w-auto h-10 px-5 text-muted text-sm font-medium rounded-xl hover:text-main transition-colors cursor-pointer whitespace-nowrap"
               onClick={() => {
                 localStorage.removeItem('buildnerve_jobDraft');
-                setCreatedJobRef(null);
+                localStorage.removeItem('siteLedger_jobDraft');
+                setCreatedJob(null);
                 setDraft({});
                 setCurrentStep(0);
                 setConfirmed(false);
@@ -133,6 +286,15 @@ export default function NewJobWizard() {
     const s1 = draft.step1 || {};
     const clientType = s1.clientType || 'new';
     const entity = s1.clientTypeEntity || 'individual';
+    const filteredClients = clientSearch.trim()
+      ? clients.filter((c) => {
+          const q = clientSearch.toLowerCase();
+          const name = c.client_type === 'business'
+            ? (c.company_name || '').toLowerCase()
+            : `${c.first_name || ''} ${c.last_name || ''}`.toLowerCase();
+          return name.includes(q) || (c.email || '').toLowerCase().includes(q) || (c.phone || '').includes(q);
+        })
+      : clients;
 
     return (
       <div className="space-y-6">
@@ -158,24 +320,56 @@ export default function NewJobWizard() {
               <input
                 type="text"
                 placeholder={t('dashboard.searchExistingClients')}
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
                 className="w-full h-10 pl-10 pr-4 bg-page rounded-xl text-sm text-main placeholder:text-muted border border-transparent focus:border-primary-200 focus:ring-2 focus:ring-primary-50 outline-none"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {demoClients.map((c) => (
+
+            {clientsLoading ? (
+              <div className="flex items-center gap-2 py-6 text-sm text-muted">
+                <i className="ri-loader-4-line animate-spin"></i>
+                Loading clients…
+              </div>
+            ) : clientsError ? (
+              <div className="p-4 bg-status-red-pale border border-[#F5D4D4] rounded-xl">
+                <p className="text-sm text-status-red flex items-center gap-2">
+                  <i className="ri-error-warning-line"></i>
+                  Could not load clients.
+                </p>
                 <button
-                  key={c.id}
-                  onClick={() => updateDraft('step1', { existingClientId: c.id, clientTypeEntity: c.type })}
-                  className={`text-left p-4 rounded-xl border transition-colors cursor-pointer ${
-                    s1.existingClientId === c.id ? 'border-primary-500 bg-primary-50' : 'border-border hover:border-primary-200'
-                  }`}
+                  onClick={() => loadClients()}
+                  className="mt-2 text-xs font-medium text-primary-500 hover:text-primary-600 transition-colors cursor-pointer"
                 >
-                  <p className="text-sm font-semibold text-main">{c.type === 'business' ? c.companyName : `${c.firstName} ${c.lastName}`}</p>
-                  <p className="text-xs text-muted mt-0.5">{c.email} · {c.mobile}</p>
-                  <p className="text-[10px] text-muted mt-1">{c.billingAddress.addressLine1}, {c.billingAddress.town}, {c.billingAddress.postcode}</p>
+                  Retry
                 </button>
-              ))}
-            </div>
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="p-6 text-center bg-page rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center mx-auto mb-2">
+                  <i className="ri-user-add-line text-primary-500"></i>
+                </div>
+                <p className="text-sm text-main">No clients yet. Choose New Client to create your first client.</p>
+              </div>
+            ) : filteredClients.length === 0 ? (
+              <div className="p-6 text-center bg-page rounded-xl text-sm text-muted">No clients match your search.</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {filteredClients.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => updateDraft('step1', { existingClientId: c.id, clientTypeEntity: c.client_type === 'business' ? 'business' : 'individual' })}
+                    className={`text-left p-4 rounded-xl border transition-colors cursor-pointer ${
+                      s1.existingClientId === c.id ? 'border-primary-500 bg-primary-50' : 'border-border hover:border-primary-200'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-main">{c.client_type === 'business' ? c.company_name : `${c.first_name || ''} ${c.last_name || ''}`.trim()}</p>
+                    <p className="text-xs text-muted mt-0.5">{[c.email, c.phone].filter(Boolean).join(' · ')}</p>
+                    <p className="text-[10px] text-muted mt-1">{[c.billing_address_line1, c.billing_town_city, c.billing_postcode].filter(Boolean).join(', ')}</p>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">

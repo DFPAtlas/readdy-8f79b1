@@ -283,6 +283,7 @@ export interface Database {
           parking_notes: string | null;
           waste_notes: string | null;
           building_control_ref: string | null;
+          contract_type: string;
           created_at: string;
           updated_at: string;
           archived_at: string | null;
@@ -318,6 +319,7 @@ export interface Database {
           parking_notes?: string | null;
           waste_notes?: string | null;
           building_control_ref?: string | null;
+          contract_type?: string;
           created_at?: string;
           updated_at?: string;
           archived_at?: string | null;
@@ -353,6 +355,7 @@ export interface Database {
           parking_notes?: string | null;
           waste_notes?: string | null;
           building_control_ref?: string | null;
+          contract_type?: string;
           created_at?: string;
           updated_at?: string;
           archived_at?: string | null;

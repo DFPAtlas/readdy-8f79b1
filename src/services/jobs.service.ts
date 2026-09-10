@@ -30,6 +30,19 @@ export const jobsService = {
     return data;
   },
 
+  async referenceExists(orgId: string, reference: string): Promise<boolean> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('organisation_id', orgId)
+      .eq('reference', reference)
+      .maybeSingle();
+
+    if (error) throw error;
+    return !!data;
+  },
+
   async createJob(input: Database['public']['Tables']['jobs']['Insert']): Promise<Job> {
     const supabase = getSupabase();
     const { data, error } = await supabase
