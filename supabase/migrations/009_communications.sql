@@ -111,7 +111,7 @@ ALTER TABLE public.message_mentions ENABLE ROW LEVEL SECURITY;
 -- Migration 007 created an earlier notifications shape. On a fresh install it is
 -- empty, so replace it with the canonical communications schema below. Refuse
 -- to drop it if it contains data so an upgrade can never silently lose records.
-DO $
+DO $bn$
 BEGIN
   IF to_regclass('public.notifications') IS NOT NULL
      AND EXISTS (
@@ -132,7 +132,7 @@ BEGIN
     END IF;
     DROP TABLE public.notifications;
   END IF;
-END $;
+END $bn$;
 
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
