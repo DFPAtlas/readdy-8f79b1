@@ -39,15 +39,5 @@ CREATE POLICY "photo_analyses_update_org" ON photo_analyses FOR UPDATE USING
 CREATE POLICY "photo_analyses_delete_admin" ON photo_analyses FOR DELETE USING
   (EXISTS (SELECT 1 FROM organisation_members om WHERE om.organisation_id = photo_analyses.organisation_id AND om.user_id = auth.uid() AND om.status = 'active' AND om.role IN ('owner','admin')));
 
--- Seed a photo-analysis prompt template for the master agent (Phase 26) to cite.
-INSERT INTO ai_prompt_templates (template_key, display_name, description, system_prompt, safety_category, requires_confirmation, is_active, version)
-SELECT
-  'photo_analysis',
-  'Site Photo Analysis',
-  'Flag hazards, quality issues and defects in site photographs against a checklist.',
-  'You are a UK construction site photo analyst. Review the described photograph against a hazard, quality and defect checklist. Report only specific, credible findings with a severity of low, medium, high or critical, and a concise description. If nothing notable is visible, return no findings rather than inventing issues. Findings are advisory and always require human review before any action.',
-  'safety',
-  false,
-  true,
-  1
-WHERE NOT EXISTS (SELECT 1 FROM ai_prompt_templates WHERE template_key = 'photo_analysis');
+-- AI prompt seeding intentionally omitted here.
+-- No ai_prompt_templates table exists in the BuildNerve schema; prompt configuration belongs to the AI/agent layer.
