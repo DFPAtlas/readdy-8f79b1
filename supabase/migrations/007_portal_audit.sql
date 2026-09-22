@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public.portal_access (
   access_type TEXT NOT NULL CHECK (access_type IN ('client', 'subcontractor')),
   token_hash TEXT NOT NULL,
   job_scope UUID[],
-  permissions TEXT[] NOT NULL DEFAULT '',
+  permissions TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
   status TEXT NOT NULL DEFAULT 'active'
     CHECK (status IN ('active', 'revoked', 'expired')),
   invited_by UUID REFERENCES auth.users(id),
