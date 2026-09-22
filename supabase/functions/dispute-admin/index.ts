@@ -135,7 +135,7 @@ serve(async (req: Request) => {
     const staff = await resolveStaff(admin, user.id);
     if (!staff) return fail("Forbidden — not an active platform staff member", 403);
 
-    const body = await req.json().catch(() => ());
+    const body = await req.json().catch(() => ({}));
     const action = typeof body?.action === "string" ? body.action : "";
 
     // ── get_my_permissions ────────────────────────────────────────────────

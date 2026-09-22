@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
 
     // --- PROCESS: Process pending sync jobs ---
     if (path === "process" && req.method === "POST") {
-      const body = await req.json().catch(() => ());
+      const body = await req.json().catch(() => ({}));
       const { organisationId, connectionId, limit = 10 } = body;
 
       let query = supabase.from("integration_sync_jobs")

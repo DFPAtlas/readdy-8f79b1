@@ -350,7 +350,7 @@ serve(async (req) => {
     }
 
     // ── JSON actions ──────────────────────────────────────────────────────
-    const body = await req.json().catch(() => ());
+    const body = await req.json().catch(() => ({}));
     const action = typeof body?.action === "string" ? body.action : "";
 
     // list — evidence library for a dispute (already party-scoped).

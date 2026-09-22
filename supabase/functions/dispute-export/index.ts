@@ -278,7 +278,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return fail("Invalid auth", 401);
 
-    const body = await req.json().catch(() => ());
+    const body = await req.json().catch(() => ({}));
     const action = typeof body?.action === "string" ? body.action : "";
 
     // ── get_workspace ──────────────────────────────────────────────────────

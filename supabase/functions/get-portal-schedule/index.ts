@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json().catch(() => ());
+    const body = await req.json().catch(() => ({}));
     const token = typeof body?.token === "string" ? body.token : "";
 
     if (!token) {
