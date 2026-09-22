@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS public.platform_access_requests (
                         'metadata_only', 'org_config', 'job_readonly',
                         'module_readonly', 'controlled_repair', 'emergency'
                     )),
-    scope_details   jsonb NOT NULL DEFAULT '',
+    scope_details   jsonb NOT NULL DEFAULT '{}'::jsonb,
     reason          text NOT NULL,
     status          text NOT NULL DEFAULT 'pending'
                     CHECK (status IN ('pending', 'approved', 'denied', 'expired', 'revoked')),
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS public.platform_access_grants (
     staff_user_id   uuid NOT NULL REFERENCES auth.users(id),
     organisation_id uuid NOT NULL REFERENCES public.organisations(id) ON DELETE CASCADE,
     access_type     text NOT NULL,
-    scope_details   jsonb NOT NULL DEFAULT '',
+    scope_details   jsonb NOT NULL DEFAULT '{}'::jsonb,
     reason          text NOT NULL,
     status          text NOT NULL DEFAULT 'active'
                     CHECK (status IN ('active', 'expired', 'revoked')),
@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS public.platform_audit_events (
     request_id      text,
     ip_address      text,
     user_agent      text,
-    metadata        jsonb NOT NULL DEFAULT '',
+    metadata        jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at      timestamptz NOT NULL DEFAULT now()
 );
 
@@ -252,7 +252,7 @@ CREATE TABLE IF NOT EXISTS public.platform_announcements (
                     CHECK (status IN ('draft', 'scheduled', 'active', 'ended', 'cancelled')),
     target_type     text NOT NULL DEFAULT 'all'
                     CHECK (target_type IN ('all', 'organisation_type', 'plan', 'specific_orgs')),
-    target_details  jsonb NOT NULL DEFAULT '',
+    target_details  jsonb NOT NULL DEFAULT '{}'::jsonb,
     scheduled_at    timestamptz,
     published_at    timestamptz,
     ended_at        timestamptz,
