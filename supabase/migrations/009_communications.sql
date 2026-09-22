@@ -108,6 +108,32 @@ ALTER TABLE public.message_mentions ENABLE ROW LEVEL SECURITY;
 
 -- ─── Notifications ─────────────────────────────────────
 
+-- Migration 007 created an earlier notifications shape. On a fresh install it is
+-- empty, so replace it with the canonical communications schema below. Refuse
+-- to drop it if it contains data so an upgrade can never silently lose records.
+DO $
+BEGIN
+  IF to_regclass('public.notifications') IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'notifications'
+         AND column_name = 'user_id'
+     )
+     AND NOT EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'notifications'
+         AND column_name = 'recipient_user_id'
+     )
+  THEN
+    IF EXISTS (SELECT 1 FROM public.notifications LIMIT 1) THEN
+      RAISE EXCEPTION 'Legacy notifications table contains data; migrate it before applying 009_communications';
+    END IF;
+    DROP TABLE public.notifications;
+  END IF;
+END $;
+
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organisation_id UUID NOT NULL REFERENCES public.organisations(id) ON DELETE CASCADE,
