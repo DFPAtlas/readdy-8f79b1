@@ -106,15 +106,5 @@ CREATE POLICY "cdm_update_org" ON cdm_duty_holders FOR UPDATE USING
 CREATE POLICY "cdm_delete_admin" ON cdm_duty_holders FOR DELETE USING
   (EXISTS (SELECT 1 FROM organisation_members om WHERE om.organisation_id = cdm_duty_holders.organisation_id AND om.user_id = auth.uid() AND om.status = 'active' AND om.role IN ('owner','admin')));
 
--- 6. RAMS generation prompt template
-INSERT INTO ai_prompt_templates (template_key, display_name, description, system_prompt, safety_category, requires_confirmation, is_active, version)
-SELECT
-  'rams_generation',
-  'RAMS Generation',
-  'Draft a Risk Assessment & Method Statement from job scope and hazard categories.',
-  'You are a UK construction health & safety advisor. Generate a clear, specific Risk Assessment & Method Statement (RAMS) for the described task. Identify realistic hazards and proportionate, practical control measures in line with CDM 2015 and current HSE guidance. Output is always a draft requiring review and approval by a competent person before use on site. Never mark a document as "approved".',
-  'safety',
-  true,
-  true,
-  1
-WHERE NOT EXISTS (SELECT 1 FROM ai_prompt_templates WHERE template_key = 'rams_generation');
+-- RAMS AI prompt seeding intentionally omitted here.
+-- No ai_prompt_templates table exists in the BuildNerve schema; prompt configuration belongs to the AI/agent layer.
