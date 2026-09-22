@@ -54,5 +54,5 @@ $$;
 --   workforce-documents: application/pdf, image/*
 --   organisation-assets: image/*
 
--- Revoke public access from storage
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Supabase Storage owns and manages RLS on storage.objects.
+-- Do not ALTER the managed storage table from application migrations.
