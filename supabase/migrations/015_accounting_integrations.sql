@@ -174,9 +174,11 @@ CREATE TABLE IF NOT EXISTS integration_tracking_mappings (
   external_tracking_name text,
   tracking_type text DEFAULT 'job',
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(connection_id, local_job_id, COALESCE(local_cost_code, ''))
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_integration_tracking_mappings
+  ON integration_tracking_mappings (connection_id, local_job_id, COALESCE(local_cost_code, ''));
 
 -- ============================================================================
 -- SYNC CONFIGURATION
