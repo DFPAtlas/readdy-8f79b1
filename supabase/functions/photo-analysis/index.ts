@@ -66,6 +66,17 @@ serve(async (req: Request) => {
       });
     }
 
+    const canAccessOrganisation = async (organisationId: string): Promise<boolean> => {
+      const { data: membership, error } = await supabaseClient
+        .from("organisation_members")
+        .select("organisation_id")
+        .eq("organisation_id", organisationId)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .maybeSingle();
+      return !error && !!membership;
+    };
+
     const url = new URL(req.url);
     const path = url.pathname.replace(/^\/photo-analysis\/?/, "");
 
@@ -84,6 +95,11 @@ serve(async (req: Request) => {
       if (!organisationId || !evidenceFileId) {
         return new Response(JSON.stringify({ error: "organisationId and evidenceFileId are required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!(await canAccessOrganisation(organisationId))) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
@@ -161,13 +177,23 @@ serve(async (req: Request) => {
       const evidenceFileId = url.searchParams.get("evidenceFileId");
       const evidenceRecordId = url.searchParams.get("evidenceRecordId");
 
+      if (!organisationId) {
+        return new Response(JSON.stringify({ error: "organisationId is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!(await canAccessOrganisation(organisationId))) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       let query = supabaseClient
         .from("photo_analyses")
         .select("*")
+        .eq("organisation_id", organisationId)
         .is("archived_at", null)
         .order("analyzed_at", { ascending: false });
-
-      if (organisationId) query = query.eq("organisation_id", organisationId);
       if (evidenceFileId) query = query.eq("evidence_file_id", evidenceFileId);
       if (evidenceRecordId) query = query.eq("evidence_record_id", evidenceRecordId);
 
@@ -192,13 +218,31 @@ serve(async (req: Request) => {
         });
       }
 
+      const { data: analysis, error: lookupError } = await supabaseClient
+        .from("photo_analyses")
+        .select("organisation_id")
+        .eq("id", analysisId)
+        .maybeSingle();
+
+      if (lookupError || !analysis) {
+        return new Response(JSON.stringify({ error: "Analysis not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!(await canAccessOrganisation(analysis.organisation_id))) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const updates: Record<string, unknown> = { reviewed_by_human: true };
       if (dismissed) updates.dismissed = true;
 
       const { error } = await supabaseClient
         .from("photo_analyses")
         .update(updates)
-        .eq("id", analysisId);
+        .eq("id", analysisId)
+        .eq("organisation_id", analysis.organisation_id);
 
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), {
