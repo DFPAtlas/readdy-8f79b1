@@ -821,23 +821,13 @@ DECLARE
 BEGIN
   FOR tbl IN
     SELECT unnest(ARRAY[
-      'suppliers', 'supplier_contacts', 'supplier_branches', 'supplier_documents',
-      'supplier_categories', 'supplier_category_links',
-      'material_catalogue_items', 'supplier_item_prices',
-      'purchase_requisitions', 'requisition_lines',
-      'procurement_approval_rules', 'procurement_approvals',
-      'requests_for_quotation', 'rfq_lines', 'rfq_suppliers',
-      'supplier_quote_responses', 'supplier_quote_lines',
-      'purchase_orders', 'purchase_order_lines', 'purchase_order_versions',
-      'order_acknowledgements',
-      'goods_receipts', 'goods_receipt_lines',
-      'delivery_issues', 'supplier_returns', 'supplier_return_lines',
+      'suppliers', 'supplier_categories', 'material_catalogue_items',
+      'purchase_requisitions', 'procurement_approval_rules',
+      'requests_for_quotation', 'purchase_orders', 'goods_receipts',
+      'delivery_issues', 'supplier_returns',
       'inventory_locations', 'inventory_balances', 'stock_movements',
       'material_allocations', 'plant_hire_records',
-      'supplier_invoices', 'supplier_invoice_lines', 'invoice_matches',
-      'supplier_credit_notes',
-      'requisition_attachments', 'rfq_documents',
-      'purchase_order_snapshots'
+      'supplier_invoices', 'supplier_credit_notes'
     ])
   LOOP
     EXECUTE format(
@@ -864,6 +854,64 @@ CREATE POLICY "Org members can SELECT supplier_category_links through supplier" 
 -- Supplier item prices: inherit through supplier
 CREATE POLICY "Org members can SELECT supplier_item_prices through supplier" ON supplier_item_prices FOR SELECT
   USING (supplier_id IN (SELECT id FROM suppliers WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+-- Remaining child tables: inherit organisation access through their parent records
+CREATE POLICY "Org members can SELECT requisition_lines through requisition" ON requisition_lines FOR SELECT
+  USING (requisition_id IN (SELECT id FROM purchase_requisitions WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT procurement_approvals through requisition" ON procurement_approvals FOR SELECT
+  USING (requisition_id IN (SELECT id FROM purchase_requisitions WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT rfq_lines through rfq" ON rfq_lines FOR SELECT
+  USING (rfq_id IN (SELECT id FROM requests_for_quotation WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT rfq_suppliers through rfq" ON rfq_suppliers FOR SELECT
+  USING (rfq_id IN (SELECT id FROM requests_for_quotation WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT supplier_quote_responses through rfq" ON supplier_quote_responses FOR SELECT
+  USING (rfq_supplier_id IN (
+    SELECT rs.id FROM rfq_suppliers rs
+    JOIN requests_for_quotation r ON r.id = rs.rfq_id
+    WHERE r.organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')
+  ));
+
+CREATE POLICY "Org members can SELECT supplier_quote_lines through rfq" ON supplier_quote_lines FOR SELECT
+  USING (quote_response_id IN (
+    SELECT qr.id FROM supplier_quote_responses qr
+    JOIN rfq_suppliers rs ON rs.id = qr.rfq_supplier_id
+    JOIN requests_for_quotation r ON r.id = rs.rfq_id
+    WHERE r.organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')
+  ));
+
+CREATE POLICY "Org members can SELECT purchase_order_lines through purchase order" ON purchase_order_lines FOR SELECT
+  USING (purchase_order_id IN (SELECT id FROM purchase_orders WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT purchase_order_versions through purchase order" ON purchase_order_versions FOR SELECT
+  USING (purchase_order_id IN (SELECT id FROM purchase_orders WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT order_acknowledgements through purchase order" ON order_acknowledgements FOR SELECT
+  USING (purchase_order_id IN (SELECT id FROM purchase_orders WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT goods_receipt_lines through receipt" ON goods_receipt_lines FOR SELECT
+  USING (goods_receipt_id IN (SELECT id FROM goods_receipts WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT supplier_return_lines through return" ON supplier_return_lines FOR SELECT
+  USING (supplier_return_id IN (SELECT id FROM supplier_returns WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT supplier_invoice_lines through invoice" ON supplier_invoice_lines FOR SELECT
+  USING (supplier_invoice_id IN (SELECT id FROM supplier_invoices WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT invoice_matches through invoice" ON invoice_matches FOR SELECT
+  USING (supplier_invoice_id IN (SELECT id FROM supplier_invoices WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT requisition_attachments through requisition" ON requisition_attachments FOR SELECT
+  USING (requisition_id IN (SELECT id FROM purchase_requisitions WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT rfq_documents through rfq" ON rfq_documents FOR SELECT
+  USING (rfq_id IN (SELECT id FROM requests_for_quotation WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
+
+CREATE POLICY "Org members can SELECT purchase_order_snapshots through purchase order" ON purchase_order_snapshots FOR SELECT
+  USING (purchase_order_id IN (SELECT id FROM purchase_orders WHERE organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active')));
 
 -- INSERT policies — organisation members can create records for their org
 CREATE POLICY "Org members can INSERT suppliers" ON suppliers FOR INSERT WITH CHECK (organisation_id IN (SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid() AND status = 'active'));
