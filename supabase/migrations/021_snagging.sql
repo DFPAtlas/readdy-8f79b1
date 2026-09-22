@@ -48,15 +48,5 @@ CREATE POLICY "snagging_update_org" ON snagging_items FOR UPDATE USING
 CREATE POLICY "snagging_delete_admin" ON snagging_items FOR DELETE USING
   (EXISTS (SELECT 1 FROM organisation_members om WHERE om.organisation_id = snagging_items.organisation_id AND om.user_id = auth.uid() AND om.status = 'active' AND om.role IN ('owner','admin')));
 
--- Snagging generation prompt template
-INSERT INTO ai_prompt_templates (template_key, display_name, description, system_prompt, safety_category, requires_confirmation, is_active, version)
-SELECT
-  'snagging_generation',
-  'Snag List Generation',
-  'Draft a snagging and defects list for a trade from the job scope.',
-  'You are a UK construction quality inspector. Generate a realistic, specific snagging and defects list for the described trade and scope. Each item should be concrete, actionable and proportionate, with an area, a severity (low, medium, high or critical) and a description of what is wrong and what remedial action is needed. Distinguish minor cosmetic snags from genuine defects. Never invent dangerous conditions that are not plausible for the trade. Output is always a draft for human review before issue to site.',
-  'quality',
-  true,
-  true,
-  1
-WHERE NOT EXISTS (SELECT 1 FROM ai_prompt_templates WHERE template_key = 'snagging_generation');
+-- AI prompt seeding intentionally omitted here.
+-- No ai_prompt_templates table exists in the BuildNerve schema; prompt configuration belongs to the AI/agent layer.
