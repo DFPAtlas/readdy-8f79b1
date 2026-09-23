@@ -1,77 +1,95 @@
-
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
+import Stripe from "npm:stripe@22.4.0";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-  apiVersion: "2024-06-20",
+const stripeKey = Deno.env.get("STRIPE_RESTRICTED_KEY") ?? Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+const portalConfigurationId = Deno.env.get("STRIPE_PORTAL_CONFIGURATION_ID") ?? "";
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const appUrl = (Deno.env.get("PUBLIC_APP_URL") ?? "").replace(/\/$/, "");
+
+const stripe = new Stripe(stripeKey, {
+  apiVersion: "2026-07-29.dahlia",
   httpClient: Stripe.createFetchHttpClient(),
 });
 
-const supabaseUrl = Deno.env.get("VITE_PUBLIC_SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") ?? "";
+  const allowedOrigin = appUrl ? new URL(appUrl).origin : "";
+  return {
+    "Access-Control-Allow-Origin": origin === allowedOrigin ? origin : allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+function json(req: Request, body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders(req), "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    const origin = req.headers.get("origin") ?? "";
+    if (!appUrl || origin !== new URL(appUrl).origin) return new Response("Forbidden", { status: 403 });
+    return new Response("ok", { headers: corsHeaders(req) });
+  }
+  if (req.method !== "POST") return json(req, { error: "Method not allowed" }, 405);
+  if (!stripeKey || !portalConfigurationId || !supabaseUrl || !supabaseServiceKey || !appUrl) {
+    console.error("create-portal-session: missing server configuration");
+    return json(req, { error: "Billing portal is not configured" }, 503);
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const token = req.headers.get("Authorization")?.replace("Bearer ", "");
-    if (!token) throw new Error("No auth token");
+    const origin = req.headers.get("origin") ?? "";
+    if (origin && origin !== new URL(appUrl).origin) {
+      return json(req, { error: "Origin not allowed" }, 403);
+    }
 
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
+    const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") ?? "";
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) throw new Error("Invalid auth");
+    if (authError || !user) return json(req, { error: "Unauthorized" }, 401);
 
-    // Get user's active org
+    const body = await req.json().catch(() => ({}));
+    const organisationId = typeof body.organisation_id === "string" ? body.organisation_id : "";
+    if (!organisationId) return json(req, { error: "Invalid portal request" }, 400);
+
     const { data: membership } = await supabase
       .from("organisation_members")
-      .select("organisation_id, role")
+      .select("role")
+      .eq("organisation_id", organisationId)
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
-
-    if (!membership) throw new Error("No active organisation membership");
-
-    if (membership.role !== "owner" && membership.role !== "admin") {
-      throw new Error("Only organisation owners or admins can manage billing");
+    if (!membership) return json(req, { error: "Forbidden" }, 403);
+    if (!["owner", "admin"].includes(membership.role)) {
+      return json(req, { error: "Only organisation owners or admins can manage billing" }, 403);
     }
 
-    // Resolve Stripe Customer ID server-side
     const { data: billingCustomer } = await supabase
       .from("organisation_billing_customers")
       .select("stripe_customer_id")
-      .eq("organisation_id", membership.organisation_id)
+      .eq("organisation_id", organisationId)
       .maybeSingle();
-
     if (!billingCustomer?.stripe_customer_id) {
-      throw new Error("No billing customer found for this organisation");
+      return json(req, { error: "No billing customer found for this organisation" }, 404);
     }
-
-    const basePath = req.headers.get("origin") || "";
-    const returnUrl = `${basePath}/app/settings/billing`;
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: billingCustomer.stripe_customer_id,
-      return_url: returnUrl,
-      configuration: "bpc_1RB000000000000000000000",
+      return_url: `${appUrl}/app/settings/billing`,
+      configuration: portalConfigurationId,
     });
 
-    return new Response(
-      JSON.stringify({ url: portalSession.url }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json(req, { url: portalSession.url });
   } catch (err) {
-    console.error("Portal error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Portal session failed" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("create-portal-session failed:", err instanceof Error ? err.message : "unknown");
+    return json(req, { error: "Portal session failed" }, 500);
   }
 });

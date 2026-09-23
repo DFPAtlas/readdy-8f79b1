@@ -200,6 +200,9 @@ export const billingService = {
 
   async startCheckout(planKey: string, billingInterval: 'monthly' | 'annual'): Promise<{ url: string; sessionId: string }> {
     const supabaseClient = supabase();
+    const organisationId = localStorage.getItem('buildnerveOrgId');
+    if (!organisationId) throw new Error('Select an organisation before starting checkout.');
+    const requestId = crypto.randomUUID();
     const { data: { session } } = await supabaseClient.auth.getSession();
     const res = await fetch(
       `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/create-stripe-checkout`,
@@ -209,7 +212,12 @@ export const billingService = {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ plan_key: planKey, billing_interval: billingInterval }),
+        body: JSON.stringify({
+          organisation_id: organisationId,
+          plan_key: planKey,
+          billing_interval: billingInterval,
+          request_id: requestId,
+        }),
       }
     );
     if (!res.ok) {
@@ -221,6 +229,8 @@ export const billingService = {
 
   async openPortal(): Promise<{ url: string }> {
     const supabaseClient = supabase();
+    const organisationId = localStorage.getItem('buildnerveOrgId');
+    if (!organisationId) throw new Error('Select an organisation before opening billing.');
     const { data: { session } } = await supabaseClient.auth.getSession();
     const res = await fetch(
       `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/create-portal-session`,
@@ -230,6 +240,7 @@ export const billingService = {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token}`,
         },
+        body: JSON.stringify({ organisation_id: organisationId }),
       }
     );
     if (!res.ok) {
