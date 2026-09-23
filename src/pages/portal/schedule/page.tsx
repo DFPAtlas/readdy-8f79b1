@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { BNWordmarkLight } from '@/components/base/BuildNerveLogo';
-import { calendarEventMeta, projectCalendarEvents, type CalendarEventType, type ProjectCalendarEvent } from '@/mocks/clientHub';
-import { hubClient } from '@/mocks/clientHub';
+import { calendarEventMeta, type CalendarEventType, type ProjectCalendarEvent } from '@/mocks/clientHub';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -50,7 +49,8 @@ function formatDateShort(dateKey: string): string {
 }
 
 function daysUntil(dateKey: string): number {
-  const today = new Date('2026-08-28T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const target = new Date(dateKey + 'T00:00:00');
   const diff = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   return diff;
@@ -91,8 +91,9 @@ function downloadIcs(event: ProjectCalendarEvent) {
 
 export default function FullSchedulePage() {
   const { accessToken } = useParams<{ accessToken: string }>();
-  const [events, setEvents] = useState<ProjectCalendarEvent[]>(projectCalendarEvents);
+  const [events, setEvents] = useState<ProjectCalendarEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(!!accessToken);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [modalEvent, setModalEvent] = useState<ProjectCalendarEvent | null>(null);
 
@@ -103,7 +104,10 @@ export default function FullSchedulePage() {
 
     async function load() {
       if (!accessToken || !url || !anonKey) {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoadError(accessToken ? 'Schedule service is unavailable.' : 'Invalid portal link.');
+          setLoading(false);
+        }
         return;
       }
       try {
@@ -113,19 +117,26 @@ export default function FullSchedulePage() {
           body: JSON.stringify({ token: accessToken }),
         });
         if (!res.ok) {
-          if (!cancelled) setLoading(false);
+          if (!cancelled) {
+            setEvents([]);
+            setLoadError('Unable to load this project schedule.');
+            setLoading(false);
+          }
           return;
         }
         const json = await res.json();
         const backendEvents: BackendEvent[] = Array.isArray(json?.events) ? json.events : [];
         if (!cancelled) {
-          if (backendEvents.length > 0) {
-            setEvents(backendEvents.map(mapBackendEvent));
-          }
+          setEvents(backendEvents.map(mapBackendEvent));
+          setLoadError(null);
           setLoading(false);
         }
       } catch {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setEvents([]);
+          setLoadError('Unable to load this project schedule.');
+          setLoading(false);
+        }
       }
     }
     load();
@@ -183,7 +194,7 @@ export default function FullSchedulePage() {
               Secure session
             </span>
             <span className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-700 text-xs font-semibold">
-              {hubClient.initials}
+              BN
             </span>
           </div>
         </div>
@@ -243,7 +254,16 @@ export default function FullSchedulePage() {
         )}
 
         {/* Empty */}
-        {!loading && filteredEvents.length === 0 && (
+        {!loading && loadError && (
+          <div className="text-center py-16">
+            <span className="w-14 h-14 mx-auto flex items-center justify-center rounded-full bg-rose-50 text-rose-500">
+              <i className="ri-error-warning-line text-2xl"></i>
+            </span>
+            <p className="text-sm text-slate-600 mt-4">{loadError}</p>
+          </div>
+        )}
+
+        {!loading && !loadError && filteredEvents.length === 0 && (
           <div className="text-center py-16">
             <span className="w-14 h-14 mx-auto flex items-center justify-center rounded-full bg-slate-200 text-slate-400">
               <i className="ri-calendar-close-line text-2xl"></i>
@@ -260,7 +280,7 @@ export default function FullSchedulePage() {
         )}
 
         {/* Timeline list */}
-        {!loading && filteredEvents.length > 0 && (
+        {!loading && !loadError && filteredEvents.length > 0 && (
           <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6">
             <div className="space-y-8">
               {grouped.map(([date, dayEvents]) => {
@@ -335,7 +355,7 @@ export default function FullSchedulePage() {
       {/* Footer */}
       <footer className="mt-4 pb-8">
         <div className="max-w-[1200px] mx-auto px-4 md:px-6 text-center text-xs text-slate-400">
-          © 2026 BuildNerve · {hubClient.projectName} · This portal is for authorised client access only.
+          © 2026 BuildNerve · Secure Client Portal · Authorised access only.
         </div>
       </footer>
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { calendarEventMeta, projectCalendarEvents, type CalendarEventType, type ProjectCalendarEvent } from '@/mocks/clientHub';
+import { calendarEventMeta, type CalendarEventType, type ProjectCalendarEvent } from '@/mocks/clientHub';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -83,11 +83,15 @@ function mapBackendEvent(ev: BackendEvent): ProjectCalendarEvent {
 }
 
 export default function ProjectCalendar({ accessToken }: { accessToken?: string }) {
-  // Default to September 2026, where the project is currently active.
-  const [view, setView] = useState<{ year: number; month: number }>({ year: 2026, month: 8 });
-  const [selected, setSelected] = useState<string | null>('2026-09-10');
+  const now = new Date();
+  const todayKey = toKey(now.getFullYear(), now.getMonth(), now.getDate());
+  const [view, setView] = useState<{ year: number; month: number }>({
+    year: now.getFullYear(),
+    month: now.getMonth(),
+  });
+  const [selected, setSelected] = useState<string | null>(todayKey);
   const [modalEvent, setModalEvent] = useState<ProjectCalendarEvent | null>(null);
-  const [events, setEvents] = useState<ProjectCalendarEvent[]>(projectCalendarEvents);
+  const [events, setEvents] = useState<ProjectCalendarEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(!!accessToken);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -99,7 +103,8 @@ export default function ProjectCalendar({ accessToken }: { accessToken?: string 
     async function load() {
       if (!accessToken || !url || !anonKey) {
         if (!cancelled) {
-          setEvents(projectCalendarEvents);
+          setEvents([]);
+          setLoadError(accessToken ? 'Schedule service is unavailable.' : 'Invalid portal link.');
           setLoading(false);
         }
         return;
@@ -116,9 +121,9 @@ export default function ProjectCalendar({ accessToken }: { accessToken?: string 
         });
 
         if (!res.ok) {
-          // Invalid/unknown token → fall back to demo data silently.
           if (!cancelled) {
-            setEvents(projectCalendarEvents);
+            setEvents([]);
+            setLoadError('Unable to load this project schedule.');
             setLoading(false);
           }
           return;
@@ -139,14 +144,15 @@ export default function ProjectCalendar({ accessToken }: { accessToken?: string 
               setView({ year: y, month: m });
             }
           } else {
-            setEvents(projectCalendarEvents);
+            setEvents([]);
           }
+          setLoadError(null);
           setLoading(false);
         }
       } catch {
         if (!cancelled) {
-          setEvents(projectCalendarEvents);
-          setLoadError(null);
+          setEvents([]);
+          setLoadError('Unable to load this project schedule.');
           setLoading(false);
         }
       }
@@ -206,7 +212,6 @@ export default function ProjectCalendar({ accessToken }: { accessToken?: string 
     setView((v) => (v.month === 11 ? { year: v.year + 1, month: 0 } : { year: v.year, month: v.month + 1 }));
   };
 
-  const todayKey = '2026-08-28';
 
   const selectedEvents = selected ? eventsByDate.get(selected) ?? [] : [];
   const selectedLabel = selected
