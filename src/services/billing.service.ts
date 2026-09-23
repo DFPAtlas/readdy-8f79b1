@@ -20,6 +20,7 @@ export interface BillingPlanPrice {
   billing_interval: 'monthly' | 'annual';
   stripe_price_id: string;
   currency: string;
+  unit_amount: number | null;
   is_active: boolean;
 }
 
@@ -128,6 +129,14 @@ export const billingService = {
       .from('billing_plans')
       .select('*')
       .order('sort_order');
+    return data || [];
+  },
+
+  async getAllPlanPrices(): Promise<BillingPlanPrice[]> {
+    const { data } = await supabase()
+      .from('billing_plan_prices')
+      .select('*')
+      .eq('is_active', true);
     return data || [];
   },
 
