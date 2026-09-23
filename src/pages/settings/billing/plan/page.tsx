@@ -54,7 +54,7 @@ export default function BillingPlanPage() {
         setEntitlements(orgEnts);
         setUsage(usageData);
       } else {
-        const [allPlans, allEnts, sub, orgEnts, usageData] = await Promise.all([
+        const [allPlans, allPrices, allEnts, sub, orgEnts, usageData] = await Promise.all([
           billingService.getAllPlans(),
           billingService.getAllPlanPrices(),
           billingService.getAllPlanEntitlements(),
