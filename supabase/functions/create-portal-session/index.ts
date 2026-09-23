@@ -38,7 +38,7 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders(req) });
   }
   if (req.method !== "POST") return json(req, { error: "Method not allowed" }, 405);
-  if (!stripeKey || !portalConfigurationId || !supabaseUrl || !supabaseServiceKey || !appUrl) {
+  if (!stripeKey || !supabaseUrl || !supabaseServiceKey || !appUrl) {
     console.error("create-portal-session: missing server configuration");
     return json(req, { error: "Billing portal is not configured" }, 503);
   }
@@ -84,7 +84,7 @@ serve(async (req) => {
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: billingCustomer.stripe_customer_id,
       return_url: `${appUrl}/app/settings/billing`,
-      configuration: portalConfigurationId,
+      ...(portalConfigurationId ? { configuration: portalConfigurationId } : {}),
     });
 
     return json(req, { url: portalSession.url });
