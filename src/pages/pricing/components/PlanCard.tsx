@@ -75,7 +75,7 @@ export default function PlanCard({ plan, interval }: PlanCardProps) {
       </div>
 
       {plan.key === 'trades' && (
-        <p className="mt-3 text-center text-xs text-muted">No credit card required</p>
+        <p className="mt-3 text-center text-xs text-muted">14-day trial · cancel any time</p>
       )}
     </div>
   );
