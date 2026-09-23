@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const supabaseUrl = Deno.env.get("VITE_PUBLIC_SUPABASE_URL")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
@@ -453,6 +453,14 @@ serve(async (req) => {
         : [7, 3, 1, 0];
       if (!organisationId) return fail("organisationId is required");
 
+      const { data: membership } = await supabase.from("organisation_members")
+        .select("id")
+        .eq("organisation_id", organisationId)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!membership) return fail("Access denied", 403);
+
       const { data: existing } = await supabase.from("dispute_notification_preferences").select("id")
         .eq("user_id", user.id).eq("organisation_id", organisationId).maybeSingle();
 
@@ -476,6 +484,21 @@ serve(async (req) => {
     }
 
     if (action === "run_sweep") {
+      const { data: staff } = await supabase.from("platform_staff")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!staff) return fail("Forbidden", 403);
+
+      const { data: rolePermissions } = await supabase.from("platform_role_permissions")
+        .select("permission_definitions(permission_key)")
+        .eq("role", staff.role);
+      const canSweep = (rolePermissions || []).some(
+        (row: any) => row.permission_definitions?.permission_key === "disputes_view_audit",
+      );
+      if (!canSweep) return fail("Forbidden — requires disputes_view_audit", 403);
+
       const { data: disputes } = await supabase.from("disputes").select("*").in("status", ACTIVE_STATUSES);
       let processed = 0;
       for (const d of disputes || []) {

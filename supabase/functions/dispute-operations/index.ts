@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const supabaseUrl = Deno.env.get("VITE_PUBLIC_SUPABASE_URL")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
@@ -153,7 +153,7 @@ serve(async (req) => {
         .eq("status", "active")
         .maybeSingle();
 
-      return ok({ participant: !!member, organisation_id: job.organisation_id });
+      return ok({ participant: !!member, organisation_id: member ? job.organisation_id : null });
     }
 
     // ── create_draft ──────────────────────────────────────────────────────

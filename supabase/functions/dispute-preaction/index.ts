@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const supabaseUrl = Deno.env.get("VITE_PUBLIC_SUPABASE_URL")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
@@ -560,6 +560,9 @@ serve(async (req) => {
       const { data: letter } = await supabase
         .from("dispute_letters").select("*").eq("id", letterId).maybeSingle();
       if (!letter) return fail("Letter not found", 404);
+      const { data: dispute } = await getDispute(supabase, letter.dispute_id);
+      if (!dispute) return fail("Dispute not found", 404);
+      if (!roleFor(dispute, user.id)) return fail("Access denied", 403);
       if (!["finalised", "sent_external", "sent_buildnerve"].includes(letter.status)) {
         return fail("Only a finalised letter can be downloaded", 409);
       }
@@ -582,6 +585,11 @@ serve(async (req) => {
       const { data: letter } = await supabase
         .from("dispute_letters").select("*").eq("id", letterId).maybeSingle();
       if (!letter) return fail("Letter not found", 404);
+      const { data: dispute } = await getDispute(supabase, letter.dispute_id);
+      if (!dispute) return fail("Dispute not found", 404);
+      if (roleFor(dispute, user.id) !== "claimant" || letter.created_by_user_id !== user.id) {
+        return fail("Only the claimant who created this letter can record it as sent", 403);
+      }
       if (!["finalised", "sent_external"].includes(letter.status)) {
         return fail("Only a finalised letter can be recorded as sent", 409);
       }
