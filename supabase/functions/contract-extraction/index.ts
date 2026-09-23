@@ -59,6 +59,18 @@ serve(async (req: Request) => {
       }
     }
 
+    async function assertJobInOrganisation(jobId: string, organisationId: string): Promise<void> {
+      const { data: job } = await supabaseClient
+        .from("jobs")
+        .select("id")
+        .eq("id", jobId)
+        .eq("organisation_id", organisationId)
+        .maybeSingle();
+      if (!job) {
+        throw new Error("Invalid job");
+      }
+    }
+
     // GET /documents — list contract documents
     if (req.method === "GET" && (path === "documents" || path === "")) {
       const organisationId = url.searchParams.get("organisationId");
@@ -135,6 +147,9 @@ serve(async (req: Request) => {
         });
       }
       await assertMembership(organisationId);
+      if (jobId) {
+        await assertJobInOrganisation(jobId, organisationId);
+      }
 
       const allowedTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp"];
       if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|png|jpg|jpeg|webp)$/i)) {
@@ -176,7 +191,10 @@ serve(async (req: Request) => {
         })
         .select("id")
         .single();
-      if (insertErr) throw insertErr;
+      if (insertErr) {
+        await supabaseClient.storage.from("documents").remove([storagePath]);
+        throw insertErr;
+      }
 
       return new Response(JSON.stringify({ success: true, documentId: document.id, fileName: file.name }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -237,16 +255,22 @@ serve(async (req: Request) => {
         throw downloadErr || new Error("Download failed");
       }
 
-      let fileContent: string;
-      if (document.mime_type?.startsWith("image/")) {
-        const bytes = await fileData.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
-        fileContent = `data:${document.mime_type};base64,${base64}`;
-      } else {
-        // PDF text extraction requires OCR; pass a placeholder so the schema
-        // is still enforced and low-confidence empties are returned.
-        fileContent = "[Document text unavailable — OCR pipeline not configured]";
+      if (!document.mime_type?.startsWith("image/")) {
+        await supabaseClient
+          .from("contract_documents")
+          .update({ extraction_status: "failed", error_message: "OCR is not configured for this file type" })
+          .eq("id", documentId);
+        return new Response(JSON.stringify({
+          error: "OCR is not configured for this file type. Image extraction is available.",
+          code: "OCR_NOT_CONFIGURED",
+        }), {
+          status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
+
+      const bytes = await fileData.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
+      const fileContent = `data:${document.mime_type};base64,${base64}`;
 
       const fieldSchema = CONTRACT_FIELDS.map((f) => `"${f.key}"`).join(", ");
       const systemPrompt =
@@ -347,6 +371,9 @@ serve(async (req: Request) => {
         });
       }
       await assertMembership(document.organisation_id);
+      if (targetJobId) {
+        await assertJobInOrganisation(targetJobId, document.organisation_id);
+      }
 
       // Persist confirmed values
       for (const term of terms) {
@@ -429,7 +456,7 @@ serve(async (req: Request) => {
       status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
-    const status = err.message === "Forbidden" ? 403 : 500;
+    const status = err.message === "Forbidden" ? 403 : err.message === "Invalid job" ? 400 : 500;
     return new Response(JSON.stringify({ error: err.message || "Server error" }), {
       status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
