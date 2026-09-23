@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { billingService, type BillingPlan, type PlanEntitlement, type OrgEntitlement, type OrganisationSubscription, type UsageSnapshot } from '@/services/billing.service';
+import { billingService, type BillingPlan, type BillingPlanPrice, type PlanEntitlement, type OrgEntitlement, type OrganisationSubscription, type UsageSnapshot } from '@/services/billing.service';
 
 export default function BillingPlanPage() {
   const [plans, setPlans] = useState<(BillingPlan & { entitlements?: PlanEntitlement[] })[]>([]);
   const [subscription, setSubscription] = useState<OrganisationSubscription | null>(null);
   const [entitlements, setEntitlements] = useState<OrgEntitlement[]>([]);
   const [usage, setUsage] = useState<UsageSnapshot[]>([]);
+  const [prices, setPrices] = useState<BillingPlanPrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<'monthly' | 'annual'>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
@@ -35,8 +35,9 @@ export default function BillingPlanPage() {
         if (!memberships?.length) throw new Error('No organisation');
         const orgIdFound = memberships[0].organisation_id;
 
-        const [allPlans, allEnts, sub, orgEnts, usageData] = await Promise.all([
+        const [allPlans, allPrices, allEnts, sub, orgEnts, usageData] = await Promise.all([
           billingService.getAllPlans(),
+          billingService.getAllPlanPrices(),
           billingService.getAllPlanEntitlements(),
           billingService.getOrganisationSubscription(orgIdFound),
           billingService.getOrganisationEntitlements(orgIdFound),
@@ -48,12 +49,14 @@ export default function BillingPlanPage() {
           entitlements: allEnts.filter(e => e.plan_id === p.id),
         }));
         setPlans(plansWithEnts);
+        setPrices(allPrices);
         setSubscription(sub);
         setEntitlements(orgEnts);
         setUsage(usageData);
       } else {
         const [allPlans, allEnts, sub, orgEnts, usageData] = await Promise.all([
           billingService.getAllPlans(),
+          billingService.getAllPlanPrices(),
           billingService.getAllPlanEntitlements(),
           billingService.getOrganisationSubscription(orgId),
           billingService.getOrganisationEntitlements(orgId),
@@ -65,6 +68,7 @@ export default function BillingPlanPage() {
           entitlements: allEnts.filter(e => e.plan_id === p.id),
         }));
         setPlans(plansWithEnts);
+        setPrices(allPrices);
         setSubscription(sub);
         setEntitlements(orgEnts);
         setUsage(usageData);
@@ -80,8 +84,10 @@ export default function BillingPlanPage() {
     try {
       setCheckoutLoading(true);
       setError(null);
-      const { url } = await billingService.startCheckout(planKey, selectedInterval);
-      window.location.href = url;
+      const result = subscription
+        ? await billingService.openPortal()
+        : await billingService.startCheckout(planKey, selectedInterval);
+      window.location.href = result.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed');
       setCheckoutLoading(false);
@@ -157,8 +163,10 @@ export default function BillingPlanPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {plans.filter(p => p.is_active || p.plan_key === currentPlanKey).map((plan) => {
           const isCurrent = plan.plan_key === currentPlanKey;
-          const isUpgrade = plans.indexOf(plan) > plans.findIndex(p => p.plan_key === currentPlanKey);
-          const isDowngrade = plans.indexOf(plan) < plans.findIndex(p => p.plan_key === currentPlanKey);
+          const price = prices.find(p => p.plan_id === plan.id && p.billing_interval === selectedInterval);
+          const monthlyEquivalent = price?.unit_amount == null
+            ? null
+            : price.unit_amount / (selectedInterval === 'annual' ? 1200 : 100);
 
           return (
             <div
@@ -178,8 +186,15 @@ export default function BillingPlanPage() {
               )}
 
               <div className="mt-4 mb-4">
-                <span className="text-2xl font-bold text-main">—</span>
-                <span className="text-sm text-muted">/{selectedInterval}</span>
+                <span className="text-2xl font-bold text-main">
+                  {monthlyEquivalent == null ? 'Contact us' : `£${monthlyEquivalent.toLocaleString('en-GB')}`}
+                </span>
+                {monthlyEquivalent != null && <span className="text-sm text-muted">/month</span>}
+                {monthlyEquivalent != null && (
+                  <p className="text-xs text-muted mt-1">
+                    {selectedInterval === 'annual' ? 'Billed annually' : 'Billed monthly'}
+                  </p>
+                )}
               </div>
 
               <div className="flex-1 space-y-2 text-sm text-muted mb-5">
@@ -201,24 +216,17 @@ export default function BillingPlanPage() {
                 >
                   Current plan
                 </button>
-              ) : isDowngrade ? (
-                <button
-                  onClick={() => setSelectedPlan(plan.plan_key)}
-                  className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                    selectedPlan === plan.plan_key
-                      ? 'bg-status-amber text-white'
-                      : 'bg-status-amber-pale text-status-amber hover:bg-status-amber/20'
-                  }`}
-                >
-                  {selectedPlan === plan.plan_key ? 'Confirm downgrade' : 'Downgrade'}
-                </button>
               ) : (
                 <button
                   onClick={() => plan.plan_key === 'enterprise' ? window.location.href = 'mailto:sales@buildnerve.co.uk' : handleCheckout(plan.plan_key)}
-                  disabled={checkoutLoading}
+                  disabled={checkoutLoading || (!subscription && !price)}
                   className="w-full py-2.5 rounded-lg text-sm font-medium bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50 whitespace-nowrap"
                 >
-                  {plan.plan_key === 'enterprise' ? 'Contact sales' : 'Choose plan'}
+                  {plan.plan_key === 'enterprise'
+                    ? 'Contact sales'
+                    : subscription
+                      ? 'Change in billing portal'
+                      : 'Choose plan'}
                 </button>
               )}
             </div>
