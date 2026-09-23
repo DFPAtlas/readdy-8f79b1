@@ -20,6 +20,31 @@ interface SyncJob {
   payload: any;
 }
 
+const INTEGRATION_MANAGER_ROLES = ["owner", "admin", "finance"];
+
+async function canManageIntegrations(supabase: any, userId: string, organisationId: string): Promise<boolean> {
+  const { data: membership, error } = await supabase
+    .from("organisation_members")
+    .select("role")
+    .eq("organisation_id", organisationId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  return !error && !!membership && INTEGRATION_MANAGER_ROLES.includes(membership.role);
+}
+
+async function connectionBelongsToOrganisation(supabase: any, connectionId: string, organisationId: string): Promise<boolean> {
+  const { data: connection, error } = await supabase
+    .from("integration_connections")
+    .select("id")
+    .eq("id", connectionId)
+    .eq("organisation_id", organisationId)
+    .maybeSingle();
+
+  return !error && !!connection;
+}
+
 async function processJob(supabase: any, job: SyncJob): Promise<{ status: string; error?: string; externalId?: string }> {
   const { data: conn } = await supabase
     .from("integration_connections")
@@ -27,8 +52,8 @@ async function processJob(supabase: any, job: SyncJob): Promise<{ status: string
     .eq("id", job.connection_id)
     .maybeSingle();
 
-  if (!conn || conn.status !== "connected") {
-    return { status: "needs_attention", error: "Connection not active" };
+  if (!conn || conn.organisation_id !== job.organisation_id || conn.status !== "connected") {
+    return { status: "needs_attention", error: "Connection not active for this organisation" };
   }
 
   const { data: tokens } = await supabase
@@ -111,13 +136,24 @@ Deno.serve(async (req: Request) => {
       const body = await req.json().catch(() => ({}));
       const { organisationId, connectionId, limit = 10 } = body;
 
+      if (typeof organisationId !== "string" || !organisationId) {
+        return new Response(JSON.stringify({ error: "organisationId is required" }), { status: 400, headers: corsHeaders });
+      }
+      if (!(await canManageIntegrations(supabase, user.id, organisationId))) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+      }
+      if (connectionId && !(await connectionBelongsToOrganisation(supabase, connectionId, organisationId))) {
+        return new Response(JSON.stringify({ error: "Connection not found for this organisation" }), { status: 404, headers: corsHeaders });
+      }
+
+      const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 50));
       let query = supabase.from("integration_sync_jobs")
         .select("*")
+        .eq("organisation_id", organisationId)
         .in("status", ["pending", "retry_scheduled"])
         .order("scheduled_at", { ascending: true })
-        .limit(limit);
+        .limit(safeLimit);
 
-      if (organisationId) query = query.eq("organisation_id", organisationId);
       if (connectionId) query = query.eq("connection_id", connectionId);
 
       const { data: jobs, error } = await query;
@@ -201,6 +237,12 @@ Deno.serve(async (req: Request) => {
 
       if (!organisationId || !connectionId || !entityType || !localId) {
         return new Response(JSON.stringify({ error: "organisationId, connectionId, entityType, localId required" }), { status: 400, headers: corsHeaders });
+      }
+      if (!(await canManageIntegrations(supabase, user.id, organisationId))) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+      }
+      if (!(await connectionBelongsToOrganisation(supabase, connectionId, organisationId))) {
+        return new Response(JSON.stringify({ error: "Connection not found for this organisation" }), { status: 404, headers: corsHeaders });
       }
 
       const idempotencyKey = `${connectionId}_${entityType}_${localId}_${operation || "push"}`;
