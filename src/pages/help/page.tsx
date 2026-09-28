@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import DashboardLayout from '@/components/feature/DashboardLayout';
 
 type Article = {
   id: string;
@@ -90,8 +89,9 @@ export default function HelpPage() {
   }), [query, category]);
 
   return (
-    <DashboardLayout>
+    <div className="min-h-screen bg-page">
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 space-y-8">
+        <Link to="/" className="text-sm font-semibold text-primary-700 hover:underline">← BuildNerve home</Link>
         <header>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary-600">BuildNerve help</p>
           <h1 className="text-3xl font-bold text-main mt-2">How can we help?</h1>
@@ -148,6 +148,6 @@ export default function HelpPage() {
         )}
         <p className="text-sm text-muted">For account or technical issues, contact your BuildNerve administrator. Platform staff can review cases in the support workspace.</p>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
