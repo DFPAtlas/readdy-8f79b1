@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import Home from "@/pages/home/page";
 import LandingPage from "@/pages/landing/page";
 import HelpPage from "@/pages/help/page";
+import HelpArticlePage from "@/pages/help/article";
 import DashboardLayout from "@/components/feature/DashboardLayout";
 import AuthGuard from "@/components/feature/AuthGuard";
 import PlatformAdminGuard from "@/components/feature/PlatformAdminGuard";
@@ -159,6 +160,7 @@ const routes: RouteObject[] = [
   { path: "/", element: <LandingPage /> },
   { path: "/pricing", element: <PricingPage /> },
   { path: "/help", element: <HelpPage /> },
+  { path: "/help/:slug", element: <HelpArticlePage /> },
   { path: "/legal", element: <LegalCentrePage /> },
   { path: "/legal/terms", element: <TermsOfServicePage /> },
   { path: "/legal/acceptable-use", element: <AcceptableUsePage /> },
