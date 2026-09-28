@@ -154,6 +154,7 @@ export const sidebarNavItems = [
   { id: 'app/documents/ingestion', label: 'Document Ingestion', icon: 'ri-file-search-line', active: false },
   { id: 'app/settings/ai-automation', label: 'AI & Automation', icon: 'ri-robot-line', active: false },
   { id: 'app/settings/billing', label: 'Billing', icon: 'ri-money-pound-circle-line', active: false },
+  { id: 'help', label: 'Help centre', icon: 'ri-question-line', active: false },
 ];
 
 export const mobileNavItems = [
