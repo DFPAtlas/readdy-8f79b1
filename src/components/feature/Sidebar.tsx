@@ -171,6 +171,15 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
+        <div className={`${expanded ? 'px-4' : 'px-2.5'} pb-2`}>
+          <button type="button" onClick={() => handleNav('help')}
+            className={`w-full flex items-center rounded-xl py-2.5 text-sm font-medium text-[#9DB5AE] hover:bg-sidebar-hover hover:text-white ${expanded ? 'gap-3 px-3' : 'justify-center'}`}
+            title={!expanded ? 'Help centre' : undefined}>
+            <span className="w-9 h-9 flex items-center justify-center flex-shrink-0"><i className="ri-question-line text-lg" /></span>
+            {expanded && <span>Help centre</span>}
+          </button>
+        </div>
+
         {/* Expand/collapse toggle button */}
         <div className={`pb-2 ${expanded ? 'px-4' : 'px-0 flex justify-center'}`}>
           <button

@@ -29,7 +29,7 @@ const columns = [
   {
     title: 'Resources',
     links: [
-      { label: 'Help centre', href: '#' },
+      { label: 'Help centre', href: '/help' },
       { label: 'API documentation', href: '#' },
       { label: 'Status', href: '#' },
       { label: 'Changelog', href: '#' },
