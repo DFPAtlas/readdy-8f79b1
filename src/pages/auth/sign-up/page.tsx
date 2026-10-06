@@ -1,14 +1,18 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthLayout from '@/components/feature/AuthLayout';
 
 export default function SignUpPage() {
   const { signUp, user, loading: authLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const invitedEmail = searchParams.get('email') ?? '';
+  const nextPath = searchParams.get('next') ?? '';
 
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(invitedEmail);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -16,7 +20,7 @@ export default function SignUpPage() {
   const [formErrors, setFormErrors] = useState<{ fullName?: string; email?: string; password?: string }>({});
 
   if (!authLoading && user && !success) {
-    navigate('/', { replace: true });
+    navigate(nextPath || '/', { replace: true });
     return null;
   }
 
@@ -45,7 +49,7 @@ export default function SignUpPage() {
     if (!validate()) return;
 
     setSubmitting(true);
-    const { error: signUpError } = await signUp(email.trim(), password, fullName.trim());
+    const { error: signUpError } = await signUp(email.trim(), password, fullName.trim(), nextPath || undefined);
     setSubmitting(false);
 
     if (!signUpError) {
@@ -70,6 +74,11 @@ export default function SignUpPage() {
                 If you don&apos;t see it, check your spam folder or{' '}
                 <Link to="/sign-in" className="text-primary-500 hover:underline font-medium whitespace-nowrap">return to sign in</Link>.
               </p>
+              {nextPath && (
+                <p className="text-xs text-primary-600 mt-2">
+                  Once verified, you&apos;ll return to your invitation automatically.
+                </p>
+              )}
             </div>
           </div>
         </div>

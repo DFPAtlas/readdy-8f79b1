@@ -7,6 +7,7 @@ import HelpPage from "@/pages/help/page";
 import HelpArticlePage from "@/pages/help/article";
 import DashboardLayout from "@/components/feature/DashboardLayout";
 import AuthGuard from "@/components/feature/AuthGuard";
+import OrgGuard from "@/components/feature/OrgGuard";
 import PlatformAdminGuard from "@/components/feature/PlatformAdminGuard";
 import PlatformAdminLayout from "@/components/feature/PlatformAdminLayout";
 import JobsWorkspace from "@/pages/jobs/page";
@@ -36,6 +37,7 @@ import JobTimeline from "@/pages/jobs/timeline/page";
 import DailyLogsList from "@/pages/jobs/dailylogs/page";
 import NewDailyLog from "@/pages/jobs/dailylogs/new/page";
 import EvidencePack from "@/pages/jobs/pack/page";
+import OnboardingPage from "@/pages/onboarding/page";
 import SignInPage from "@/pages/auth/sign-in/page";
 import SignUpPage from "@/pages/auth/sign-up/page";
 import ForgotPasswordPage from "@/pages/auth/forgot-password/page";
@@ -47,6 +49,9 @@ import NotificationsPage from "@/pages/notifications/page";
 import MessagesPage from "@/pages/messages/page";
 import NotificationPreferencesPage from "@/pages/settings/notifications/page";
 import CommunicationsAdminPage from "@/pages/settings/communications/page";
+import TeamSettingsPage from "@/pages/settings/team/page";
+import OrganisationSettingsPage from "@/pages/settings/organisation/page";
+import ProfileSettingsPage from "@/pages/settings/profile/page";
 import ReportsOverview from "@/pages/reports/overview/page";
 import JobPerformanceReport from "@/pages/reports/jobs/page";
 import CommercialReport from "@/pages/reports/commercial/page";
@@ -149,9 +154,11 @@ import DeadlinesPage from "@/pages/deadlines/page";
 
 const ProtectedLayout = () => (
   <AuthGuard>
-    <DashboardLayout>
-      <Outlet />
-    </DashboardLayout>
+    <OrgGuard>
+      <DashboardLayout>
+        <Outlet />
+      </DashboardLayout>
+    </OrgGuard>
   </AuthGuard>
 );
 
@@ -190,6 +197,9 @@ const routes: RouteObject[] = [
   { path: "/verify-email", element: <VerifyEmailPage /> },
   { path: "/auth/confirmed", element: <AuthConfirmedPage /> },
   { path: "/accept-invite", element: <AcceptInvitePage /> },
+
+  // First-run company onboarding (authenticated, no dashboard chrome)
+  { path: "/onboarding", element: <AuthGuard><OnboardingPage /></AuthGuard> },
 
   // Platform Admin — public login/MFA
   { path: "/platform-admin/login", element: <PlatformAdminLogin /> },
@@ -252,13 +262,13 @@ const routes: RouteObject[] = [
   // Mobile site capture (protected)
   {
     path: "/site/:jobId/capture",
-    element: <AuthGuard><SiteCapture /></AuthGuard>,
+    element: <AuthGuard><OrgGuard><SiteCapture /></OrgGuard></AuthGuard>,
   },
 
   // Mobile site mode routes (protected, no sidebar layout)
   {
     path: "/mobile",
-    element: <AuthGuard><Outlet /></AuthGuard>,
+    element: <AuthGuard><OrgGuard><Outlet /></OrgGuard></AuthGuard>,
     children: [
       { index: true, element: <MobileTodayPage /> },
       { path: "today", element: <MobileTodayPage /> },
@@ -365,6 +375,9 @@ const routes: RouteObject[] = [
           { path: "devices", element: <DesktopDeviceSettingsPage /> },
           { path: "mobile-offline", element: <DesktopMobileAdminPage /> },
           { path: "ai-automation", element: <AiAutomationSettingsPage /> },
+          { path: "team", element: <TeamSettingsPage /> },
+          { path: "organisation", element: <OrganisationSettingsPage /> },
+          { path: "profile", element: <ProfileSettingsPage /> },
         ],
       },
       {

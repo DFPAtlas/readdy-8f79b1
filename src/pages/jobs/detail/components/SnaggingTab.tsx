@@ -1,21 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { FullJob } from '@/mocks/jobs';
-import {
-  getDemoSnagsByJob,
-  getSnagStatusColor,
-  getSnagSeverityColor,
-  getSnagDefectTypeColor,
-  getSnagDefectTypeLabel,
-  SNAG_STATUS_LABELS,
-  SNAG_TRADES,
-  type DemoSnag,
-  type SnagStatus,
-  type SnagSeverity,
-  type SnagDefectType,
-} from '@/mocks/snagging';
 import SnagGeneratorModal, { type GeneratedSnagDraft } from './SnagGeneratorModal';
 import { useOrg } from '@/contexts/OrgContext';
-import { snaggingService } from '@/services/snagging.service';
+import { snaggingService, type SnaggingItem, type SnagDefectType, type SnagSeverity, type SnagStatus } from '@/services/snagging.service';
 import { useToast } from '@/components/base/Toast';
 
 interface SnaggingTabProps {
@@ -26,11 +13,59 @@ interface SnaggingTabProps {
 type StatusFilter = 'all' | SnagStatus;
 type TypeFilter = 'all' | SnagDefectType;
 
+const SNAG_STATUS_LABELS: Record<SnagStatus, string> = {
+  open: 'Open',
+  in_progress: 'In progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+};
+
+const SNAG_TRADES = [
+  'General building', 'Electrical', 'Plumbing', 'Heating and gas', 'Carpentry',
+  'Roofing', 'Plastering', 'Decorating', 'Groundworks', 'Tiling', 'Multi-trade',
+];
+
+function snagStatusColor(status: SnagStatus): string {
+  const colors: Record<SnagStatus, string> = {
+    open: 'bg-status-red-pale text-status-red',
+    in_progress: 'bg-status-amber-pale text-status-amber',
+    resolved: 'bg-status-blue-pale text-status-blue',
+    closed: 'bg-primary-50 text-primary-700',
+  };
+  return colors[status];
+}
+
+function snagSeverityColor(severity: SnagSeverity): string {
+  const colors: Record<SnagSeverity, string> = {
+    low: 'bg-status-green text-white',
+    medium: 'bg-status-amber text-white',
+    high: 'bg-status-red text-white',
+    critical: 'bg-status-red text-white',
+  };
+  return colors[severity];
+}
+
+function defectTypeLabel(defectType: string): string {
+  return defectType === 'snag' ? 'Snag' : 'Defect';
+}
+
+function defectTypeColor(defectType: string): string {
+  return defectType === 'snag' ? 'bg-status-blue-pale text-status-blue' : 'bg-status-red-pale text-status-red';
+}
+
+function formatDate(value: string | null): string {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
   const { organisation } = useOrg();
   const { showToast } = useToast();
+  const orgId = organisation?.id ?? null;
 
-  const [snags, setSnags] = useState<DemoSnag[]>(() => getDemoSnagsByJob(jobId));
+  const [snags, setSnags] = useState<SnaggingItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -39,6 +74,28 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolveNote, setResolveNote] = useState('');
 
+  const loadData = useCallback(async () => {
+    if (!orgId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const rows = await snaggingService.listSnags(orgId, jobId);
+      setSnags(rows);
+    } catch (err) {
+      console.error('Failed to load snags:', err);
+      setLoadError(err instanceof Error ? err.message : 'Failed to load snags.');
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, jobId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const openCount = snags.filter((s) => s.status === 'open').length;
   const inProgressCount = snags.filter((s) => s.status === 'in_progress').length;
   const resolvedCount = snags.filter((s) => s.status === 'resolved' || s.status === 'closed').length;
@@ -46,77 +103,127 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
 
   const filtered = snags.filter((s) => {
     if (statusFilter !== 'all' && s.status !== statusFilter) return false;
-    if (typeFilter !== 'all' && s.defectType !== typeFilter) return false;
+    if (typeFilter !== 'all' && s.defect_type !== typeFilter) return false;
     return true;
   });
 
-  const handleGenerate = (drafts: GeneratedSnagDraft[]) => {
-    const newSnags: DemoSnag[] = drafts.map((d, i) => ({
-      id: `sng-${Date.now()}-${i}`,
-      reference: `SNG-${String(snags.length + i + 1).padStart(3, '0')}`,
-      title: d.title,
-      description: d.description,
-      area: d.area,
-      trade: d.trade,
-      defectType: 'snag',
-      severity: d.severity,
-      status: 'open',
-      raisedBy: 'Nerve',
-      updatedAt: 'Just now',
-    }));
-    setSnags((prev) => [...newSnags, ...prev]);
-    showToast(`${newSnags.length} snag item${newSnags.length > 1 ? 's' : ''} added for review.`, 'success');
-
-    // Best-effort persist when a real organisation + job exist
-    if (organisation?.id) {
-      newSnags.forEach((s) => {
-        snaggingService
-          .createSnag({
-            organisationId: organisation.id,
+  const handleGenerate = async (drafts: GeneratedSnagDraft[]) => {
+    if (!orgId) return;
+    try {
+      const created = await Promise.all(
+        drafts.map((d, i) =>
+          snaggingService.createSnag({
+            organisationId: orgId,
             jobId: job.id,
-            reference: s.reference,
-            title: s.title,
-            description: s.description,
-            area: s.area,
-            trade: s.trade,
-            defectType: s.defectType,
-            severity: s.severity,
-            raisedBy: s.raisedBy,
-          })
-          .catch(() => {});
-      });
+            reference: `SNG-${String(snags.length + i + 1).padStart(3, '0')}`,
+            title: d.title,
+            description: d.description,
+            area: d.area,
+            trade: d.trade,
+            defectType: 'snag',
+            severity: d.severity,
+            raisedBy: 'Nerve',
+          }),
+        ),
+      );
+      setSnags((prev) => [...created, ...prev]);
+      showToast(`${created.length} snag item${created.length > 1 ? 's' : ''} added for review.`, 'success');
+    } catch (err) {
+      console.error('Failed to save generated snags:', err);
+      showToast('Could not save the generated snags. Please try again.', 'error');
     }
   };
 
-  const advanceStatus = (id: string, current: SnagStatus) => {
-    if (current === 'open') {
-      setSnags((prev) => prev.map((s) => (s.id === id ? { ...s, status: 'in_progress', updatedAt: 'Just now' } : s)));
-      if (organisation?.id) snaggingService.updateSnagStatus(id, 'in_progress').catch(() => {});
+  const setStatus = async (id: string, status: SnagStatus, note?: string) => {
+    try {
+      await snaggingService.updateSnagStatus(id, status, note ?? null);
+      setSnags((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, status, resolution_note: note ?? s.resolution_note, updated_at: new Date().toISOString() } : s)),
+      );
+    } catch (err) {
+      console.error('Failed to update snag status:', err);
+      showToast('Could not update this snag. Please try again.', 'error');
+    }
+  };
+
+  const advanceStatus = (snag: SnaggingItem) => {
+    if (snag.status === 'open') {
+      void setStatus(snag.id, 'in_progress');
       showToast('Snag moved to in progress.', 'info');
-    } else if (current === 'in_progress') {
-      setResolvingId(id);
+    } else if (snag.status === 'in_progress') {
+      setResolvingId(snag.id);
       setResolveNote('');
-    } else if (current === 'resolved') {
-      setSnags((prev) => prev.map((s) => (s.id === id ? { ...s, status: 'closed', updatedAt: 'Just now' } : s)));
-      if (organisation?.id) snaggingService.updateSnagStatus(id, 'closed').catch(() => {});
+    } else if (snag.status === 'resolved') {
+      void setStatus(snag.id, 'closed');
       showToast('Snag closed.', 'success');
     }
   };
 
   const confirmResolve = () => {
     if (!resolvingId) return;
-    setSnags((prev) =>
-      prev.map((s) =>
-        s.id === resolvingId
-          ? { ...s, status: 'resolved', resolutionNote: resolveNote.trim() || undefined, updatedAt: 'Just now' }
-          : s,
-      ),
-    );
-    if (organisation?.id) snaggingService.updateSnagStatus(resolvingId, 'resolved', resolveNote.trim() || null).catch(() => {});
+    void setStatus(resolvingId, 'resolved', resolveNote.trim());
     showToast('Snag marked as resolved.', 'success');
     setResolvingId(null);
     setResolveNote('');
   };
+
+  const handleAddSnag = async (payload: {
+    reference: string;
+    title: string;
+    description: string;
+    area: string;
+    trade: string;
+    defectType: SnagDefectType;
+    severity: SnagSeverity;
+    assignedTo?: string;
+    targetDate?: string;
+  }) => {
+    if (!orgId) return;
+    try {
+      const created = await snaggingService.createSnag({
+        organisationId: orgId,
+        jobId: job.id,
+        reference: payload.reference,
+        title: payload.title,
+        description: payload.description,
+        area: payload.area,
+        trade: payload.trade,
+        defectType: payload.defectType,
+        severity: payload.severity,
+        assignedTo: payload.assignedTo ?? null,
+        targetDate: payload.targetDate ?? null,
+        raisedBy: 'You',
+      });
+      setSnags((prev) => [created, ...prev]);
+      showToast('Snag added.', 'success');
+    } catch (err) {
+      console.error('Failed to add snag:', err);
+      showToast('Could not add the snag. Please try again.', 'error');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <i className="ri-loader-4-line animate-spin text-2xl text-primary-500"></i>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="bg-status-red-pale border border-status-red/20 rounded-2xl p-6 text-center">
+        <i className="ri-error-warning-line text-2xl text-status-red"></i>
+        <p className="text-sm font-medium text-status-red mt-2">{loadError}</p>
+        <button
+          className="mt-3 h-9 px-4 border border-status-red/30 text-status-red text-sm font-medium rounded-xl hover:bg-white/60 transition-colors cursor-pointer whitespace-nowrap"
+          onClick={loadData}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -174,7 +281,7 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
                 typeFilter === f ? 'bg-white text-main shadow-sm' : 'text-muted hover:text-main'
               }`}
             >
-              {f === 'all' ? 'Snags & defects' : getSnagDefectTypeLabel(f) + 's'}
+              {f === 'all' ? 'Snags & defects' : `${defectTypeLabel(f)}s`}
             </button>
           ))}
         </div>
@@ -202,29 +309,29 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
                   onClick={() => setExpandedId(expanded ? null : s.id)}
                   className="w-full flex items-start gap-4 p-4 text-left cursor-pointer hover:bg-page/50 transition-colors"
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${s.defectType === 'defect' ? 'bg-status-red-pale' : 'bg-status-blue-pale'}`}>
-                    <i className={`${s.defectType === 'defect' ? 'ri-error-warning-line text-status-red' : 'ri-list-check-3 text-status-blue'} text-xl`}></i>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${s.defect_type === 'defect' ? 'bg-status-red-pale' : 'bg-status-blue-pale'}`}>
+                    <i className={`${s.defect_type === 'defect' ? 'ri-error-warning-line text-status-red' : 'ri-list-check-3 text-status-blue'} text-xl`}></i>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-semibold text-primary-500">{s.reference}</span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getSnagDefectTypeColor(s.defectType)}`}>
-                        {getSnagDefectTypeLabel(s.defectType)}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${defectTypeColor(s.defect_type)}`}>
+                        {defectTypeLabel(s.defect_type)}
                       </span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getSnagStatusColor(s.status)}`}>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${snagStatusColor(s.status)}`}>
                         {SNAG_STATUS_LABELS[s.status]}
                       </span>
-                      <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase ${getSnagSeverityColor(s.severity)}`}>
+                      <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase ${snagSeverityColor(s.severity)}`}>
                         {s.severity}
                       </span>
                     </div>
                     <p className="text-sm font-semibold text-main mt-1">{s.title}</p>
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted mt-1">
                       {s.area && <span>{s.area}</span>}
-                      <span>{s.trade}</span>
-                      <span>Raised by {s.raisedBy}</span>
-                      {s.targetDate && <span>Due {s.targetDate}</span>}
-                      <span>Updated {s.updatedAt}</span>
+                      {s.trade && <span>{s.trade}</span>}
+                      {s.raised_by && <span>Raised by {s.raised_by}</span>}
+                      {s.target_date && <span>Due {formatDate(s.target_date)}</span>}
+                      <span>Updated {formatDate(s.updated_at)}</span>
                     </div>
                   </div>
                   <i className={`ri-arrow-down-s-line text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}></i>
@@ -232,22 +339,19 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
 
                 {expanded && (
                   <div className="px-4 pb-4 pl-[72px] space-y-3">
-                    {s.description && (
-                      <p className="text-sm text-main">{s.description}</p>
-                    )}
+                    {s.description && <p className="text-sm text-main">{s.description}</p>}
 
-                    {s.resolutionNote && (
+                    {s.resolution_note && (
                       <div className="flex items-start gap-2 p-3 rounded-xl bg-primary-50">
                         <i className="ri-check-double-line text-primary-600 mt-0.5"></i>
-                        <p className="text-sm text-primary-700">{s.resolutionNote}</p>
+                        <p className="text-sm text-primary-700">{s.resolution_note}</p>
                       </div>
                     )}
 
-                    {/* Status actions */}
                     <div className="flex items-center gap-2 flex-wrap">
                       {s.status === 'open' && (
                         <button
-                          onClick={() => advanceStatus(s.id, s.status)}
+                          onClick={() => advanceStatus(s)}
                           className="h-9 px-3 bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                         >
                           Start work
@@ -255,7 +359,7 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
                       )}
                       {s.status === 'in_progress' && resolvingId !== s.id && (
                         <button
-                          onClick={() => advanceStatus(s.id, s.status)}
+                          onClick={() => advanceStatus(s)}
                           className="h-9 px-3 bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                         >
                           Mark resolved
@@ -263,7 +367,7 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
                       )}
                       {s.status === 'resolved' && (
                         <button
-                          onClick={() => advanceStatus(s.id, s.status)}
+                          onClick={() => advanceStatus(s)}
                           className="h-9 px-3 bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                         >
                           Close
@@ -276,11 +380,7 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
                       )}
                       {s.status !== 'closed' && (
                         <button
-                          onClick={() => {
-                            setSnags((prev) => prev.map((x) => (x.id === s.id ? { ...x, status: 'closed', updatedAt: 'Just now' } : x)));
-                            if (organisation?.id) snaggingService.updateSnagStatus(s.id, 'closed').catch(() => {});
-                            showToast('Snag closed.', 'success');
-                          }}
+                          onClick={() => { void setStatus(s.id, 'closed'); showToast('Snag closed.', 'success'); }}
                           className="h-9 px-3 border border-border text-main text-xs font-medium rounded-lg hover:bg-page transition-colors cursor-pointer whitespace-nowrap"
                         >
                           Skip to close
@@ -288,7 +388,6 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
                       )}
                     </div>
 
-                    {/* Resolve note */}
                     {resolvingId === s.id && (
                       <div className="p-3.5 rounded-xl bg-page border border-border space-y-2.5">
                         <label className="block text-xs font-semibold text-muted uppercase tracking-wider">Resolution note</label>
@@ -337,28 +436,7 @@ export default function SnaggingTab({ jobId, job }: SnaggingTabProps) {
         <AddSnagModal
           defaultTrade={job.trade}
           onClose={() => setAddOpen(false)}
-          onAdd={(snag) => {
-            setSnags((prev) => [snag, ...prev]);
-            if (organisation?.id) {
-              snaggingService
-                .createSnag({
-                  organisationId: organisation.id,
-                  jobId: job.id,
-                  reference: snag.reference,
-                  title: snag.title,
-                  description: snag.description,
-                  area: snag.area,
-                  trade: snag.trade,
-                  defectType: snag.defectType,
-                  severity: snag.severity,
-                  assignedTo: snag.assignedTo,
-                  raisedBy: snag.raisedBy,
-                  targetDate: snag.targetDate,
-                })
-                .catch(() => {});
-            }
-            showToast('Snag added.', 'success');
-          }}
+          onAdd={handleAddSnag}
         />
       )}
     </div>
@@ -382,7 +460,17 @@ function SummaryCard({ icon, label, value, accent, iconBg }: { icon: string; lab
 interface AddSnagModalProps {
   defaultTrade: string;
   onClose: () => void;
-  onAdd: (snag: DemoSnag) => void;
+  onAdd: (payload: {
+    reference: string;
+    title: string;
+    description: string;
+    area: string;
+    trade: string;
+    defectType: SnagDefectType;
+    severity: SnagSeverity;
+    assignedTo?: string;
+    targetDate?: string;
+  }) => void;
 }
 
 function AddSnagModal({ defaultTrade, onClose, onAdd }: AddSnagModalProps) {
@@ -400,19 +488,15 @@ function AddSnagModal({ defaultTrade, onClose, onAdd }: AddSnagModalProps) {
   const handleSubmit = () => {
     if (!canSave) return;
     onAdd({
-      id: `sng-${Date.now()}`,
-      reference: `SNG-${Date.now().toString().slice(-3)}`,
+      reference: `SNG-${Date.now().toString().slice(-5)}`,
       title: title.trim(),
       description: description.trim() || 'No description provided.',
       area: area.trim(),
       trade,
       defectType,
       severity,
-      status: 'open',
       assignedTo: assignedTo.trim() || undefined,
-      raisedBy: 'You',
       targetDate: targetDate || undefined,
-      updatedAt: 'Just now',
     });
     onClose();
   };
@@ -420,7 +504,7 @@ function AddSnagModal({ defaultTrade, onClose, onAdd }: AddSnagModalProps) {
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center p-4 md:p-8">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
+      <div className="relative bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-border sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-lg font-bold text-main">Add snag</h2>
@@ -471,10 +555,8 @@ function AddSnagModal({ defaultTrade, onClose, onAdd }: AddSnagModalProps) {
                 onChange={(e) => setTrade(e.target.value)}
                 className="w-full h-11 px-3 text-sm rounded-xl border border-border bg-white text-main focus:outline-none focus:border-primary-300 cursor-pointer"
               >
-                {SNAG_TRADES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
+                {SNAG_TRADES.map((tr) => (
+                  <option key={tr} value={tr}>{tr}</option>
                 ))}
               </select>
             </div>

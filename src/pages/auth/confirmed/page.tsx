@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import AuthLayout from '@/components/feature/AuthLayout';
 
 export default function AuthConfirmedPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [countdown, setCountdown] = useState(5);
+
+  const nextParam = searchParams.get('next') ?? '';
+  const target = nextParam.startsWith('/') ? nextParam : '/sign-in';
+  const targetLabel = nextParam.startsWith('/') ? 'Continue to your invitation' : 'Sign in to your account';
 
   useEffect(() => {
     if (countdown <= 0) {
-      navigate('/sign-in', { replace: true });
+      navigate(target, { replace: true });
       return;
     }
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [countdown, navigate]);
+  }, [countdown, navigate, target]);
 
   return (
     <AuthLayout title="Email verified" subtitle="Your account is ready to go.">
@@ -33,15 +38,15 @@ export default function AuthConfirmedPage() {
 
       <div className="mt-6 space-y-3">
         <Link
-          to="/sign-in"
+          to={target}
           className="w-full h-11 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
         >
           <i className="ri-login-box-line" />
-          Sign in to your account
+          {targetLabel}
         </Link>
 
         <p className="text-center text-xs text-muted">
-          Redirecting to sign in in {countdown}s...
+          Redirecting in {countdown}s...
         </p>
       </div>
     </AuthLayout>

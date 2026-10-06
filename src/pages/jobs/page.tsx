@@ -2,8 +2,11 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/base/Toast';
+import ConfirmDialog from '@/components/base/ConfirmDialog';
 import { useOrg } from '@/contexts/OrgContext';
 import { jobsService } from '@/services/jobs.service';
+import { jobDraftsService, type JobDraftRow } from '@/services/jobDrafts.service';
+import OrganisationOnboarding from '@/components/feature/OrganisationOnboarding';
 import { formatPenceGBP } from '@/lib/money';
 import {
   jobQuickFilters,
@@ -36,7 +39,7 @@ export default function JobsWorkspace() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { organisation, loading: orgLoading } = useOrg();
+  const { organisation, loading: orgLoading, status: orgStatus, refreshOrganisations } = useOrg();
   const orgId = organisation?.id ?? null;
 
   const [search, setSearch] = useState('');
@@ -48,6 +51,11 @@ export default function JobsWorkspace() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<JobDraftRow[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [draftsError, setDraftsError] = useState<string | null>(null);
+  const [discardTarget, setDiscardTarget] = useState<JobDraftRow | null>(null);
+  const [discardingDraft, setDiscardingDraft] = useState(false);
 
   const loadJobs = useCallback(async () => {
     if (!orgId) {
@@ -81,6 +89,28 @@ export default function JobsWorkspace() {
   useEffect(() => {
     loadJobs();
   }, [loadJobs]);
+
+  const loadDrafts = useCallback(async () => {
+    if (!orgId) {
+      setDrafts([]);
+      return;
+    }
+    setDraftsLoading(true);
+    setDraftsError(null);
+    try {
+      const rows = await jobDraftsService.listDrafts(orgId);
+      setDrafts(rows);
+    } catch (err) {
+      console.error('Failed to load drafts', err);
+      setDraftsError(err instanceof Error ? err.message : 'Failed to load drafts');
+    } finally {
+      setDraftsLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    loadDrafts();
+  }, [loadDrafts]);
 
   // Filter logic
   const filteredJobs = useMemo(() => {
@@ -135,6 +165,22 @@ export default function JobsWorkspace() {
     setActiveQuickFilter('all');
   };
 
+  const handleDiscardDraft = async () => {
+    if (!orgId || !discardTarget) return;
+    setDiscardingDraft(true);
+    try {
+      await jobDraftsService.deleteDraft(discardTarget.id, orgId);
+      setDrafts((prev) => prev.filter((d) => d.id !== discardTarget.id));
+      showToast(t('dashboard.draftDiscarded'), 'success');
+      setDiscardTarget(null);
+    } catch (err) {
+      console.error('Failed to discard draft', err);
+      showToast(t('dashboard.draftDiscardError'), 'error');
+    } finally {
+      setDiscardingDraft(false);
+    }
+  };
+
   const handleArchive = async (jobId: string) => {
     if (!orgId) return;
     setArchivingId(jobId);
@@ -180,16 +226,25 @@ export default function JobsWorkspace() {
       );
     }
 
-    if (!orgId && !orgLoading) {
-      return (
-        <div className="bg-white border border-border rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-page flex items-center justify-center mx-auto mb-4">
-            <i className="ri-building-2-line text-2xl text-muted"></i>
+    if (!orgId) {
+      if (orgStatus === 'error') {
+        return (
+          <div className="bg-white border border-border rounded-2xl p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-page flex items-center justify-center mx-auto mb-4">
+              <i className="ri-error-warning-line text-2xl text-status-red"></i>
+            </div>
+            <h3 className="text-lg font-semibold text-main mb-2">{t('dashboard.orgLoadError')}</h3>
+            <p className="text-sm text-muted mb-4">{t('dashboard.orgLoadErrorDesc')}</p>
+            <button
+              className="h-10 px-5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+              onClick={() => refreshOrganisations()}
+            >
+              {t('dashboard.retry')}
+            </button>
           </div>
-          <h3 className="text-lg font-semibold text-main mb-2">{t('dashboard.noOrganisation')}</h3>
-          <p className="text-sm text-muted">{t('dashboard.noOrganisationDesc')}</p>
-        </div>
-      );
+        );
+      }
+      return <OrganisationOnboarding />;
     }
 
     if (loadError) {
@@ -211,6 +266,92 @@ export default function JobsWorkspace() {
     }
 
     return renderJobList();
+  };
+
+  const renderDrafts = () => {
+    if (!orgId) return null;
+
+    if (draftsLoading) {
+      return (
+        <div className="bg-white border border-border rounded-2xl p-5">
+          <div className="h-4 w-24 bg-page rounded animate-pulse mb-4" />
+          <div className="space-y-3">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="h-12 bg-page rounded-xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (draftsError) {
+      return (
+        <div className="bg-white border border-border rounded-2xl p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-status-red">
+            <i className="ri-error-warning-line"></i>
+            {t('dashboard.draftsLoadError')}
+          </div>
+          <button
+            className="h-8 px-3 border border-border rounded-lg text-xs font-medium text-main hover:bg-page transition-colors cursor-pointer whitespace-nowrap"
+            onClick={loadDrafts}
+          >
+            {t('dashboard.retry')}
+          </button>
+        </div>
+      );
+    }
+
+    if (drafts.length === 0) return null;
+
+    return (
+      <div className="bg-white border border-border rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <i className="ri-draft-line text-muted"></i>
+            <h2 className="text-sm font-semibold text-main">{t('dashboard.draftsHeading')}</h2>
+            <span className="text-[10px] font-semibold text-muted bg-page px-1.5 py-0.5 rounded-full">{drafts.length}</span>
+          </div>
+          <p className="text-xs text-muted hidden sm:block">{t('dashboard.draftsDesc')}</p>
+        </div>
+        <div className="divide-y divide-border">
+          {drafts.map((d) => {
+            const name = (d.project_name || '').trim() || t('dashboard.untitledDraft');
+            const stepNum = Math.min(Math.max(d.current_step ?? 0, 0), 6) + 1;
+            return (
+              <div key={d.id} className="flex items-center gap-4 px-5 py-4">
+                <div className="w-10 h-10 rounded-xl bg-page flex items-center justify-center flex-shrink-0">
+                  <i className="ri-file-edit-line text-muted"></i>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-main truncate">{name}</p>
+                    {d.reference && <span className="text-[10px] font-medium text-muted bg-page px-1.5 py-0.5 rounded-md">{d.reference}</span>}
+                  </div>
+                  <p className="text-xs text-muted mt-0.5">
+                    {t('dashboard.draftStep', { step: stepNum })} · {formatRelativeTime(d.updated_at)}
+                  </p>
+                </div>
+                <button
+                  className="h-9 px-4 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+                  onClick={() => navigate(`/jobs/new?draft=${d.id}`)}
+                >
+                  <i className="ri-play-line text-sm"></i>
+                  {t('dashboard.resumeDraft')}
+                </button>
+                <button
+                  className="w-9 h-9 flex items-center justify-center rounded-xl border border-border text-muted hover:text-status-red hover:border-status-red/40 hover:bg-status-red-pale transition-colors cursor-pointer flex-shrink-0"
+                  onClick={() => setDiscardTarget(d)}
+                  aria-label={t('dashboard.discardDraft')}
+                  title={t('dashboard.discardDraft')}
+                >
+                  <i className="ri-delete-bin-line text-base"></i>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const renderJobList = () => {
@@ -570,8 +711,25 @@ export default function JobsWorkspace() {
         )}
       </div>
 
+      {/* Drafts */}
+      {renderDrafts()}
+
       {/* Job list / grid / loading / error / empty */}
       {renderContent()}
+
+      {/* Discard draft confirmation */}
+      <ConfirmDialog
+        open={discardTarget !== null}
+        title={t('dashboard.discardDraftTitle')}
+        description={t('dashboard.discardDraftDesc', {
+          name: discardTarget ? ((discardTarget.project_name || '').trim() || t('dashboard.untitledDraft')) : '',
+        })}
+        confirmText={discardingDraft ? t('dashboard.discardingDraft') : t('dashboard.confirmDiscard')}
+        cancelText={t('dashboard.cancel')}
+        variant="danger"
+        onConfirm={handleDiscardDraft}
+        onCancel={() => { if (!discardingDraft) setDiscardTarget(null); }}
+      />
 
       {/* Archive Confirmation Dialog */}
       {showArchiveDialog && (

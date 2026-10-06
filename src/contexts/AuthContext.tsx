@@ -11,7 +11,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, fullName: string, nextPath?: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
@@ -19,6 +19,37 @@ interface AuthContextValue extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+/**
+ * Detects the "stale refresh token" family of errors that Supabase throws when the
+ * session persisted in the browser is no longer valid (expired, revoked, or from a
+ * wiped server-side session). In those cases the only correct recovery is to discard
+ * the dead local session and treat the user as signed out, instead of surfacing a
+ * scary unhandled auth error.
+ */
+function isInvalidRefreshTokenError(err: unknown): boolean {
+  const message = typeof err === 'string'
+    ? err
+    : (err as { message?: string } | null | undefined)?.message ?? '';
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('invalid refresh token') ||
+    normalized.includes('refresh token not found') ||
+    normalized.includes('refresh_token_not_found')
+  );
+}
+
+async function purgeStaleSession(): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  try {
+    // Scope "local" only clears the browser copy; it never calls the server,
+    // so it cannot fail because the token is already gone server-side.
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // Ignore - the goal is simply to drop the unusable local session.
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
@@ -35,20 +66,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let cancelled = false;
+
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (cancelled) return;
+      if (error && isInvalidRefreshTokenError(error)) {
+        void purgeStaleSession();
+        setState((prev) => ({ ...prev, session: null, user: null, loading: false }));
+        return;
+      }
       setState((prev) => ({
         ...prev,
         session,
         user: session?.user ?? null,
         loading: false,
       }));
-    }).catch(() => {
-      setState((prev) => ({ ...prev, loading: false }));
+    }).catch(async (err: unknown) => {
+      if (cancelled) return;
+      if (isInvalidRefreshTokenError(err)) {
+        await purgeStaleSession();
+      }
+      setState((prev) => ({ ...prev, session: null, user: null, loading: false }));
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
       setState((prev) => ({
         ...prev,
         session,
@@ -57,8 +101,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }));
     });
 
+    // Background token refreshes can reject outside of getSession(). Catch that
+    // specific failure so a stale token signs the user out cleanly rather than
+    // bubbling up as an unhandled rejection.
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      if (isInvalidRefreshTokenError(event.reason)) {
+        event.preventDefault();
+        void purgeStaleSession();
+        setState((prev) => ({ ...prev, session: null, user: null, loading: false }));
+      }
+    };
+    window.addEventListener('unhandledrejection', handleRejection);
+
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
+      window.removeEventListener('unhandledrejection', handleRejection);
     };
   }, []);
 
@@ -79,18 +137,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string, nextPath?: string) => {
     const supabase = getSupabase();
     if (!supabase) {
       setState((prev) => ({ ...prev, error: 'Supabase is not configured.' }));
       return { error: { message: 'Supabase is not configured.', name: 'AuthError', status: 500 } as unknown as AuthError };
     }
+    // Carry an optional in-app return path (e.g. an invitation link) through the
+    // email verification step so the user lands back where they started.
+    const safeNext = nextPath && nextPath.startsWith('/') ? nextPath : '';
+    const emailRedirectTo = `${window.location.origin}/auth/confirmed${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ''}`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/auth/confirmed`,
+        emailRedirectTo,
       },
     });
     if (error) {

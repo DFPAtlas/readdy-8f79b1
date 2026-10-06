@@ -233,11 +233,18 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
                       Dashboard
                     </button>
                     <button
-                      onClick={() => { setShowUserMenu(false); showToast('Profile settings will be available soon.', 'info'); }}
+                      onClick={() => { setShowUserMenu(false); navigate('/settings/profile'); }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-main hover:bg-page transition-colors text-left whitespace-nowrap cursor-pointer"
                     >
                       <i className="ri-user-settings-line text-muted"></i>
-                      Profile settings
+                      My profile
+                    </button>
+                    <button
+                      onClick={() => { setShowUserMenu(false); navigate('/settings/organisation'); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-main hover:bg-page transition-colors text-left whitespace-nowrap cursor-pointer"
+                    >
+                      <i className="ri-building-2-line text-muted"></i>
+                      Company settings
                     </button>
                   </div>
 

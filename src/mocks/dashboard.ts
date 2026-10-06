@@ -152,8 +152,11 @@ export const sidebarNavItems = [
   { id: 'procurement', label: 'Procurement Portal', icon: 'ri-price-tag-3-line', active: false },
   { id: 'app/settings/integrations', label: 'Integrations', icon: 'ri-plug-line', active: false },
   { id: 'app/documents/ingestion', label: 'Document Ingestion', icon: 'ri-file-search-line', active: false },
-  { id: 'app/settings/ai-automation', label: 'AI & Automation', icon: 'ri-robot-line', active: false },
+  { id: 'settings/ai-automation', label: 'AI & Automation', icon: 'ri-robot-line', active: false },
   { id: 'app/settings/billing', label: 'Billing', icon: 'ri-money-pound-circle-line', active: false },
+  { id: 'settings/team', label: 'Team & roles', icon: 'ri-group-line', active: false },
+  { id: 'settings/organisation', label: 'Company', icon: 'ri-building-2-line', active: false },
+  { id: 'settings/profile', label: 'My profile', icon: 'ri-user-settings-line', active: false },
 ];
 
 export const mobileNavItems = [

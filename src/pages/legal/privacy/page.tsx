@@ -8,7 +8,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          BuildNerve Ltd. (&quot;BuildNerve&quot;, &quot;we&quot;, &quot;us&quot; or &quot;our&quot;) provides a contractor
+          BuildNerve (&quot;BuildNerve&quot;, &quot;we&quot;, &quot;us&quot; or &quot;our&quot;) provides a contractor
           operating system that helps UK construction businesses manage procurement, commercial, compliance and field
           operations from one workspace. This Privacy Policy explains how we collect, use, disclose and safeguard
           personal information when you visit our website or use our platform.
@@ -25,19 +25,27 @@ const sections: LegalSection[] = [
     title: '2. Who we are',
     content: (
       <>
-        <p>BuildNerve is the data controller responsible for the personal information described in this policy. Our registered details are:</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li>Company name: BuildNerve Ltd.</li>
-          <li>Company number: [Company number]</li>
-          <li>Registered office: [Registered office address]</li>
-          <li>ICO registration number: [ICO registration number]</li>
-        </ul>
+        <p>
+          BuildNerve is owned and operated by Martin Hewett, a sole trader trading as Digital Footprint. Where we decide
+          why and how your personal information is used, Martin Hewett trading as Digital Footprint is the data
+          controller.
+        </p>
+        <p>
+          In short: <strong className="text-main font-semibold">BuildNerve</strong> is the platform you use, and Digital
+          Footprint is the legal business that owns and operates it. This Privacy Policy describes how that business
+          handles personal information on behalf of BuildNerve.
+        </p>
         <p>
           If you have any questions about this policy or how we handle your data, you can contact us at{' '}
-          <a href="mailto:privacy@buildnerve.co.uk" className="text-primary-500 hover:text-primary-600 font-medium">
-            privacy@buildnerve.co.uk
+          <a href="mailto:Martin.hewett@digital-footprint.uk" className="text-primary-500 hover:text-primary-600 font-medium">
+            Martin.hewett@digital-footprint.uk
           </a>
           .
+        </p>
+        <p>
+          When a business customer uses this platform to manage personal information on its own behalf, that customer
+          may be the data controller and Digital Footprint may act as its data processor. In those circumstances,
+          requests about that information should normally be directed to the relevant business.
         </p>
       </>
     ),
@@ -155,8 +163,11 @@ const sections: LegalSection[] = [
           <li>Withdraw consent at any time where processing is based on consent.</li>
         </ul>
         <p>
-          To exercise any of these rights, contact us at privacy@buildnerve.co.uk. You also have the right to lodge a
-          complaint with the Information Commissioner&apos;s Office (ICO).
+          To exercise any of these rights, contact us at{' '}
+          <a href="mailto:Martin.hewett@digital-footprint.uk" className="text-primary-500 hover:text-primary-600 font-medium">
+            Martin.hewett@digital-footprint.uk
+          </a>
+          . You also have the right to lodge a complaint with the Information Commissioner&apos;s Office (ICO).
         </p>
       </>
     ),
@@ -198,8 +209,8 @@ const sections: LegalSection[] = [
     content: (
       <p>
         If you have any questions about this Privacy Policy or wish to exercise your rights, please contact us at{' '}
-        <a href="mailto:privacy@buildnerve.co.uk" className="text-primary-500 hover:text-primary-600 font-medium">
-          privacy@buildnerve.co.uk
+        <a href="mailto:Martin.hewett@digital-footprint.uk" className="text-primary-500 hover:text-primary-600 font-medium">
+          Martin.hewett@digital-footprint.uk
         </a>
         .
       </p>
@@ -213,8 +224,8 @@ export default function PrivacyPolicyPage() {
       title="Privacy Notice"
       description="How BuildNerve collects, uses, shares and protects personal information when you use our contractor operating system."
       effectiveDate="27 August 2026"
-      lastUpdated="27 August 2026"
-      version="1.0"
+      lastUpdated="1 October 2026"
+      version="1.1"
       sections={sections}
     />
   );

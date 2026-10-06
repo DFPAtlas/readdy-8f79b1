@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { sidebarNavItems, businessPulse, userProfile } from '@/mocks/dashboard';
+import { sidebarNavItems, businessPulse } from '@/mocks/dashboard';
 import { BNWordmarkLight, BNIcon } from '@/components/base/BuildNerveLogo';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
 import { disputesService } from '@/services/disputes.service';
+import { authService } from '@/services/auth.service';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -16,8 +18,10 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { organisation } = useOrg();
   const [expanded, setExpanded] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [profileName, setProfileName] = useState('');
   const [disputeActionCount, setDisputeActionCount] = useState(0);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -41,8 +45,39 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) {
+      setProfileName('');
+      return;
+    }
+    let cancelled = false;
+    authService
+      .getProfile(user.id)
+      .then((profile) => {
+        if (!cancelled) setProfileName(profile?.full_name ?? '');
+      })
+      .catch(() => {
+        if (!cancelled) setProfileName('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const displayName =
+    profileName || (user?.user_metadata?.full_name as string | undefined) || user?.email || 'Your account';
+  const displayInitials =
+    displayName
+      .split(' ')
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'U';
+  const companyName = organisation?.trading_name || organisation?.name || 'BuildNerve';
+
   const currentPath = location.pathname;
-  const activeId = currentPath === '/app' ? 'overview' : currentPath.startsWith('/jobs') ? 'jobs' : currentPath.startsWith('/workforce') ? 'workforce' : currentPath.startsWith('/clients') ? 'clients' : currentPath.startsWith('/variations') ? 'variations' : currentPath.startsWith('/disputes') ? 'disputes' : currentPath.startsWith('/evidence') ? 'evidence' : currentPath.startsWith('/messages') ? 'messages' : currentPath.startsWith('/reports') ? 'reports' : currentPath.startsWith('/notifications') ? 'notifications' : currentPath.startsWith('/app/procurement') ? 'app/procurement' : currentPath.startsWith('/app/suppliers') ? 'app/procurement' : currentPath.startsWith('/app/documents/ingestion') ? 'app/documents/ingestion' : currentPath.startsWith('/app/settings/integrations') ? 'app/settings/integrations' : currentPath.startsWith('/app/settings/ai-automation') ? 'app/settings/ai-automation' : currentPath.startsWith('/app/settings/billing') ? 'app/settings/billing' : currentPath.replace('/', '') || 'overview';
+  const activeId = currentPath === '/app' ? 'overview' : currentPath.startsWith('/jobs') ? 'jobs' : currentPath.startsWith('/workforce') ? 'workforce' : currentPath.startsWith('/clients') ? 'clients' : currentPath.startsWith('/variations') ? 'variations' : currentPath.startsWith('/disputes') ? 'disputes' : currentPath.startsWith('/evidence') ? 'evidence' : currentPath.startsWith('/messages') ? 'messages' : currentPath.startsWith('/reports') ? 'reports' : currentPath.startsWith('/notifications') ? 'notifications' : currentPath.startsWith('/app/procurement') ? 'app/procurement' : currentPath.startsWith('/app/suppliers') ? 'app/procurement' : currentPath.startsWith('/app/documents/ingestion') ? 'app/documents/ingestion' : currentPath.startsWith('/app/settings/integrations') ? 'app/settings/integrations' : currentPath.startsWith('/settings/ai-automation') ? 'settings/ai-automation' : currentPath.startsWith('/settings/team') ? 'settings/team' : currentPath.startsWith('/settings/organisation') ? 'settings/organisation' : currentPath.startsWith('/settings/profile') ? 'settings/profile' : currentPath.startsWith('/app/settings/billing') ? 'app/settings/billing' : currentPath.replace('/', '') || 'overview';
 
   const handleNav = (id: string) => {
     if (id === 'overview') {
@@ -232,11 +267,11 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         <div className={`pb-4 pt-1 overflow-hidden transition-all duration-300 ${expanded ? 'border-t border-white/[0.06] mx-4 px-4' : 'border-t border-white/[0.06] mx-2.5 px-2.5'}`}>
           <div className={`flex items-center ${expanded ? 'gap-3' : 'justify-center gap-0'}`}>
             <div className="w-9 h-9 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-semibold">{userProfile.initials}</span>
+              <span className="text-white text-xs font-semibold">{displayInitials}</span>
             </div>
             <div className={`flex-1 min-w-0 overflow-hidden transition-all duration-300 ${expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'}`}>
-              <p className="text-white text-sm font-medium truncate">{userProfile.name}</p>
-              <p className="text-muted text-[11px] truncate">{userProfile.role}</p>
+              <p className="text-white text-sm font-medium truncate">{displayName}</p>
+              <p className="text-muted text-[11px] truncate">{companyName}</p>
             </div>
             {expanded && (
               <button

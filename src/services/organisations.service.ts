@@ -44,6 +44,24 @@ export const organisationsService = {
     return data;
   },
 
+  /**
+   * Creates an organisation and the caller's owner membership atomically through a
+   * SECURITY DEFINER RPC. This is the only safe way for a brand-new user (with no
+   * existing membership) to bootstrap their first organisation.
+   */
+  async createOrganisationWithOwner(name: string, tradingName?: string | null): Promise<Organisation> {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Backend is not available');
+
+    const { data, error } = await supabase.rpc('create_organisation_with_owner', {
+      p_name: name,
+      p_trading_name: tradingName ?? null,
+    });
+
+    if (error) throw error;
+    return data as unknown as Organisation;
+  },
+
   async updateOrganisation(orgId: string, updates: Database['public']['Tables']['organisations']['Update']): Promise<Organisation> {
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -79,5 +97,38 @@ export const organisationsService = {
 
     if (error) throw error;
     return data;
+  },
+
+  /**
+   * Uploads a company logo into the private `documents` bucket under
+   * `<organisation_id>/branding/logo.<ext>` and returns the stored object path.
+   * The caller must be an owner or admin (enforced by storage RLS).
+   */
+  async uploadLogo(orgId: string, file: File): Promise<string> {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Backend is not available');
+
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const objectPath = `${orgId}/branding/logo.${ext || 'png'}`;
+
+    const { error } = await supabase.storage
+      .from('documents')
+      .upload(objectPath, file, { upsert: true, contentType: file.type, cacheControl: '3600' });
+
+    if (error) throw error;
+    return objectPath;
+  },
+
+  /** Creates a short-lived signed URL for a private stored object (e.g. the logo). */
+  async getSignedObjectUrl(objectPath: string, expiresIn = 3600): Promise<string> {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Backend is not available');
+
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .createSignedUrl(objectPath, expiresIn);
+
+    if (error) throw error;
+    return data.signedUrl;
   },
 };

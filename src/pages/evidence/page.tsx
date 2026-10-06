@@ -1,36 +1,65 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useOrg } from '@/contexts/OrgContext';
-import { evidenceService } from '@/services/evidence.service';
-import { useToast } from '@/components/base/Toast';
+import { evidenceService, type EvidenceJobItem } from '@/services/evidence.service';
+import { jobsService } from '@/services/jobs.service';
 import {
-  getAllEvidence,
-  getEvidenceTypeIcon,
-  getEvidenceTypeLabel,
-  getReviewStatusColor,
-  getReviewStatusLabel,
-  getVisibilityLabel,
-  getVisibilityColor,
-  getSyncStateLabel,
-  demoOfflineQueue,
-  evidenceQuickFilters,
-  type EvidenceRecord,
-} from '@/mocks/evidence';
-import { getActiveFindingsForRecord, hasHighSeverityFindings } from '@/mocks/photo-analysis';
+  evidenceTypeIcon,
+  evidenceTypeLabel,
+  reviewStatusColor,
+  reviewStatusLabel,
+  visibilityColor,
+  visibilityLabel,
+} from '@/lib/evidence';
+import JobPickerDialog, { type PickerJob } from './components/JobPickerDialog';
 
-type ViewMode = 'grid' | 'list' | 'timeline';
+type ViewMode = 'grid' | 'list';
+type PickerMode = 'capture' | 'dailyLog' | 'pack' | null;
+
+const quickFilters = [
+  { id: 'all', label: 'All evidence' },
+  { id: 'today', label: 'Today' },
+  { id: 'this_week', label: 'This week' },
+  { id: 'photos', label: 'Photos' },
+  { id: 'instructions', label: 'Instructions' },
+  { id: 'delays', label: 'Delays' },
+  { id: 'inspections', label: 'Inspections' },
+  { id: 'client_visible', label: 'Client visible' },
+  { id: 'needs_review', label: 'Needs review' },
+];
+
+function startOfToday(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+function startOfWeek(): string {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = (day + 6) % 7; // Monday-based
+  d.setDate(d.getDate() - diff);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
 
 export default function EvidenceWorkspace() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { showToast } = useToast();
-  const { organisation } = useOrg();
+  const { organisation, status: orgStatus, refreshOrganisations } = useOrg();
+  const orgId = organisation?.id ?? null;
 
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
+
+  const [items, setItems] = useState<EvidenceJobItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<PickerJob[]>([]);
+  const [pickerMode, setPickerMode] = useState<PickerMode>(null);
+
   const [summaryCounts, setSummaryCounts] = useState({
     capturedToday: 0,
     internalOnly: 0,
@@ -40,36 +69,65 @@ export default function EvidenceWorkspace() {
   });
   const [summaryLoading, setSummaryLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadCounts() {
-      if (!organisation?.id) return;
-      setSummaryLoading(true);
-      try {
-        const counts = await evidenceService.getSummaryCounts(organisation.id);
-        if (!cancelled) {
-          setSummaryCounts(counts);
-        }
-      } catch (err) {
-        console.error('Failed to load evidence summary counts:', err);
-      } finally {
-        if (!cancelled) {
-          setSummaryLoading(false);
-        }
-      }
+  const loadEvidence = useCallback(async () => {
+    if (!orgId) {
+      setItems([]);
+      setLoading(false);
+      return;
     }
-    loadCounts();
-    return () => {
-      cancelled = true;
-    };
-  }, [organisation?.id]);
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await evidenceService.listByOrg(orgId);
+      setItems(data);
+    } catch (err) {
+      console.error('Failed to load evidence:', err);
+      setLoadError(t('evidence.loadError'));
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, t]);
 
-  const allEvidence = useMemo(() => getAllEvidence(), []);
-  const offlineItems = useMemo(() => demoOfflineQueue, []);
+  const loadSummary = useCallback(async () => {
+    if (!orgId) {
+      setSummaryLoading(false);
+      return;
+    }
+    setSummaryLoading(true);
+    try {
+      const counts = await evidenceService.getSummaryCounts(orgId);
+      setSummaryCounts(counts);
+    } catch (err) {
+      console.error('Failed to load evidence summary counts:', err);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [orgId]);
+
+  const loadJobs = useCallback(async () => {
+    if (!orgId) {
+      setJobs([]);
+      return;
+    }
+    try {
+      const rows = await jobsService.getJobs(orgId);
+      setJobs(rows.map((j) => ({ id: j.id, reference: j.reference, project_name: j.project_name })));
+    } catch (err) {
+      console.error('Failed to load jobs for picker:', err);
+      setJobs([]);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    loadEvidence();
+    loadSummary();
+    loadJobs();
+  }, [loadEvidence, loadSummary, loadJobs]);
 
   const filtered = useMemo(() => {
-    let result = [...allEvidence];
-    if (search) {
+    let result = [...items];
+    if (search.trim()) {
       const s = search.toLowerCase();
       result = result.filter(
         (e) =>
@@ -77,46 +135,25 @@ export default function EvidenceWorkspace() {
           e.jobName.toLowerCase().includes(s) ||
           e.jobRef.toLowerCase().includes(s) ||
           e.capturedBy.toLowerCase().includes(s) ||
-          e.title.toLowerCase().includes(s),
+          evidenceTypeLabel(e.evidenceType).toLowerCase().includes(s),
       );
     }
     if (activeFilters.length > 0 && !activeFilters.includes('all')) {
-      if (activeFilters.includes('today')) {
-        const today = '2026-08-05';
-        result = result.filter((e) => e.capturedAt.startsWith(today));
-      }
-      if (activeFilters.includes('this_week')) {
-        result = result.filter((e) => e.capturedAt >= '2026-08-03');
-      }
-      if (activeFilters.includes('photos')) {
-        result = result.filter((e) => e.evidenceType === 'photo');
-      }
-      if (activeFilters.includes('instructions')) {
-        result = result.filter((e) => e.evidenceType === 'site_instruction');
-      }
-      if (activeFilters.includes('delays')) {
-        result = result.filter((e) => e.evidenceType === 'delay');
-      }
-      if (activeFilters.includes('inspections')) {
-        result = result.filter((e) => e.evidenceType === 'inspection');
-      }
-      if (activeFilters.includes('client_visible')) {
-        result = result.filter((e) => e.visibility === 'client_visible');
-      }
+      const today = startOfToday();
+      const week = startOfWeek();
+      if (activeFilters.includes('today')) result = result.filter((e) => e.capturedAt >= today);
+      if (activeFilters.includes('this_week')) result = result.filter((e) => e.capturedAt >= week);
+      if (activeFilters.includes('photos')) result = result.filter((e) => e.evidenceType === 'photo');
+      if (activeFilters.includes('instructions')) result = result.filter((e) => e.evidenceType === 'site_instruction');
+      if (activeFilters.includes('delays')) result = result.filter((e) => e.evidenceType === 'delay');
+      if (activeFilters.includes('inspections')) result = result.filter((e) => e.evidenceType === 'inspection');
+      if (activeFilters.includes('client_visible')) result = result.filter((e) => e.visibility === 'client_visible');
       if (activeFilters.includes('needs_review')) {
-        result = result.filter(
-          (e) => e.reviewStatus === 'awaiting_review' || e.reviewStatus === 'submitted',
-        );
-      }
-      if (activeFilters.includes('ai_findings')) {
-        result = result.filter((e) => getActiveFindingsForRecord(e.id).length > 0);
-      }
-      if (activeFilters.includes('offline_queue')) {
-        result = [];
+        result = result.filter((e) => ['awaiting_review', 'submitted'].includes(e.reviewStatus));
       }
     }
     return result;
-  }, [search, activeFilters, allEvidence]);
+  }, [search, activeFilters, items]);
 
   const toggleFilter = (id: string) => {
     setActiveFilters((prev) => {
@@ -128,32 +165,41 @@ export default function EvidenceWorkspace() {
   };
 
   const summaryCards = [
-    {
-      label: 'Captured today',
-      value: summaryCounts.capturedToday,
-      color: 'bg-primary-50 text-primary-700',
-    },
-    {
-      label: 'Internal only',
-      value: summaryCounts.internalOnly,
-      color: 'bg-gray-100 text-gray-600',
-    },
-    {
-      label: 'Client visible',
-      value: summaryCounts.clientVisible,
-      color: 'bg-primary-50 text-primary-700',
-    },
-    {
-      label: 'Needs review',
-      value: summaryCounts.needsReview,
-      color: 'bg-status-amber-pale text-status-amber',
-    },
-    {
-      label: 'Offline queue',
-      value: summaryCounts.offlineQueue,
-      color: 'bg-status-amber-pale text-status-amber',
-    },
+    { label: t('evidence.capturedToday'), value: summaryCounts.capturedToday, color: 'bg-primary-50 text-primary-700' },
+    { label: t('evidence.internalOnly'), value: summaryCounts.internalOnly, color: 'bg-gray-100 text-gray-600' },
+    { label: t('evidence.clientVisible'), value: summaryCounts.clientVisible, color: 'bg-primary-50 text-primary-700' },
+    { label: t('evidence.needsReview'), value: summaryCounts.needsReview, color: 'bg-status-amber-pale text-status-amber' },
   ];
+
+  const handlePickerSelect = (jobId: string) => {
+    const mode = pickerMode;
+    setPickerMode(null);
+    if (mode === 'capture') navigate(`/site/${jobId}/capture`);
+    if (mode === 'dailyLog') navigate(`/jobs/${jobId}/daily-logs/new`);
+    if (mode === 'pack') navigate(`/jobs/${jobId}/evidence-pack`);
+  };
+
+  if (orgStatus === 'error') {
+    return (
+      <CentreMessage
+        icon="ri-error-warning-line"
+        title={t('evidence.loadError')}
+        description={t('evidence.loadErrorDesc')}
+        actionLabel={t('evidence.retry')}
+        onAction={() => refreshOrganisations()}
+      />
+    );
+  }
+
+  if (orgStatus === 'empty' || (!orgId && !loading)) {
+    return (
+      <CentreMessage
+        icon="ri-building-2-line"
+        title={t('evidence.noOrg')}
+        description={t('evidence.noOrgDesc')}
+      />
+    );
+  }
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6 space-y-6">
@@ -166,21 +212,21 @@ export default function EvidenceWorkspace() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             className="h-9 px-4 border border-border text-main text-sm font-medium rounded-xl hover:bg-page cursor-pointer whitespace-nowrap"
-            onClick={() => navigate('/site/sl-1048/capture')}
+            onClick={() => setPickerMode('capture')}
           >
             <i className="ri-camera-line mr-1.5"></i>
             {t('evidence.captureEvidence')}
           </button>
           <button
             className="h-9 px-4 border border-border text-main text-sm font-medium rounded-xl hover:bg-page cursor-pointer whitespace-nowrap"
-            onClick={() => navigate('/jobs/sl-1048/daily-logs/new')}
+            onClick={() => setPickerMode('dailyLog')}
           >
             <i className="ri-file-list-3-line mr-1.5"></i>
             {t('evidence.createDailyLog')}
           </button>
           <button
             className="h-9 px-4 border border-border text-main text-sm font-medium rounded-xl hover:bg-page cursor-pointer whitespace-nowrap"
-            onClick={() => navigate('/jobs/sl-1048/evidence-pack')}
+            onClick={() => setPickerMode('pack')}
           >
             <i className="ri-archive-line mr-1.5"></i>
             {t('evidence.buildPack')}
@@ -189,7 +235,7 @@ export default function EvidenceWorkspace() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {summaryCards.map((card) => (
           <div key={card.label} className="bg-white border border-border rounded-2xl p-4">
             <p className="text-2xl font-bold text-main">
@@ -218,9 +264,8 @@ export default function EvidenceWorkspace() {
             />
           </div>
         </div>
-        {/* Quick Filters */}
         <div className="px-4 pb-2 flex items-center gap-1.5 overflow-x-auto flex-wrap">
-          {evidenceQuickFilters.map((f) => (
+          {quickFilters.map((f) => (
             <button
               key={f.id}
               onClick={() => toggleFilter(f.id)}
@@ -233,14 +278,6 @@ export default function EvidenceWorkspace() {
               {f.label}
             </button>
           ))}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full cursor-pointer whitespace-nowrap transition-colors ${
-              showFilters ? 'bg-primary-500 text-white' : 'bg-page text-muted hover:text-main'
-            }`}
-          >
-            <i className="ri-equalizer-line mr-1"></i>Filters
-          </button>
           {activeFilters.length > 0 && (
             <button
               onClick={() => setActiveFilters([])}
@@ -250,9 +287,8 @@ export default function EvidenceWorkspace() {
             </button>
           )}
         </div>
-        {/* View Toggle */}
         <div className="px-4 pb-3 flex items-center gap-1">
-          {(['grid', 'list', 'timeline'] as ViewMode[]).map((v) => (
+          {(['grid', 'list'] as ViewMode[]).map((v) => (
             <button
               key={v}
               onClick={() => setViewMode(v)}
@@ -261,122 +297,184 @@ export default function EvidenceWorkspace() {
               }`}
               title={v}
             >
-              <i
-                className={`text-sm ${v === 'grid' ? 'ri-layout-grid-line' : v === 'list' ? 'ri-list-check' : 'ri-timeline-view'}`}
-              ></i>
+              <i className={`text-sm ${v === 'grid' ? 'ri-layout-grid-line' : 'ri-list-check'}`}></i>
             </button>
           ))}
           <span className="text-xs text-muted ml-2">{filtered.length} items</span>
         </div>
       </div>
 
-      {/* No Results */}
-      {filtered.length === 0 && (
+      {/* Loading */}
+      {loading && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white border border-border rounded-2xl overflow-hidden animate-pulse">
+              <div className="aspect-[4/3] bg-page" />
+              <div className="p-3 space-y-2">
+                <div className="h-3 bg-page rounded w-3/4" />
+                <div className="h-3 bg-page rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error */}
+      {!loading && loadError && (
+        <div className="bg-white border border-border rounded-2xl p-12 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-page flex items-center justify-center mx-auto mb-4">
+            <i className="ri-error-warning-line text-2xl text-status-red"></i>
+          </div>
+          <h3 className="text-lg font-semibold text-main mb-2">{loadError}</h3>
+          <p className="text-sm text-muted mb-4">{t('evidence.loadErrorDesc')}</p>
+          <button
+            className="h-10 px-5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap"
+            onClick={loadEvidence}
+          >
+            {t('evidence.retry')}
+          </button>
+        </div>
+      )}
+
+      {/* Empty / No results */}
+      {!loading && !loadError && filtered.length === 0 && (
         <div className="flex items-center justify-center min-h-[40vh]">
           <div className="text-center">
             <div className="w-16 h-16 rounded-2xl bg-page flex items-center justify-center mx-auto mb-4">
               <i className="ri-image-line text-2xl text-muted"></i>
             </div>
             <h3 className="text-base font-semibold text-main">
-              {allEvidence.length === 0 ? t('evidence.noEvidence') : t('evidence.noResults')}
+              {items.length === 0 ? t('evidence.noEvidence') : t('evidence.noResults')}
             </h3>
             <p className="text-sm text-muted mt-1">
-              {allEvidence.length === 0 ? t('evidence.noEvidenceDesc') : t('evidence.noResultsDesc')}
+              {items.length === 0 ? t('evidence.noEvidenceDesc') : t('evidence.noResultsDesc')}
             </p>
+            {items.length === 0 && (
+              <button
+                className="mt-4 h-10 px-5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap"
+                onClick={() => setPickerMode('capture')}
+              >
+                <i className="ri-camera-line mr-1.5"></i>
+                {t('evidence.captureFirst')}
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* Evidence Grid */}
-      {viewMode === 'grid' && filtered.length > 0 && (
+      {/* Grid */}
+      {!loading && !loadError && viewMode === 'grid' && filtered.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filtered.map((ev) => renderEvidenceCard(ev, navigate, t))}
+          {filtered.map((ev) => (
+            <EvidenceCard key={ev.id} ev={ev} onOpen={() => navigate(`/evidence/${ev.id}`)} />
+          ))}
         </div>
       )}
 
-      {/* Evidence List */}
-      {viewMode === 'list' && filtered.length > 0 && (
-        <div className="space-y-2">{filtered.map((ev) => renderEvidenceRow(ev, navigate, t))}</div>
-      )}
-
-      {/* Offline Queue Banner */}
-      {offlineItems.length > 0 && (
-        <div className="bg-status-amber-pale border border-[#F5E0C0] rounded-2xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-status-amber/20 flex items-center justify-center">
-              <i className="ri-cloud-off-line text-lg text-status-amber"></i>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-main">Offline queue</p>
-              <p className="text-xs text-muted">{offlineItems.length} items waiting to sync</p>
-            </div>
-          </div>
-          <button
-            className="h-9 px-4 bg-status-amber text-white text-sm font-semibold rounded-xl hover:bg-status-amber/90 cursor-pointer whitespace-nowrap"
-            onClick={() => showToast('Demo queue processed.', 'success')}
-          >
-            Process queue
-          </button>
+      {/* List */}
+      {!loading && !loadError && viewMode === 'list' && filtered.length > 0 && (
+        <div className="space-y-2">
+          {filtered.map((ev) => (
+            <EvidenceRow key={ev.id} ev={ev} onOpen={() => navigate(`/evidence/${ev.id}`)} />
+          ))}
         </div>
       )}
+
+      <JobPickerDialog
+        open={pickerMode !== null}
+        jobs={jobs}
+        title={t('evidence.pickJobTitle')}
+        description={t('evidence.pickJobDesc')}
+        emptyText={jobs.length === 0 ? t('evidence.noJobsDesc') : t('evidence.noResults')}
+        searchPlaceholder={t('evidence.searchPlaceholder')}
+        selectLabel={t('evidence.openJob')}
+        cancelLabel={t('dashboard.cancel')}
+        onSelect={handlePickerSelect}
+        onCancel={() => setPickerMode(null)}
+      />
     </div>
   );
 }
 
-function renderEvidenceCard(
-  ev: EvidenceRecord,
-  navigate: (path: string) => void,
-  t: (key: string) => string,
-) {
-  const hasImage = ev.attachments?.some((a) => a.previewUrl) ?? false;
-  const previewUrl = ev.attachments?.find((a) => a.previewUrl)?.previewUrl;
-  const aiCount = getActiveFindingsForRecord(ev.id).length;
-  const aiHigh = hasHighSeverityFindings(ev.id);
+function CentreMessage({
+  icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-16">
+      <div className="bg-white border border-border rounded-2xl p-12 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-page flex items-center justify-center mx-auto mb-4">
+          <i className={`${icon} text-2xl text-muted`}></i>
+        </div>
+        <h3 className="text-lg font-semibold text-main mb-2">{title}</h3>
+        <p className="text-sm text-muted mb-4">{description}</p>
+        {actionLabel && onAction && (
+          <button
+            className="h-10 px-5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap"
+            onClick={onAction}
+          >
+            {actionLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function formatDate(value: string): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function EvidenceCard({ ev, onOpen }: { ev: EvidenceJobItem; onOpen: () => void }) {
   return (
     <div
-      key={ev.id}
       className="bg-white border border-border rounded-2xl overflow-hidden cursor-pointer hover:border-primary-200 transition-colors group"
-      onClick={() => navigate(`/evidence/${ev.id}`)}
+      onClick={onOpen}
     >
       <div className="aspect-[4/3] bg-page relative">
-        {previewUrl ? (
-          <img src={previewUrl} alt={ev.caption} className="w-full h-full object-cover" />
+        {ev.previewUrl ? (
+          <img src={ev.previewUrl} alt={ev.caption || 'Evidence'} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <i className={`${getEvidenceTypeIcon(ev.evidenceType)} text-3xl text-muted`}></i>
+            <i className={`${evidenceTypeIcon(ev.evidenceType)} text-3xl text-muted`}></i>
           </div>
         )}
-        <div className="absolute top-2 left-2 flex items-center gap-1.5">
+        <div className="absolute top-2 left-2">
           <span className="text-[10px] font-medium bg-white/90 backdrop-blur-sm text-main px-2 py-0.5 rounded-full">
-            {getEvidenceTypeLabel(ev.evidenceType)}
+            {evidenceTypeLabel(ev.evidenceType)}
           </span>
         </div>
         <div className="absolute top-2 right-2">
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getVisibilityColor(ev.visibility)}`}>
-            {getVisibilityLabel(ev.visibility)}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${visibilityColor(ev.visibility)}`}>
+            {visibilityLabel(ev.visibility)}
           </span>
         </div>
-        {aiCount > 0 && (
-          <div className={`absolute bottom-2 left-2 flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white ${aiHigh ? 'bg-status-red' : 'bg-status-amber'}`}>
-            <i className="ri-shield-flash-line text-xs"></i>
-            {aiCount} AI {aiCount > 1 ? 'findings' : 'finding'}
-          </div>
-        )}
       </div>
       <div className="p-3">
-        <p className="text-xs text-main leading-snug line-clamp-2">{ev.caption}</p>
+        <p className="text-xs text-main leading-snug line-clamp-2">{ev.caption || 'No caption'}</p>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[10px] text-muted">
-            {ev.jobRef} · {ev.projectStage}
+          <span className="text-[10px] text-muted truncate">
+            {ev.jobRef || '—'}
+            {ev.projectStage ? ` · ${ev.projectStage}` : ''}
           </span>
-          <span className="text-[10px] text-muted">
-            {new Date(ev.capturedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-          </span>
+          <span className="text-[10px] text-muted whitespace-nowrap">{formatDate(ev.capturedAt)}</span>
         </div>
         <div className="flex items-center justify-between mt-1.5">
-          <span className="text-[10px] text-muted">{ev.capturedBy}</span>
-          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${getReviewStatusColor(ev.reviewStatus)}`}>
-            {getReviewStatusLabel(ev.reviewStatus)}
+          <span className="text-[10px] text-muted truncate">{ev.capturedBy}</span>
+          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${reviewStatusColor(ev.reviewStatus)}`}>
+            {reviewStatusLabel(ev.reviewStatus)}
           </span>
         </div>
       </div>
@@ -384,54 +482,34 @@ function renderEvidenceCard(
   );
 }
 
-function renderEvidenceRow(
-  ev: EvidenceRecord,
-  navigate: (path: string) => void,
-  t: (key: string) => string,
-) {
-  const aiCount = getActiveFindingsForRecord(ev.id).length;
-  const aiHigh = hasHighSeverityFindings(ev.id);
+function EvidenceRow({ ev, onOpen }: { ev: EvidenceJobItem; onOpen: () => void }) {
   return (
     <div
-      key={ev.id}
       className="bg-white border border-border rounded-2xl p-4 cursor-pointer hover:border-primary-200 transition-colors flex items-center gap-4"
-      onClick={() => navigate(`/evidence/${ev.id}`)}
+      onClick={onOpen}
     >
       <div className="w-12 h-12 rounded-xl bg-page flex items-center justify-center flex-shrink-0 overflow-hidden">
-        {ev.attachments?.find((a) => a.previewUrl) ? (
-          <img
-            src={ev.attachments?.find((a) => a.previewUrl)?.previewUrl}
-            alt=""
-            className="w-full h-full object-cover"
-          />
+        {ev.previewUrl ? (
+          <img src={ev.previewUrl} alt="" className="w-full h-full object-cover" />
         ) : (
-          <i className={`${getEvidenceTypeIcon(ev.evidenceType)} text-lg text-muted`}></i>
+          <i className={`${evidenceTypeIcon(ev.evidenceType)} text-lg text-muted`}></i>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-xs font-medium text-main truncate">{ev.title}</span>
-          <span className="text-[10px] text-primary-500 font-medium">{ev.jobRef}</span>
+          <span className="text-xs font-medium text-main truncate">{evidenceTypeLabel(ev.evidenceType)}</span>
+          {ev.jobRef && <span className="text-[10px] text-primary-500 font-medium">{ev.jobRef}</span>}
         </div>
-        <p className="text-[11px] text-muted truncate">{ev.caption}</p>
+        <p className="text-[11px] text-muted truncate">{ev.caption || 'No caption'}</p>
       </div>
-      <div className="hidden sm:block text-xs text-muted">{getEvidenceTypeLabel(ev.evidenceType)}</div>
-      <div className="hidden sm:block text-xs text-muted">{ev.projectStage}</div>
-      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${getReviewStatusColor(ev.reviewStatus)}`}>
-        {getReviewStatusLabel(ev.reviewStatus)}
+      <div className="hidden sm:block text-xs text-muted truncate max-w-[160px]">{ev.capturedBy}</div>
+      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${reviewStatusColor(ev.reviewStatus)}`}>
+        {reviewStatusLabel(ev.reviewStatus)}
       </span>
-      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${getVisibilityColor(ev.visibility)}`}>
-        {getVisibilityLabel(ev.visibility)}
+      <span className={`text-[9px] px-1.5 py-0.5 rounded-full whitespace-nowrap ${visibilityColor(ev.visibility)}`}>
+        {visibilityLabel(ev.visibility)}
       </span>
-      {aiCount > 0 && (
-        <span className={`flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full text-white ${aiHigh ? 'bg-status-red' : 'bg-status-amber'}`}>
-          <i className="ri-shield-flash-line text-[10px]"></i>{aiCount}
-        </span>
-      )}
-      <span className="hidden sm:block text-[10px] text-muted">{ev.capturedBy}</span>
-      <span className="text-[10px] text-muted whitespace-nowrap">
-        {new Date(ev.capturedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-      </span>
+      <span className="text-[10px] text-muted whitespace-nowrap">{formatDate(ev.capturedAt)}</span>
       <i className="ri-arrow-right-s-line text-muted flex-shrink-0"></i>
     </div>
   );

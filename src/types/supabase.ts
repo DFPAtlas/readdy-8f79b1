@@ -7,6 +7,7 @@ export interface Database {
         Row: {
           id: string;
           full_name: string | null;
+          email: string | null;
           phone: string | null;
           job_title: string | null;
           avatar_path: string | null;
@@ -16,6 +17,7 @@ export interface Database {
         Insert: {
           id: string;
           full_name?: string | null;
+          email?: string | null;
           phone?: string | null;
           job_title?: string | null;
           avatar_path?: string | null;
@@ -25,6 +27,7 @@ export interface Database {
         Update: {
           id?: string;
           full_name?: string | null;
+          email?: string | null;
           phone?: string | null;
           job_title?: string | null;
           avatar_path?: string | null;
@@ -393,6 +396,55 @@ export interface Database {
         Relationships: [
           { foreignKeyName: 'job_members_job_id_fkey'; columns: ['job_id']; referencedRelation: 'jobs'; referencedColumns: ['id'] },
           { foreignKeyName: 'job_members_organisation_id_fkey'; columns: ['organisation_id']; referencedRelation: 'organisations'; referencedColumns: ['id'] },
+        ];
+      };
+      job_drafts: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          created_by: string;
+          client_id: string | null;
+          reference: string | null;
+          project_name: string | null;
+          current_step: number;
+          payload: Json;
+          status: string;
+          converted_job_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          created_by: string;
+          client_id?: string | null;
+          reference?: string | null;
+          project_name?: string | null;
+          current_step?: number;
+          payload?: Json;
+          status?: string;
+          converted_job_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organisation_id?: string;
+          created_by?: string;
+          client_id?: string | null;
+          reference?: string | null;
+          project_name?: string | null;
+          current_step?: number;
+          payload?: Json;
+          status?: string;
+          converted_job_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          { foreignKeyName: 'job_drafts_organisation_id_fkey'; columns: ['organisation_id']; referencedRelation: 'organisations'; referencedColumns: ['id'] },
+          { foreignKeyName: 'job_drafts_client_id_fkey'; columns: ['client_id']; referencedRelation: 'clients'; referencedColumns: ['id'] },
+          { foreignKeyName: 'job_drafts_converted_job_id_fkey'; columns: ['converted_job_id']; referencedRelation: 'jobs'; referencedColumns: ['id'] },
         ];
       };
       workforce_people: {
@@ -957,7 +1009,25 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      create_organisation_with_owner: {
+        Args: {
+          p_name: string;
+          p_trading_name?: string | null;
+          p_company_number?: string | null;
+          p_vat_number?: string | null;
+          p_utr_reference?: string | null;
+          p_address_line1?: string | null;
+          p_address_line2?: string | null;
+          p_town_city?: string | null;
+          p_county?: string | null;
+          p_postcode?: string | null;
+          p_phone?: string | null;
+          p_email?: string | null;
+        };
+        Returns: string;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

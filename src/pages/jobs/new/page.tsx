@@ -1,11 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/components/base/Toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { clientsService } from '@/services/clients.service';
 import { jobsService } from '@/services/jobs.service';
+import { jobDraftsService } from '@/services/jobDrafts.service';
+import OrganisationOnboarding from '@/components/feature/OrganisationOnboarding';
 import { poundsToPence } from '@/lib/money';
+import {
+  normalizePricingType,
+  normalizeVatTreatment,
+  normalizePrincipalContractor,
+  normalizeDurationUnit,
+  normalizeRamsRequired,
+} from '@/lib/job-enums';
 import type { Database } from '@/types/supabase';
 import ContractStep from './components/ContractStep';
 import {
@@ -27,12 +37,20 @@ function generateReference(): string {
 export default function NewJobWizard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showToast } = useToast();
-  const { organisation } = useOrg();
+  const { user } = useAuth();
+  const { organisation, loading: orgLoading, status: orgStatus, refreshOrganisations } = useOrg();
   const orgId = organisation?.id;
+  const draftParam = searchParams.get('draft');
 
   const [currentStep, setCurrentStep] = useState(0);
   const [draft, setDraft] = useState<WizardDraft>({});
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftLoading, setDraftLoading] = useState<boolean>(Boolean(draftParam));
+  const [draftLoadError, setDraftLoadError] = useState<string | null>(null);
+  const [draftReloadKey, setDraftReloadKey] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createdJob, setCreatedJob] = useState<{ id: string; reference: string } | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
@@ -43,6 +61,8 @@ export default function NewJobWizard() {
   const [confirmed, setConfirmed] = useState(false);
   const step3Ref = useRef<HTMLDivElement>(null);
   const creatingRef = useRef(false);
+  const savingRef = useRef(false);
+  const draftLoadedRef = useRef(false);
 
   const clientType = draft.step1?.clientType || 'new';
 
@@ -72,51 +92,94 @@ export default function NewJobWizard() {
     }
   }, [clientType, loadClients]);
 
-  // Load draft from localStorage
+  // Load a persisted draft from Supabase when the wizard is opened via ?draft=<id>.
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('buildnerve_jobDraft') || localStorage.getItem('siteLedger_jobDraft');
-      if (saved) {
-        const parsed = JSON.parse(saved) as { draft: WizardDraft; step: number };
-        setDraft(parsed.draft || {});
-        setCurrentStep(parsed.step || 0);
+    if (!draftParam || draftLoadedRef.current) return;
+    if (orgLoading) return;
+    if (!orgId) {
+      setDraftLoading(false);
+      setDraftLoadError(t('dashboard.orgLoadError'));
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setDraftLoading(true);
+      setDraftLoadError(null);
+      try {
+        const row = await jobDraftsService.getDraft(draftParam, orgId);
+        if (cancelled) return;
+        if (!row) {
+          setDraftLoadError(t('dashboard.draftNotFound'));
+          return;
+        }
+        setDraftId(row.id);
+        setDraft((row.payload as unknown as WizardDraft) || {});
+        setCurrentStep(Math.min(Math.max(row.current_step ?? 0, 0), 6));
+        draftLoadedRef.current = true;
+      } catch (err) {
+        console.error('Failed to load draft:', err);
+        if (!cancelled) setDraftLoadError(t('dashboard.draftLoadError'));
+      } finally {
+        if (!cancelled) setDraftLoading(false);
       }
-    } catch { /* ignore */ }
-  }, []);
-
-  // Save draft on changes
-  const saveDraft = (d: WizardDraft, step?: number) => {
-    try {
-      localStorage.setItem('buildnerve_jobDraft', JSON.stringify({ draft: d, step: step ?? currentStep }));
-    } catch { /* ignore */ }
-  };
+    })();
+    return () => { cancelled = true; };
+  }, [draftParam, orgId, orgLoading, draftReloadKey, t]);
 
   const updateDraft = (key: keyof WizardDraft, data: Record<string, unknown>) => {
     setDraft((prev) => {
       const next = { ...prev };
       (next as Record<string, unknown>)[key] = { ...((next as Record<string, unknown>)[key] || {}), ...data };
-      saveDraft(next);
       return next;
     });
   };
 
-  const goNext = () => {
-    if (currentStep < 6) setCurrentStep((p) => { saveDraft(draft, p + 1); return p + 1; });
-  };
+  const goNext = () => { if (currentStep < 6) setCurrentStep((p) => Math.min(p + 1, 6)); };
 
-  const goBack = () => {
-    if (currentStep > 0) setCurrentStep((p) => { saveDraft(draft, p - 1); return p - 1; });
-  };
+  const goBack = () => { if (currentStep > 0) setCurrentStep((p) => Math.max(p - 1, 0)); };
 
-  const goToStep = (stepIdx: number) => {
-    setCurrentStep(stepIdx);
-    saveDraft(draft, stepIdx);
+  const goToStep = (stepIdx: number) => setCurrentStep(stepIdx);
+
+  // Returns the wizard step (index) that needs attention plus a safe user message,
+  // or null when the record is ready to submit.
+  const validateForSubmit = (): { step: number; message: string } | null => {
+    const s1 = draft.step1 || {};
+    const s2 = draft.step2 || {};
+    if (!(s2.jobName || '').trim()) {
+      return { step: 1, message: t('dashboard.validationJobName') };
+    }
+    if (s1.clientType === 'existing') {
+      if (!s1.existingClientId) {
+        return { step: 0, message: t('dashboard.validationClient') };
+      }
+    } else {
+      if (s1.clientTypeEntity === 'business') {
+        if (!(s1.companyName || '').trim()) {
+          return { step: 0, message: t('dashboard.validationCompany') };
+        }
+      } else if (!(s1.firstName || '').trim() || !(s1.lastName || '').trim()) {
+        return { step: 0, message: t('dashboard.validationClientName') };
+      }
+      const site = s1.useBillingAsSite ? s1.billingAddress : s1.siteAddress;
+      if (!site || !(site.addressLine1 || '').trim() || !(site.town || '').trim() || !(site.postcode || '').trim()) {
+        return { step: 0, message: t('dashboard.validationSite') };
+      }
+    }
+    return null;
   };
 
   const handleCreateJob = async () => {
-    if (creatingRef.current) return;
-    if (!orgId) {
-      showToast('No organisation selected. Please set up an organisation before creating a job.', 'error');
+    if (creatingRef.current || createdJob) return;
+    if (!orgId || !user) {
+      showToast(t('dashboard.draftRequiredOrg'), 'warning');
+      return;
+    }
+
+    const validation = validateForSubmit();
+    if (validation) {
+      // Send the user back to the step that needs attention so nothing is silently blocked.
+      goToStep(validation.step);
+      showToast(validation.message, 'warning');
       return;
     }
 
@@ -127,20 +190,18 @@ export default function NewJobWizard() {
     const s5 = draft.step5 || {};
 
     const projectName = (s2.jobName || '').trim();
-    if (!projectName) {
-      showToast('Please enter a job name.', 'error');
-      return;
-    }
-
     const reference = (s2.jobReference || '').trim() || generateReference();
 
     creatingRef.current = true;
     setCreating(true);
 
+    // Declared outside the try so the catch block can roll back an orphaned client.
+    let createdClientId: string | null = null;
+
     try {
       const duplicate = await jobsService.referenceExists(orgId, reference);
       if (duplicate) {
-        showToast(`Reference "${reference}" is already in use. Please choose another.`, 'error');
+        showToast(`Reference "${reference}" is already in use. Please choose another.`, 'warning');
         return;
       }
 
@@ -148,13 +209,13 @@ export default function NewJobWizard() {
       if (s1.clientType === 'existing') {
         clientId = s1.existingClientId || null;
         if (!clientId) {
-          showToast('Please select an existing client.', 'error');
+          showToast(t('dashboard.validationClient'), 'warning');
           return;
         }
       } else {
         const billing = s1.billingAddress;
         const site = s1.useBillingAsSite ? billing : s1.siteAddress;
-        const created = await clientsService.createClient({
+        const createdClient = await clientsService.createClient({
           organisation_id: orgId,
           client_type: s1.clientTypeEntity === 'business' ? 'business' : 'individual',
           first_name: s1.firstName?.trim() || null,
@@ -174,7 +235,8 @@ export default function NewJobWizard() {
           site_county: site?.county?.trim() || null,
           site_postcode: site?.postcode?.trim() || null,
         });
-        clientId = created.id;
+        clientId = createdClient.id;
+        createdClientId = createdClient.id;
       }
 
       const jobInput: Database['public']['Tables']['jobs']['Insert'] = {
@@ -187,21 +249,24 @@ export default function NewJobWizard() {
         status: 'enquiry',
         short_description: s2.description || null,
         scope_of_works: s3.detailedScope || null,
-        pricing_type: s3.pricingType || null,
+        // Normalise UI labels to the canonical enum values the jobs table CHECK
+        // constraints accept (previously a raw label caused a 23514 violation).
+        pricing_type: normalizePricingType(s3.pricingType),
         estimated_value_pence: poundsToPence(s3.estimatedValue),
-        vat_treatment: s3.vatTreatment || null,
+        vat_treatment: normalizeVatTreatment(s3.vatTreatment),
         deposit_pence: poundsToPence(s3.depositAmount),
         retention_applies: !!s3.retentionApplies,
-        retention_percentage: s3.retentionPercentage ?? null,
+        retention_percentage: s3.retentionApplies ? (s3.retentionPercentage ?? null) : null,
         payment_terms: s3.paymentTerms || s3.paymentSchedule || null,
-        proposed_start_date: s4.startDate || null,
-        estimated_duration: s4.estimatedDuration ?? null,
-        duration_unit: s4.durationUnit || null,
-        target_completion_date: s4.targetCompletion || null,
+        // Empty optional dates must be null, never an empty string (a date column rejects '').
+        proposed_start_date: (s4.startDate || '').trim() || null,
+        estimated_duration: typeof s4.estimatedDuration === 'number' && Number.isFinite(s4.estimatedDuration) ? s4.estimatedDuration : null,
+        duration_unit: normalizeDurationUnit(s4.durationUnit),
+        target_completion_date: (s4.targetCompletion || '').trim() || null,
         site_working_hours: s4.siteWorkingHours || null,
         project_manager_id: null,
-        rams_required: s5.ramsRequired || null,
-        principal_contractor: s5.principalContractorRole || null,
+        rams_required: normalizeRamsRequired(s5.ramsRequired),
+        principal_contractor: normalizePrincipalContractor(s5.principalContractorRole),
         access_notes: s1.accessNotes || null,
         parking_notes: null,
         waste_notes: null,
@@ -213,28 +278,151 @@ export default function NewJobWizard() {
 
       const created = await jobsService.createJob(jobInput);
 
-      setCreatedJob({ id: created.id, reference: created.reference });
-      localStorage.removeItem('buildnerve_jobDraft');
-      localStorage.removeItem('siteLedger_jobDraft');
-    } catch (err) {
-      console.error('Failed to create job:', err);
-      const message = err instanceof Error ? err.message : '';
-      if (message.includes('duplicate') || message.includes('23505')) {
-        showToast(`Reference "${reference}" is already in use. Please choose another.`, 'error');
-      } else {
-        showToast('Could not create the job. Please try again.', 'error');
+      // Convert the same draft rather than leaving it listed as a draft, so it
+      // can never be turned into a second job.
+      if (draftId) {
+        try {
+          await jobDraftsService.completeDraft(draftId, orgId, created.id);
+        } catch (draftErr) {
+          console.error('Failed to mark draft as completed:', draftErr);
+        }
       }
+      setDraftId(null);
+      draftLoadedRef.current = false;
+      setCreatedJob({ id: created.id, reference: created.reference });
+    } catch (err) {
+      // Keep technical diagnostics for developers (no credentials or form values logged).
+      const e = err as { code?: string; message?: string; details?: string; hint?: string };
+      console.error('Failed to create job', {
+        code: e?.code,
+        message: e?.message,
+        details: e?.details,
+        hint: e?.hint,
+      });
+      const code = e?.code || '';
+      const msg = (e?.message || '').toLowerCase();
+      // Best-effort rollback: if we created a client for this attempt but the job insert
+      // failed, archive it so no half-finished record is left behind.
+      if (createdClientId) {
+        try {
+          await clientsService.archiveClient(createdClientId, orgId);
+        } catch (cleanupErr) {
+          console.error('Failed to roll back orphaned client', { message: (cleanupErr as Error)?.message });
+        }
+      }
+      let userMessage = t('dashboard.createJobErrorGeneric');
+      if (code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
+        userMessage = t('dashboard.createJobErrorDuplicate');
+      } else if (code === '23514' || msg.includes('check constraint')) {
+        userMessage = t('dashboard.createJobErrorInvalidOption');
+      } else if (code === '42501' || msg.includes('row-level security') || msg.includes('permission denied')) {
+        userMessage = t('dashboard.createJobErrorPermission');
+      } else if (code === '23503' || msg.includes('foreign key')) {
+        userMessage = t('dashboard.createJobErrorRelation');
+      }
+      showToast(userMessage, 'warning');
     } finally {
       creatingRef.current = false;
       setCreating(false);
     }
   };
 
-  const handleSaveDraft = () => {
-    saveDraft(draft, currentStep);
-    showToast('Draft saved. You can resume from the Jobs workspace.', 'info');
-    navigate('/jobs');
+  const handleSaveDraft = async () => {
+    if (savingRef.current) return;
+    if (!orgId || !user) {
+      showToast(t('dashboard.draftSaveNoOrg'), 'warning');
+      return;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const row = await jobDraftsService.saveDraft({
+        draftId,
+        organisationId: orgId,
+        userId: user.id,
+        clientId: draft.step1?.existingClientId ?? null,
+        reference: draft.step2?.jobReference ?? null,
+        projectName: draft.step2?.jobName ?? null,
+        currentStep,
+        payload: draft,
+      });
+      setDraftId(row.id);
+      draftLoadedRef.current = true;
+      showToast(t('dashboard.draftSavedDesc'), 'success');
+      navigate('/jobs');
+    } catch (err) {
+      console.error('Failed to save draft:', err);
+      showToast(t('dashboard.draftSaveErrorDesc'), 'warning');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
+
+  // ─── Organisation / draft gates ──────────────────────
+  if (orgLoading || draftLoading) {
+    return (
+      <div className="max-w-[720px] mx-auto px-4 md:px-6 py-24 flex flex-col items-center justify-center text-center">
+        <i className="ri-loader-4-line animate-spin text-2xl text-primary-500"></i>
+        <p className="text-sm text-muted mt-3">{draftParam ? t('dashboard.loadingDraft') : t('dashboard.brand')}</p>
+      </div>
+    );
+  }
+
+  if (draftLoadError) {
+    return (
+      <div className="max-w-[720px] mx-auto px-4 md:px-6 py-12">
+        <div className="bg-white border border-border rounded-2xl p-8 md:p-12 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-page flex items-center justify-center mx-auto mb-4">
+            <i className="ri-error-warning-line text-2xl text-status-red"></i>
+          </div>
+          <h2 className="text-lg font-semibold text-main mb-2">{t('dashboard.draftLoadError')}</h2>
+          <p className="text-sm text-muted mb-5">{draftLoadError}</p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              className="w-full sm:w-auto h-10 px-5 border border-border text-main text-sm font-medium rounded-xl hover:bg-page transition-colors cursor-pointer whitespace-nowrap"
+              onClick={() => navigate('/jobs')}
+            >
+              {t('dashboard.backToJobs')}
+            </button>
+            <button
+              className="w-full sm:w-auto h-10 px-5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+              onClick={() => { setDraftLoadError(null); setDraftLoading(true); setDraftReloadKey((k) => k + 1); }}
+            >
+              {t('dashboard.retry')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (orgStatus === 'error' || !orgId) {
+    if (orgStatus === 'error') {
+      return (
+        <div className="max-w-[720px] mx-auto px-4 md:px-6 py-12">
+          <div className="bg-white border border-border rounded-2xl p-8 md:p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-page flex items-center justify-center mx-auto mb-4">
+              <i className="ri-error-warning-line text-2xl text-status-red"></i>
+            </div>
+            <h2 className="text-lg font-semibold text-main mb-2">{t('dashboard.orgLoadError')}</h2>
+            <p className="text-sm text-muted mb-5">{t('dashboard.orgLoadErrorDesc')}</p>
+            <button
+              className="h-10 px-5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+              onClick={() => refreshOrganisations()}
+            >
+              {t('dashboard.retry')}
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="max-w-[720px] mx-auto px-4 md:px-6 py-12">
+        <OrganisationOnboarding />
+      </div>
+    );
+  }
 
   // ─── Success Screen ──────────────────────────────────
   if (createdJob) {
@@ -264,12 +452,12 @@ export default function NewJobWizard() {
             <button
               className="w-full sm:w-auto h-10 px-5 text-muted text-sm font-medium rounded-xl hover:text-main transition-colors cursor-pointer whitespace-nowrap"
               onClick={() => {
-                localStorage.removeItem('buildnerve_jobDraft');
-                localStorage.removeItem('siteLedger_jobDraft');
                 setCreatedJob(null);
                 setDraft({});
                 setCurrentStep(0);
                 setConfirmed(false);
+                setDraftId(null);
+                draftLoadedRef.current = false;
               }}
             >
               {t('dashboard.addAnotherJob')}
@@ -1092,11 +1280,12 @@ export default function NewJobWizard() {
             )}
           </button>
           <button
-            className="h-12 px-6 border border-border text-main text-sm font-medium rounded-xl hover:bg-page transition-colors cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
+            className="h-12 px-6 border border-border text-main text-sm font-medium rounded-xl hover:bg-page transition-colors cursor-pointer whitespace-nowrap flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={handleSaveDraft}
+            disabled={saving}
           >
-            <i className="ri-save-line text-base"></i>
-            {t('dashboard.saveAsDraft')}
+            <i className={`${saving ? 'ri-loader-4-line animate-spin' : 'ri-save-line'} text-base`}></i>
+            {saving ? t('dashboard.savingDraft') : t('dashboard.saveAsDraft')}
           </button>
         </div>
       </div>
@@ -1128,10 +1317,11 @@ export default function NewJobWizard() {
             <h1 className="text-xl font-bold text-main mt-0.5">{t(`dashboard.${stepTitles[currentStep]}`)}</h1>
           </div>
           <button
-            className="text-sm font-medium text-muted hover:text-main transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1"
+            className="text-sm font-medium text-muted hover:text-main transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleSaveDraft}
+            disabled={saving}
           >
-            <i className="ri-save-line text-sm"></i>
+            <i className={`${saving ? 'ri-loader-4-line animate-spin' : 'ri-save-line'} text-sm`}></i>
             {t('dashboard.saveAndExit')}
           </button>
         </div>
