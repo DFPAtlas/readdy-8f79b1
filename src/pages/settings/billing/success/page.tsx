@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 export default function BillingSuccessPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
-      window.location.href = '/app/settings/billing';
+      window.location.href = '/app?subscribed=1';
     }, 5000);
     return () => clearTimeout(timer);
   }, []);
@@ -19,7 +19,7 @@ export default function BillingSuccessPage() {
       </div>
       <p className="text-xs text-muted">
         Do not close this page. If you are not redirected,{' '}
-        <a href="/app/settings/billing" className="text-primary-600 hover:text-primary-700 font-medium">click here</a>.
+        <a href="/app?subscribed=1" className="text-primary-600 hover:text-primary-700 font-medium">click here</a>.
       </p>
     </div>
   );

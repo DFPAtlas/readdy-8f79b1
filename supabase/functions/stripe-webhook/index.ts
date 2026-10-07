@@ -246,12 +246,28 @@ async function syncSubscription(
   const interval = item.price?.recurring?.interval === "year" ? "annual" : "monthly";
   const period = subscriptionPeriod(raw);
 
-  const { data: existing, error: existingError } = await supabase
+  const { data: byStripeId, error: existingError } = await supabase
     .from("organisation_subscriptions")
     .select("id, status, access_state")
     .eq("stripe_subscription_id", subscription.id)
     .maybeSingle();
   assertNoError(existingError, "Unable to read subscription state");
+
+  let existing = byStripeId ?? null;
+
+  // Fall back to the organisation's existing row (e.g. an app-started free trial)
+  // so a paid subscription converts it in place instead of creating a duplicate.
+  if (!existing) {
+    const { data: byOrg, error: orgLookupError } = await supabase
+      .from("organisation_subscriptions")
+      .select("id, status, access_state")
+      .eq("organisation_id", organisationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    assertNoError(orgLookupError, "Unable to read organisation subscription state");
+    existing = byOrg ?? null;
+  }
 
   const accessState = existing?.access_state === "suspended_by_platform"
     ? "suspended_by_platform"
@@ -295,7 +311,26 @@ async function syncSubscription(
 
   await provisionEntitlements(supabase, organisationId, plan.id, eventId);
 
+  // A confirmed paid subscription converts any outstanding trial for this org.
+  if (status === "active") {
+    const { error: trialError } = await supabase
+      .from("billing_trial_history")
+      .update({
+        converted: true,
+        converted_at: now,
+        conversion_plan_id: plan.id,
+      })
+      .eq("organisation_id", organisationId)
+      .eq("converted", false);
+    assertNoError(trialError, "Unable to mark trial converted");
+  }
+
   if (!existing || existing.status !== status || existing.access_state !== accessState) {
+    const reason = status === "active"
+      ? "Subscribed"
+      : existing
+        ? "subscription_updated"
+        : "subscription_created";
     const { error } = await supabase
       .from("billing_status_history")
       .insert({
@@ -306,7 +341,7 @@ async function syncSubscription(
         previous_access_state: existing?.access_state ?? null,
         new_access_state: accessState,
         provider_event_id: eventId,
-        reason: existing ? "subscription_updated" : "subscription_created",
+        reason,
       });
     assertNoError(error, "Unable to record subscription status");
   }
@@ -340,16 +375,25 @@ async function handleCheckoutCompleted(
     const priceId = objectId(raw.items?.data?.[0]?.price);
     const plan = await resolvePlan(supabase, priceId);
     if (organisationId && plan) {
-      const { error } = await supabase.from("billing_trial_history").insert({
-        organisation_id: organisationId,
-        plan_id: plan.id,
-        trial_start: toIso(raw.trial_start),
-        trial_end: toIso(raw.trial_end),
-        payment_method_required: true,
-        converted: false,
-        reminder_status: "none",
-      });
-      assertNoError(error, "Unable to record trial");
+      const { data: existingTrial, error: trialLookupError } = await supabase
+        .from("billing_trial_history")
+        .select("id")
+        .eq("organisation_id", organisationId)
+        .limit(1)
+        .maybeSingle();
+      assertNoError(trialLookupError, "Unable to check existing trial");
+      if (!existingTrial) {
+        const { error } = await supabase.from("billing_trial_history").insert({
+          organisation_id: organisationId,
+          plan_id: plan.id,
+          trial_start: toIso(raw.trial_start),
+          trial_end: toIso(raw.trial_end),
+          payment_method_required: false,
+          converted: false,
+          reminder_status: "none",
+        });
+        assertNoError(error, "Unable to record trial");
+      }
     }
   }
 }

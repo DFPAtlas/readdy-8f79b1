@@ -1027,6 +1027,18 @@ export interface Database {
         };
         Returns: string;
       };
+      expire_org_trial: {
+        Args: { p_organisation_id: string };
+        Returns: string;
+      };
+      org_has_write_access: {
+        Args: { p_organisation_id: string };
+        Returns: boolean;
+      };
+      expire_org_trials: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

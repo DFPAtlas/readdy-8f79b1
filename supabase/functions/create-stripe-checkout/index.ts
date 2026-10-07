@@ -90,13 +90,15 @@ serve(async (req) => {
       return json(req, { error: "Only organisation owners or admins can manage billing" }, 403);
     }
 
+    // An app-started free trial has no Stripe subscription, so it must not block
+    // checkout. Only a genuinely active paid subscription should.
     const { data: activeSubscription } = await supabase
       .from("organisation_subscriptions")
-      .select("id")
+      .select("id, stripe_subscription_id")
       .eq("organisation_id", organisationId)
-      .in("status", ["trialing", "active", "past_due", "unpaid", "paused"])
+      .in("status", ["active", "past_due", "unpaid", "paused"])
       .maybeSingle();
-    if (activeSubscription) {
+    if (activeSubscription?.stripe_subscription_id) {
       return json(req, { error: "This organisation already has a subscription" }, 409);
     }
 
@@ -204,7 +206,15 @@ serve(async (req) => {
         checkout_attempt_id: attemptId,
       },
     };
-    if (plan.trial_days && plan.trial_days > 0) {
+    // Only grant a Stripe-managed trial if this organisation has not already used
+    // its app-started trial. Otherwise paying would silently restart the clock.
+    const { data: priorTrial } = await supabase
+      .from("billing_trial_history")
+      .select("id")
+      .eq("organisation_id", organisationId)
+      .limit(1)
+      .maybeSingle();
+    if (!priorTrial && plan.trial_days && plan.trial_days > 0) {
       subscriptionData.trial_period_days = plan.trial_days;
     }
 

@@ -152,6 +152,7 @@ import PaymentsPage from "@/pages/payments/page";
 import RetentionLifecyclePage from "@/pages/retention/page";
 import ProcurementPortal from "@/pages/procurement/portal/page";
 import DeadlinesPage from "@/pages/deadlines/page";
+import MobileLayout from "@/components/feature/MobileLayout";
 
 const ProtectedLayout = () => (
   <AuthGuard>
@@ -271,7 +272,7 @@ const routes: RouteObject[] = [
   // Mobile site mode routes (protected, no sidebar layout)
   {
     path: "/mobile",
-    element: <AuthGuard><OrgGuard><Outlet /></OrgGuard></AuthGuard>,
+    element: <AuthGuard><OrgGuard><MobileLayout /></OrgGuard></AuthGuard>,
     children: [
       { index: true, element: <MobileTodayPage /> },
       { path: "today", element: <MobileTodayPage /> },

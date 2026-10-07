@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { billingService, type BillingPlan, type BillingPlanPrice, type PlanEntitlement, type OrgEntitlement, type OrganisationSubscription, type UsageSnapshot } from '@/services/billing.service';
 
 export default function BillingPlanPage() {
+  const [searchParams] = useSearchParams();
   const [plans, setPlans] = useState<(BillingPlan & { entitlements?: PlanEntitlement[] })[]>([]);
   const [subscription, setSubscription] = useState<OrganisationSubscription | null>(null);
   const [entitlements, setEntitlements] = useState<OrgEntitlement[]>([]);
@@ -10,9 +12,22 @@ export default function BillingPlanPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<'monthly' | 'annual'>('monthly');
+  const [selectedPlanKey, setSelectedPlanKey] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => { loadData(); }, []);
+
+  // Pre-select the plan coming from the upgrade banner (e.g. ?plan=general).
+  useEffect(() => {
+    const requested = searchParams.get('plan');
+    if (requested) {
+      setSelectedPlanKey(requested);
+      const el = document.getElementById(`plan-${requested}`);
+      if (el) {
+        window.setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+      }
+    }
+  }, [searchParams, loading]);
 
   async function loadData() {
     try {
@@ -84,7 +99,7 @@ export default function BillingPlanPage() {
     try {
       setCheckoutLoading(true);
       setError(null);
-      const result = subscription
+      const result = subscription && subscription.stripe_subscription_id
         ? await billingService.openPortal()
         : await billingService.startCheckout(planKey, selectedInterval);
       window.location.href = result.url;
@@ -115,6 +130,8 @@ export default function BillingPlanPage() {
 
   const currentPlanKey = subscription?.plan?.plan_key;
   const currentInterval = subscription?.billing_interval;
+  // A locally-started trial should still let the user pick and pay for a plan.
+  const isLocalTrial = !!subscription && !subscription.stripe_subscription_id;
 
   return (
     <div className="p-6 md:p-8 max-w-5xl space-y-8">
@@ -162,7 +179,8 @@ export default function BillingPlanPage() {
       {/* Plan cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {plans.filter(p => p.is_active || p.plan_key === currentPlanKey).map((plan) => {
-          const isCurrent = plan.plan_key === currentPlanKey;
+          const isCurrent = plan.plan_key === currentPlanKey && !isLocalTrial;
+          const isSelected = plan.plan_key === selectedPlanKey;
           const price = prices.find(p => p.plan_id === plan.id && p.billing_interval === selectedInterval);
           const monthlyEquivalent = price?.unit_amount == null
             ? null
@@ -171,12 +189,18 @@ export default function BillingPlanPage() {
           return (
             <div
               key={plan.id}
-              className={`bg-background-50 rounded-xl border p-5 flex flex-col ${
+              id={`plan-${plan.plan_key}`}
+              onClick={() => setSelectedPlanKey(plan.plan_key)}
+              className={`bg-background-50 rounded-xl border p-5 flex flex-col cursor-pointer transition-all ${
                 plan.is_recommended ? 'border-primary-400 ring-1 ring-primary-400/30' : 'border-border'
-              } ${isCurrent ? 'border-primary-500 ring-2 ring-primary-500/30' : ''}`}
+              } ${isCurrent ? 'border-primary-500 ring-2 ring-primary-500/30' : ''} ${
+                isSelected ? 'border-primary-500 ring-2 ring-primary-500/40' : ''
+              }`}
             >
-              {plan.is_recommended && (
-                <span className="text-xs font-semibold text-primary-600 mb-2">Recommended</span>
+              {(isSelected || (plan.is_recommended && !isSelected)) && (
+                <span className="text-xs font-semibold text-primary-600 mb-2">
+                  {isSelected ? 'Selected' : 'Recommended'}
+                </span>
               )}
               <h3 className="text-base font-semibold text-main">{plan.display_name}</h3>
               <p className="text-xs text-muted mt-1 leading-relaxed line-clamp-3">{plan.description}</p>

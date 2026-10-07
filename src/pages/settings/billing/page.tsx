@@ -82,6 +82,12 @@ export default function BillingSettingsPage() {
   async function handleOpenPortal() {
     try {
       setPortalLoading(true);
+      // A locally-started trial has no Stripe customer yet, so send them to
+      // choose a plan instead of the billing portal.
+      if (!subscription?.stripe_subscription_id) {
+        window.location.href = '/app/settings/billing/plan';
+        return;
+      }
       const { url } = await billingService.openPortal();
       window.location.href = url;
     } catch (err) {
@@ -122,12 +128,56 @@ export default function BillingSettingsPage() {
 
   const statusColor = subscription ? (STATUS_COLORS[subscription.status] || 'bg-[#F3F4F6] text-muted') : 'bg-[#F3F4F6] text-muted';
 
+  // Plain-words summary of the organisation's current billing state.
+  const intervalLabel = subscription?.billing_interval === 'annual' ? 'annual' : 'monthly';
+  let statusSummary = '';
+  let statusTone: 'good' | 'warn' = 'good';
+  if (subscription) {
+    if (subscription.access_state === 'read_only' || subscription.access_state === 'billing_locked') {
+      statusSummary = 'Trial ended, read-only';
+      statusTone = 'warn';
+    } else if (subscription.status === 'trialing') {
+      statusSummary = `Free trial, ends ${formatDate(subscription.trial_end)}`;
+      statusTone = 'good';
+    } else if (subscription.status === 'active') {
+      statusSummary = `${subscription.plan?.display_name || 'Subscription'}, ${intervalLabel}, renews ${formatDate(subscription.current_period_end)}`;
+      statusTone = 'good';
+    } else {
+      statusSummary = `${subscription.plan?.display_name || 'Subscription'}, ${STATUS_LABELS[subscription.status] || subscription.status}`;
+      statusTone = 'warn';
+    }
+  }
+
   return (
     <div className="p-6 md:p-8 max-w-5xl space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-main">Billing</h1>
         <p className="text-sm text-muted mt-1">Manage your subscription, payment method and invoices.</p>
       </div>
+
+      {subscription && statusSummary && (
+        <div
+          className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+            statusTone === 'warn'
+              ? 'bg-status-amber-pale border-status-amber/20'
+              : 'bg-background-100 border-background-200'
+          }`}
+        >
+          <span
+            className={`w-9 h-9 flex items-center justify-center rounded-full flex-shrink-0 ${
+              statusTone === 'warn' ? 'bg-status-amber/15 text-status-amber' : 'bg-primary-100 text-primary-600'
+            }`}
+          >
+            <i className={statusTone === 'warn' ? 'ri-lock-2-line' : 'ri-shield-check-line'} aria-hidden="true"></i>
+          </span>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted">Current status</p>
+            <p className={`text-sm font-semibold ${statusTone === 'warn' ? 'text-status-amber' : 'text-main'}`}>
+              {statusSummary}
+            </p>
+          </div>
+        </div>
+      )}
 
       {!subscription ? (
         <div className="bg-background-50 rounded-xl border border-border p-8 text-center">

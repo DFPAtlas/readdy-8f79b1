@@ -181,6 +181,18 @@ export const billingService = {
     return data as OrganisationSubscription | null;
   },
 
+  /**
+   * Moves this organisation to read-only if its trial has ended unpaid, and returns
+   * the resulting access state. Safe to call on every app load.
+   */
+  async expireOrgTrial(orgId: string): Promise<string | null> {
+    const { data, error } = await supabase().rpc('expire_org_trial', {
+      p_organisation_id: orgId,
+    });
+    if (error) return null;
+    return (data as string) ?? null;
+  },
+
   async getOrganisationEntitlements(orgId: string): Promise<OrgEntitlement[]> {
     const { data } = await supabase()
       .from('organisation_entitlements')

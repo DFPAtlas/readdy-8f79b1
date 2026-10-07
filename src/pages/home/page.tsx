@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useOrg } from '@/contexts/OrgContext';
 import GetStartedChecklist from './components/GetStartedChecklist';
 import KpiBar from './components/KpiBar';
@@ -18,7 +20,9 @@ function formatRole(role?: string | null): string {
 }
 
 export default function Home() {
-  const { organisation, membership } = useOrg();
+  const { organisation, membership, refreshBillingAccess } = useOrg();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showSubscribed, setShowSubscribed] = useState(false);
 
   const orgName = organisation?.trading_name || organisation?.name || '';
   const roleLabel = formatRole(membership?.role);
@@ -29,8 +33,39 @@ export default function Home() {
     year: 'numeric',
   });
 
+  // Confirmation shown after a successful Stripe checkout redirected back to /app.
+  useEffect(() => {
+    if (searchParams.get('subscribed') !== '1') return;
+    setShowSubscribed(true);
+    void refreshBillingAccess();
+    const retry = window.setTimeout(() => { void refreshBillingAccess(); }, 4000);
+    const next = new URLSearchParams(searchParams);
+    next.delete('subscribed');
+    next.delete('session_id');
+    setSearchParams(next, { replace: true });
+    return () => window.clearTimeout(retry);
+  }, [searchParams, setSearchParams, refreshBillingAccess]);
+
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6 space-y-6">
+      {showSubscribed && (
+        <div className="flex items-start gap-3 rounded-xl border border-status-green/20 bg-status-green-pale px-4 py-3">
+          <span className="w-9 h-9 flex items-center justify-center rounded-full bg-status-green/15 text-status-green flex-shrink-0">
+            <i className="ri-checkbox-circle-line" aria-hidden="true"></i>
+          </span>
+          <p className="flex-1 text-sm font-medium text-status-green self-center">
+            You&apos;re subscribed. Full access is back on.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowSubscribed(false)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-status-green hover:bg-status-green/10 transition-colors"
+            aria-label="Dismiss"
+          >
+            <i className="ri-close-line"></i>
+          </button>
+        </div>
+      )}
       {/* Executive header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>

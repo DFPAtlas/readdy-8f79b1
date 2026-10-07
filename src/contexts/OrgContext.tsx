@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabase';
 import { organisationsService } from '@/services/organisations.service';
+import { billingService, type OrganisationSubscription } from '@/services/billing.service';
 import type { Database } from '@/types/supabase';
 
 type Organisation = Database['public']['Tables']['organisations']['Row'];
@@ -19,8 +20,20 @@ interface OrgState {
 }
 
 interface OrgContextValue extends OrgState {
+  accessState: string | null;
+  trialEnd: string | null;
+  subscription: OrganisationSubscription | null;
+  subscriptionStatus: string | null;
+  planName: string | null;
+  billingInterval: 'monthly' | 'annual' | null;
+  role: string | null;
+  isOwnerOrAdmin: boolean;
+  isTrialing: boolean;
+  trialDaysLeft: number | null;
+  isReadOnly: boolean;
   switchOrganisation: (orgId: string) => Promise<void>;
   refreshOrganisations: () => Promise<void>;
+  refreshBillingAccess: () => Promise<void>;
   createOrganisation: (name: string, tradingName?: string) => Promise<{ error: string | null }>;
 }
 
@@ -51,6 +64,9 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     error: null,
     status: 'loading',
   });
+  const [accessState, setAccessState] = useState<string | null>(null);
+  const [trialEnd, setTrialEnd] = useState<string | null>(null);
+  const [subscription, setSubscription] = useState<OrganisationSubscription | null>(null);
 
   const loadOrganisations = useCallback(async () => {
     const supabase = getSupabase();
@@ -161,6 +177,32 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     await loadOrganisations();
   }, [loadOrganisations]);
 
+  // Keep the organisation's access state fresh on load: sweep an ended trial into
+  // read-only, then read the resulting subscription access state.
+  const refreshBillingAccess = useCallback(async () => {
+    const supabase = getSupabase();
+    const orgId = state.organisation?.id;
+    if (!supabase || !orgId) {
+      setAccessState(null);
+      setTrialEnd(null);
+      setSubscription(null);
+      return;
+    }
+    try {
+      const next = await billingService.expireOrgTrial(orgId);
+      const sub = await billingService.getOrganisationSubscription(orgId);
+      setSubscription(sub);
+      setAccessState(sub?.access_state ?? next ?? null);
+      setTrialEnd(sub?.trial_end ?? null);
+    } catch {
+      // Non-fatal: keep the last known access state in place.
+    }
+  }, [state.organisation?.id]);
+
+  useEffect(() => {
+    void refreshBillingAccess();
+  }, [refreshBillingAccess]);
+
   const createOrganisation = useCallback(
     async (name: string, tradingName?: string) => {
       try {
@@ -175,10 +217,34 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     [loadOrganisations],
   );
 
+  const isReadOnly =
+    accessState === 'read_only'
+    || accessState === 'billing_locked'
+    || accessState === 'suspended_by_platform';
+
+  const role = state.membership?.role ?? null;
+  const isOwnerOrAdmin = role === 'owner' || role === 'admin';
+  const isTrialing = subscription?.status === 'trialing' && !isReadOnly;
+  const trialDaysLeft = trialEnd
+    ? Math.max(0, Math.ceil((new Date(trialEnd).getTime() - Date.now()) / 86400000))
+    : null;
+
   const value: OrgContextValue = {
     ...state,
+    accessState,
+    trialEnd,
+    subscription,
+    subscriptionStatus: subscription?.status ?? null,
+    planName: subscription?.plan?.display_name ?? null,
+    billingInterval: subscription?.billing_interval ?? null,
+    role,
+    isOwnerOrAdmin,
+    isTrialing,
+    trialDaysLeft,
+    isReadOnly,
     switchOrganisation,
     refreshOrganisations,
+    refreshBillingAccess,
     createOrganisation,
   };
 
