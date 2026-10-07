@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useJobDetail } from './useJobDetail';
 import OverviewTab from './components/OverviewTab';
 import EvidenceTab from './components/EvidenceTab';
@@ -31,14 +32,12 @@ const statusDotMap: Record<string, string> = {
 
 const workerColors = ['bg-primary-500', 'bg-status-amber', 'bg-status-blue', 'bg-status-purple', 'bg-status-red'];
 
-function formatMoney(v: number): string {
-  return `£${v.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`;
-}
-
 export default function JobDetail() {
   const { t } = useTranslation();
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const { formatAmount } = useCurrency();
+  const formatMoney = (v: number): string => formatAmount(v, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   const [activeTab, setActiveTab] = useState('overview');
 
   const { status, job, data, error, reload } = useJobDetail(jobId);

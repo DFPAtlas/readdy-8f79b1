@@ -9,6 +9,7 @@ import { jobsService } from '@/services/jobs.service';
 import { jobDraftsService } from '@/services/jobDrafts.service';
 import OrganisationOnboarding from '@/components/feature/OrganisationOnboarding';
 import { poundsToPence } from '@/lib/money';
+import { useCurrency } from '@/hooks/useCurrency';
 import {
   normalizePricingType,
   normalizeVatTreatment,
@@ -41,6 +42,7 @@ export default function NewJobWizard() {
   const { showToast } = useToast();
   const { user } = useAuth();
   const { organisation, loading: orgLoading, status: orgStatus, refreshOrganisations } = useOrg();
+  const { currency, symbol: currencySymbol, formatAmount } = useCurrency();
   const orgId = organisation?.id;
   const draftParam = searchParams.get('draft');
 
@@ -819,9 +821,12 @@ export default function NewJobWizard() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-main mb-1.5">{t('dashboard.estimatedValue')}</label>
+              <label className="block text-xs font-semibold text-main mb-1.5">
+                {t('dashboard.estimatedValue')}
+                <span className="ml-1.5 text-[10px] font-medium text-muted uppercase tracking-wide">{currency}</span>
+              </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-sm">£</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-sm">{currencySymbol}</span>
                 <input type="number" value={s3.estimatedValue || ''} onChange={(e) => updateDraft('step3', { estimatedValue: Number(e.target.value) })} className="w-full h-10 pl-8 pr-4 bg-page rounded-xl text-sm text-main border border-transparent focus:border-primary-200 focus:ring-2 focus:ring-primary-50 outline-none" />
               </div>
             </div>
@@ -851,7 +856,7 @@ export default function NewJobWizard() {
               {s3.depositRequired && (
                 <div className="flex items-center gap-2 pl-7">
                   <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">£</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">{currencySymbol}</span>
                     <input type="number" placeholder="Amount" value={s3.depositAmount || ''} onChange={(e) => updateDraft('step3', { depositAmount: Number(e.target.value) })} className="w-full h-9 pl-7 pr-3 bg-page rounded-lg text-sm border border-transparent focus:border-primary-200 outline-none" />
                   </div>
                   <span className="text-xs text-muted">or</span>
@@ -883,7 +888,7 @@ export default function NewJobWizard() {
             <h5 className="text-xs font-semibold text-main uppercase tracking-wider mb-3">{t('dashboard.commercialSummary')}</h5>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
               <div>
-                <p className="text-lg font-bold text-main">£{est.toLocaleString()}</p>
+                <p className="text-lg font-bold text-main">{formatAmount(est, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
                 <p className="text-[10px] text-muted">{t('dashboard.estimatedContract')}</p>
               </div>
               <div>
@@ -891,15 +896,15 @@ export default function NewJobWizard() {
                 <p className="text-[10px] text-muted">{t('dashboard.vatPosition')}</p>
               </div>
               <div>
-                <p className="text-sm font-semibold text-main">£{depAmt.toLocaleString()}</p>
+                <p className="text-sm font-semibold text-main">{formatAmount(depAmt, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
                 <p className="text-[10px] text-muted">{t('dashboard.deposit')}</p>
               </div>
               <div>
-                <p className="text-sm font-semibold text-main">£{retAmt.toLocaleString()}</p>
+                <p className="text-sm font-semibold text-main">{formatAmount(retAmt, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
                 <p className="text-[10px] text-muted">{t('dashboard.retention')}</p>
               </div>
               <div>
-                <p className="text-sm font-semibold text-main">£{(est - depAmt).toLocaleString()}</p>
+                <p className="text-sm font-semibold text-main">{formatAmount(est - depAmt, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
                 <p className="text-[10px] text-muted">{t('dashboard.expectedBalance')}</p>
               </div>
             </div>
@@ -1197,7 +1202,7 @@ export default function NewJobWizard() {
       },
       {
         key: 'commercial', label: t('dashboard.commercialSection'), step: 3,
-        content: <p className="text-sm font-semibold text-main">£{(s3.estimatedValue || 0).toLocaleString()} · {s3.pricingType || '—'}</p>,
+        content: <p className="text-sm font-semibold text-main">{formatAmount(s3.estimatedValue || 0, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} · {s3.pricingType || '—'}</p>,
       },
       {
         key: 'programme', label: t('dashboard.programmeSection'), step: 4,

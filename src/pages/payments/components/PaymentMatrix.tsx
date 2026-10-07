@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useToast } from '@/components/base/Toast';
+import { useCurrency } from '@/hooks/useCurrency';
 import {
   valuationRows,
-  formatGBP,
   appliedTotal,
   retentionWithheld,
   cisDeduction,
@@ -35,6 +35,7 @@ const statusConfig: Record<NoticeStatus, { label: string; className: string; dot
 
 export default function PaymentMatrix({ onIssuePayLess }: PaymentMatrixProps) {
   const { showToast } = useToast();
+  const { currency, formatAmount } = useCurrency();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | NoticeStatus>('all');
 
@@ -104,10 +105,10 @@ export default function PaymentMatrix({ onIssuePayLess }: PaymentMatrixProps) {
           <thead>
             <tr className="text-left text-xs text-muted border-b border-border bg-page/50">
               <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap">Job / Subcontractor</th>
-              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Applied (L / M)</th>
-              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Retention</th>
-              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">CIS</th>
-              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Certified Net</th>
+              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Applied (L / M)<span className="ml-1 text-[9px] font-medium text-muted/70">{currency}</span></th>
+              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Retention<span className="ml-1 text-[9px] font-medium text-muted/70">{currency}</span></th>
+              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">CIS<span className="ml-1 text-[9px] font-medium text-muted/70">{currency}</span></th>
+              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Certified Net<span className="ml-1 text-[9px] font-medium text-muted/70">{currency}</span></th>
               <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-center">Notice Status</th>
               <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Actions</th>
             </tr>
@@ -124,23 +125,23 @@ export default function PaymentMatrix({ onIssuePayLess }: PaymentMatrixProps) {
                     </p>
                   </td>
                   <td className="px-4 md:px-5 py-3 text-right tabular-nums whitespace-nowrap">
-                    <p className="text-main font-medium">{formatGBP(appliedTotal(row))}</p>
+                    <p className="text-main font-medium">{formatAmount(appliedTotal(row))}</p>
                     <p className="text-xs text-muted">
-                      {formatGBP(row.appliedLabour)} / {formatGBP(row.appliedMaterial)}
+                      {formatAmount(row.appliedLabour)} / {formatAmount(row.appliedMaterial)}
                     </p>
                   </td>
                   <td className="px-4 md:px-5 py-3 text-right tabular-nums whitespace-nowrap">
-                    <p className="text-main">{formatGBP(retentionWithheld(row))}</p>
+                    <p className="text-main">{formatAmount(retentionWithheld(row))}</p>
                     <p className="text-xs text-muted">{row.retentionPct.toFixed(1)}%</p>
                   </td>
                   <td className="px-4 md:px-5 py-3 text-right tabular-nums whitespace-nowrap">
                     <p className={row.cisPct > 0 ? 'text-status-red' : 'text-muted'}>
-                      {row.cisPct > 0 ? formatGBP(cisDeduction(row)) : '—'}
+                      {row.cisPct > 0 ? formatAmount(cisDeduction(row)) : '—'}
                     </p>
                     <p className="text-xs text-muted">{row.cisPct > 0 ? `${row.cisPct}%` : 'Gross'}</p>
                   </td>
                   <td className="px-4 md:px-5 py-3 text-right tabular-nums font-semibold text-main whitespace-nowrap">
-                    {formatGBP(certifiedNet(row))}
+                    {formatAmount(certifiedNet(row))}
                   </td>
                   <td className="px-4 md:px-5 py-3 text-center">
                     <span
@@ -182,16 +183,16 @@ export default function PaymentMatrix({ onIssuePayLess }: PaymentMatrixProps) {
               <tr className="bg-page/50 border-t-2 border-border">
                 <td className="px-4 md:px-5 py-3.5 font-semibold text-main">Totals ({filtered.length})</td>
                 <td className="px-4 md:px-5 py-3.5 text-right font-bold text-main tabular-nums whitespace-nowrap">
-                  {formatGBP(totals.applied)}
+                  {formatAmount(totals.applied)}
                 </td>
                 <td className="px-4 md:px-5 py-3.5 text-right font-semibold text-main tabular-nums whitespace-nowrap">
-                  {formatGBP(totals.retention)}
+                  {formatAmount(totals.retention)}
                 </td>
                 <td className="px-4 md:px-5 py-3.5 text-right font-semibold text-status-red tabular-nums whitespace-nowrap">
-                  {formatGBP(totals.cis)}
+                  {formatAmount(totals.cis)}
                 </td>
                 <td className="px-4 md:px-5 py-3.5 text-right font-bold text-main tabular-nums whitespace-nowrap">
-                  {formatGBP(totals.net)}
+                  {formatAmount(totals.net)}
                 </td>
                 <td colSpan={2}></td>
               </tr>

@@ -7,7 +7,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { jobsService } from '@/services/jobs.service';
 import { jobDraftsService, type JobDraftRow } from '@/services/jobDrafts.service';
 import OrganisationOnboarding from '@/components/feature/OrganisationOnboarding';
-import { formatPenceGBP } from '@/lib/money';
+import { useCurrency } from '@/hooks/useCurrency';
 import {
   jobQuickFilters,
   mapJobToWorkspaceItem,
@@ -40,6 +40,7 @@ export default function JobsWorkspace() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { organisation, loading: orgLoading, status: orgStatus, refreshOrganisations } = useOrg();
+  const { currency, formatPence } = useCurrency();
   const orgId = organisation?.id ?? null;
 
   const [search, setSearch] = useState('');
@@ -397,7 +398,7 @@ export default function JobsWorkspace() {
             <span>{t('dashboard.colProgress')}</span>
             <span>{t('dashboard.colNextAction')}</span>
             <span>{t('dashboard.colTeam')}</span>
-            <span>{t('dashboard.colFinancials')}</span>
+            <span className="whitespace-nowrap">{t('dashboard.colFinancials')}<span className="ml-1 text-[9px] font-medium text-muted/70">{currency}</span></span>
             <span>{t('dashboard.colUpdated')}</span>
             <span></span>
           </div>
@@ -458,7 +459,7 @@ export default function JobsWorkspace() {
                     )}
                   </div>
                   <div onClick={() => navigate(`/jobs/${job.id}`)}>
-                    <p className="text-sm font-semibold text-main">{formatPenceGBP(job.estimatedValuePence)}</p>
+                    <p className="text-sm font-semibold text-main">{formatPence(job.estimatedValuePence)}</p>
                   </div>
                   <div onClick={() => navigate(`/jobs/${job.id}`)}>
                     <p className="text-xs text-muted">{formatRelativeTime(job.updatedAt)}</p>
@@ -556,7 +557,7 @@ export default function JobsWorkspace() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-xs cursor-pointer" onClick={() => navigate(`/jobs/${job.id}`)}>
-                    <span className="font-semibold text-main">{formatPenceGBP(job.estimatedValuePence)}</span>
+                    <span className="font-semibold text-main">{formatPence(job.estimatedValuePence)}</span>
                     <span className="text-muted">{formatRelativeTime(job.updatedAt)}</span>
                   </div>
                 </div>
@@ -592,7 +593,7 @@ export default function JobsWorkspace() {
               <span className="text-xs font-semibold text-main">{job.progress}%</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-main">{formatPenceGBP(job.estimatedValuePence)}</span>
+              <span className="text-sm font-semibold text-main">{formatPence(job.estimatedValuePence)}</span>
               <span className="text-xs text-muted">{formatRelativeTime(job.updatedAt)}</span>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { getSupabase, hasSupabaseCredentials } from '@/lib/supabase';
+import { isInvalidRefreshTokenError, purgeStaleSession } from '@/lib/session-guard';
 import type { Session, User, AuthError } from '@supabase/supabase-js';
 
 interface AuthState {
@@ -19,37 +20,6 @@ interface AuthContextValue extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-/**
- * Detects the "stale refresh token" family of errors that Supabase throws when the
- * session persisted in the browser is no longer valid (expired, revoked, or from a
- * wiped server-side session). In those cases the only correct recovery is to discard
- * the dead local session and treat the user as signed out, instead of surfacing a
- * scary unhandled auth error.
- */
-function isInvalidRefreshTokenError(err: unknown): boolean {
-  const message = typeof err === 'string'
-    ? err
-    : (err as { message?: string } | null | undefined)?.message ?? '';
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes('invalid refresh token') ||
-    normalized.includes('refresh token not found') ||
-    normalized.includes('refresh_token_not_found')
-  );
-}
-
-async function purgeStaleSession(): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase) return;
-  try {
-    // Scope "local" only clears the browser copy; it never calls the server,
-    // so it cannot fail because the token is already gone server-side.
-    await supabase.auth.signOut({ scope: 'local' });
-  } catch {
-    // Ignore - the goal is simply to drop the unusable local session.
-  }
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
@@ -101,22 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }));
     });
 
-    // Background token refreshes can reject outside of getSession(). Catch that
-    // specific failure so a stale token signs the user out cleanly rather than
-    // bubbling up as an unhandled rejection.
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      if (isInvalidRefreshTokenError(event.reason)) {
-        event.preventDefault();
-        void purgeStaleSession();
-        setState((prev) => ({ ...prev, session: null, user: null, loading: false }));
-      }
-    };
-    window.addEventListener('unhandledrejection', handleRejection);
+    // Background token refreshes can reject outside of getSession(). The global
+    // session guard (installed at app start) already catches those, clears the dead
+    // local session, and signs the user out - so we only keep the local state in
+    // sync with the authoritative auth events emitted by Supabase here.
 
     return () => {
       cancelled = true;
       subscription.unsubscribe();
-      window.removeEventListener('unhandledrejection', handleRejection);
     };
   }, []);
 
@@ -176,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: { message: 'Supabase is not configured.', name: 'AuthError', status: 500 } as unknown as AuthError };
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
     if (error) {
       setState((prev) => ({ ...prev, error: error.message }));

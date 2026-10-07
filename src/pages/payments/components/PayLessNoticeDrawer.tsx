@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/base/Toast';
 import ConfirmDialog from '@/components/base/ConfirmDialog';
-import { formatGBP, appliedTotal, type ValuationRow } from '@/mocks/retention';
+import { useCurrency } from '@/hooks/useCurrency';
+import { appliedTotal, type ValuationRow } from '@/mocks/retention';
 
 interface PayLessNoticeDrawerProps {
   open: boolean;
@@ -11,6 +12,7 @@ interface PayLessNoticeDrawerProps {
 
 export default function PayLessNoticeDrawer({ open, row, onClose }: PayLessNoticeDrawerProps) {
   const { showToast } = useToast();
+  const { formatAmount, symbol: currencySymbol } = useCurrency();
   const [revisedAmount, setRevisedAmount] = useState('');
   const [reason, setReason] = useState('');
   const [files, setFiles] = useState<string[]>([]);
@@ -32,8 +34,8 @@ export default function PayLessNoticeDrawer({ open, row, onClose }: PayLessNotic
   const varianceText = useMemo(() => {
     const sign = variance < 0 ? '-' : '';
     const abs = Math.abs(variance);
-    return `${sign}${formatGBP(abs)}`;
-  }, [variance]);
+    return `${sign}${formatAmount(abs)}`;
+  }, [variance, formatAmount]);
 
   useEffect(() => {
     if (!open) return;
@@ -104,7 +106,7 @@ export default function PayLessNoticeDrawer({ open, row, onClose }: PayLessNotic
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted">Original applied sum</p>
-                    <p className="text-sm font-semibold text-main mt-0.5 tabular-nums">{formatGBP(originalSum)}</p>
+                    <p className="text-sm font-semibold text-main mt-0.5 tabular-nums">{formatAmount(originalSum)}</p>
                   </div>
                 </div>
               </div>
@@ -115,7 +117,7 @@ export default function PayLessNoticeDrawer({ open, row, onClose }: PayLessNotic
                   Revised payable amount
                 </label>
                 <div className="relative mt-1.5">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-medium">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-medium">{currencySymbol}</span>
                   <input
                     id="revised-amount"
                     type="number"
@@ -227,7 +229,7 @@ export default function PayLessNoticeDrawer({ open, row, onClose }: PayLessNotic
       <ConfirmDialog
         open={confirmOpen}
         title="Issue statutory pay-less notice?"
-        description={`This will serve a pay-less notice to ${row?.subcontractor ?? 'the subcontractor'} for ${revisedNum > 0 ? formatGBP(revisedNum) : '—'}, a reduction of ${varianceText}. This action is recorded in the audit log.`}
+        description={`This will serve a pay-less notice to ${row?.subcontractor ?? 'the subcontractor'} for ${revisedNum > 0 ? formatAmount(revisedNum) : '—'}, a reduction of ${varianceText}. This action is recorded in the audit log.`}
         confirmText="Sign & Issue"
         variant="danger"
         onCancel={() => setConfirmOpen(false)}

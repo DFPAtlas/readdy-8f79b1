@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSupabase } from '@/lib/supabase';
+import { useCurrency } from '@/hooks/useCurrency';
 import { paymentApplicationsService, type PaymentApplication, type PaymentSummary } from '@/services/payment-applications.service';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }> = {
@@ -15,6 +16,7 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }
 export default function JobPaymentsPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const { formatAmount } = useCurrency();
 
   const [apps, setApps] = useState<PaymentApplication[]>([]);
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
@@ -81,9 +83,8 @@ export default function JobPaymentsPage() {
     }
   }
 
-  const formatMoney = (pence: number): string => {
-    return '£' + (pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
+  const formatMoney = (pence: number): string =>
+    formatAmount(pence / 100, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const formatDate = (d: string | null): string => {
     if (!d) return '\u2014';

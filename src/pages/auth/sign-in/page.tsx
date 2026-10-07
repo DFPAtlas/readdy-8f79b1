@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthLayout from '@/components/feature/AuthLayout';
-import { BNIcon } from '@/components/base/BuildNerveLogo';
+import AuthLoadingScreen from '@/components/feature/AuthLoadingScreen';
 
 export default function SignInPage() {
   const { signIn, user, loading: authLoading, error, clearError } = useAuth();
@@ -17,19 +17,19 @@ export default function SignInPage() {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app';
 
-  if (!authLoading && user) {
-    navigate(from, { replace: true });
-    return null;
-  }
+  // Already signed in → send them back where they came from, otherwise into the app.
+  const redirecting = !authLoading && !!user;
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-page flex items-center justify-center">
-        <div className="w-12 h-12 rounded-xl bg-[#1B2A3E] flex items-center justify-center">
-          <BNIcon height={28} />
-        </div>
-      </div>
-    );
+  useEffect(() => {
+    if (redirecting) {
+      navigate(from, { replace: true });
+    }
+  }, [redirecting, from, navigate]);
+
+  // Show the logo loading screen while auth is resolving or the redirect is in
+  // flight, so the page is never blank and navigation never happens mid-render.
+  if (authLoading || redirecting) {
+    return <AuthLoadingScreen />;
   }
 
   function validate(): boolean {

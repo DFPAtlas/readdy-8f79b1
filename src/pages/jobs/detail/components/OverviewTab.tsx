@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useCurrency } from '@/hooks/useCurrency';
 import type { FullJob } from '@/mocks/jobs';
 import type { JobDetailData } from '../job-detail.types';
 import { PanelError, PanelUnavailable } from './PanelState';
@@ -49,12 +50,10 @@ const decisionStyles: Record<string, { label: string; cls: string; icon: string 
   question_received: { label: 'Question', cls: 'bg-status-amber-pale text-status-amber', icon: 'ri-question-line' },
 };
 
-function formatMoney(v: number): string {
-  return `£${v.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`;
-}
-
 export default function OverviewTab({ job, jobId, data, onNavigate, onRetry }: OverviewTabProps) {
   const { t } = useTranslation();
+  const { formatAmount } = useCurrency();
+  const formatMoney = (v: number): string => formatAmount(v, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   const financials = job.financials;
   const progressStagesDone = (job.progress / 100) * progressStages.length;
 

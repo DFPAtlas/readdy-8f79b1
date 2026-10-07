@@ -42,6 +42,7 @@ import SignInPage from "@/pages/auth/sign-in/page";
 import SignUpPage from "@/pages/auth/sign-up/page";
 import ForgotPasswordPage from "@/pages/auth/forgot-password/page";
 import ResetPasswordPage from "@/pages/auth/reset-password/page";
+import AuthCallbackPage from "@/pages/auth/callback/page";
 import VerifyEmailPage from "@/pages/auth/verify-email/page";
 import AuthConfirmedPage from "@/pages/auth/confirmed/page";
 import AcceptInvitePage from "@/pages/auth/accept-invite/page";
@@ -194,6 +195,8 @@ const routes: RouteObject[] = [
   { path: "/sign-up", element: <SignUpPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/reset-password", element: <ResetPasswordPage /> },
+  { path: "/auth/callback", element: <AuthCallbackPage /> },
+  { path: "/auth/reset-password", element: <ResetPasswordPage /> },
   { path: "/verify-email", element: <VerifyEmailPage /> },
   { path: "/auth/confirmed", element: <AuthConfirmedPage /> },
   { path: "/accept-invite", element: <AcceptInvitePage /> },

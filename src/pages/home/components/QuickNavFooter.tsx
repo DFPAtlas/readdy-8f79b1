@@ -1,5 +1,13 @@
 import { useNavigate } from 'react-router-dom';
-import { quickNavLinks } from '@/mocks/commandCenter';
+
+// Static quick links — intentionally not sourced from demo data.
+const quickNavLinks = [
+  { id: 'procurement', label: 'Procurement & POs', icon: 'ri-shopping-cart-2-line', route: '/procurement' },
+  { id: 'valuations', label: 'Statutory Valuations', icon: 'ri-bank-card-line', route: '/payments' },
+  { id: 'retainage', label: 'Retainage Scheduler', icon: 'ri-inbox-archive-line', route: '/retention' },
+  { id: 'compliance', label: 'HMRC Compliance', icon: 'ri-shield-check-line', route: '/compliance' },
+  { id: 'safety', label: 'Safety & Snagging', icon: 'ri-camera-line', route: '/evidence' },
+];
 
 export default function QuickNavFooter() {
   const navigate = useNavigate();

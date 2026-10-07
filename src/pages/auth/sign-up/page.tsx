@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthLayout from '@/components/feature/AuthLayout';
+import AuthLoadingScreen from '@/components/feature/AuthLoadingScreen';
 
 export default function SignUpPage() {
   const { signUp, user, loading: authLoading, error, clearError } = useAuth();
@@ -19,9 +20,21 @@ export default function SignUpPage() {
   const [success, setSuccess] = useState(false);
   const [formErrors, setFormErrors] = useState<{ fullName?: string; email?: string; password?: string }>({});
 
-  if (!authLoading && user && !success) {
-    navigate(nextPath || '/', { replace: true });
-    return null;
+  // Already signed in (e.g. an invited user with an active session) → send them
+  // on to the invitation target, otherwise into the app. Never to marketing "/".
+  const redirecting = !authLoading && !!user && !success;
+  const redirectTo = nextPath || '/app';
+
+  useEffect(() => {
+    if (redirecting) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [redirecting, redirectTo, navigate]);
+
+  // Show the logo loading screen while auth is resolving or the redirect is in
+  // flight, so the page is never blank and navigation never happens mid-render.
+  if (authLoading || redirecting) {
+    return <AuthLoadingScreen />;
   }
 
   function validate(): boolean {

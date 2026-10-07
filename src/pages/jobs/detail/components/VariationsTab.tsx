@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useCurrency } from '@/hooks/useCurrency';
 import type { JobDetailData } from '../job-detail.types';
 import { PanelEmpty, PanelError } from './PanelState';
 import { variationStatusColor, variationStatusLabel } from '../job-detail.labels';
@@ -11,6 +12,7 @@ interface VariationsTabProps {
 
 export default function VariationsTab({ data, onNavigate, onRetry }: VariationsTabProps) {
   const { t } = useTranslation();
+  const { formatPence } = useCurrency();
 
   if (data.panelErrors.variations) {
     return <PanelError description={t('dashboard.detail.panelLoadError')} retryLabel={t('dashboard.retry')} onRetry={onRetry} />;
@@ -54,7 +56,7 @@ export default function VariationsTab({ data, onNavigate, onRetry }: VariationsT
             </div>
             <p className="text-sm font-semibold text-main">{v.title}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted mt-1">
-              <span>£{(v.totalPence / 100).toLocaleString('en-GB')} total</span>
+              <span>{formatPence(v.totalPence)} total</span>
               <span>
                 {v.programmeDays && v.programmeDays > 0
                   ? `${v.programmeDays} day${v.programmeDays > 1 ? 's' : ''}`

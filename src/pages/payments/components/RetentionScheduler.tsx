@@ -1,5 +1,6 @@
 import { useToast } from '@/components/base/Toast';
-import { retentionContracts, formatGBP, type RetentionContract, type StageStatus } from '@/mocks/retention';
+import { useCurrency } from '@/hooks/useCurrency';
+import { retentionContracts, type RetentionContract, type StageStatus } from '@/mocks/retention';
 
 const stageStatusConfig: Record<StageStatus, { label: string; className: string }> = {
   released: { label: 'Released', className: 'bg-status-green-pale text-status-green' },
@@ -9,6 +10,7 @@ const stageStatusConfig: Record<StageStatus, { label: string; className: string 
 };
 
 function StageCell({ contract, stageKey }: { contract: RetentionContract; stageKey: 'stage1' | 'stage2' }) {
+  const { formatAmount } = useCurrency();
   const stage = contract[stageKey];
   const cfg = stageStatusConfig[stage.status];
   const releaseValue = (contract.totalRetention * stage.pct) / 100;
@@ -17,7 +19,7 @@ function StageCell({ contract, stageKey }: { contract: RetentionContract; stageK
     <div className="px-4 md:px-5 py-3">
       <p className="text-xs text-muted font-medium">{stage.label}</p>
       <p className="text-sm font-semibold text-main tabular-nums mt-0.5">
-        {formatGBP(releaseValue)}{' '}
+        {formatAmount(releaseValue)}{' '}
         <span className="text-xs font-medium text-muted">({stage.pct}%)</span>
       </p>
       <div className="flex items-center gap-2 mt-1.5">
@@ -32,6 +34,7 @@ function StageCell({ contract, stageKey }: { contract: RetentionContract; stageK
 
 export default function RetentionScheduler() {
   const { showToast } = useToast();
+  const { currency, formatAmount } = useCurrency();
 
   return (
     <div className="bg-white border border-border rounded-xl overflow-hidden">
@@ -53,7 +56,7 @@ export default function RetentionScheduler() {
           <thead>
             <tr className="text-left text-xs text-muted border-b border-border bg-page/50">
               <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap">Contract / Subcontractor</th>
-              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Total Retention Held</th>
+              <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Total Retention Held<span className="ml-1 text-[9px] font-medium text-muted/70">{currency}</span></th>
               <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap">Stage 1 — Practical Completion</th>
               <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap">Stage 2 — End of DLP</th>
               <th className="px-4 md:px-5 py-3 font-medium whitespace-nowrap text-right">Action</th>
@@ -68,7 +71,7 @@ export default function RetentionScheduler() {
                   <p className="text-xs text-muted">{contract.trade}</p>
                 </td>
                 <td className="px-4 md:px-5 py-3 text-right tabular-nums font-semibold text-main whitespace-nowrap">
-                  {formatGBP(contract.totalRetention)}
+                  {formatAmount(contract.totalRetention)}
                 </td>
                 <td className="border-l border-border/60">
                   <StageCell contract={contract} stageKey="stage1" />

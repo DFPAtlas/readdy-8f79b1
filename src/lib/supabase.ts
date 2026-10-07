@@ -27,4 +27,13 @@ export function getSupabase(): ReturnType<typeof createClient<Database>> | null 
   return supabaseInstance;
 }
 
+/**
+ * Returns the already-created client without ever creating one. Used by recovery
+ * paths (e.g. clearing a stale session) that must not trigger a fresh client
+ * initialisation, which could re-enter the failing token-refresh flow.
+ */
+export function getExistingSupabase(): ReturnType<typeof createClient<Database>> | null {
+  return supabaseInstance;
+}
+
 export type SupabaseClient = ReturnType<typeof createClient<Database>>;

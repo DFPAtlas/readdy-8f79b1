@@ -5,7 +5,7 @@ import { useToast } from '@/components/base/Toast';
 import { demoFullJobs } from '@/mocks/jobs';
 import { getEvidenceByJob, getDailyLogsByJob, getTimelineEventsByJob } from '@/mocks/evidence';
 import { getVariationsByJob } from '@/mocks/clients';
-import { formatGBP } from '@/mocks/reports';
+import { useCurrency } from '@/hooks/useCurrency';
 
 type ViewMode = 'management' | 'commercial' | 'site' | 'client_safe';
 
@@ -14,6 +14,7 @@ export default function JobReport() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { jobId } = useParams<{ jobId: string }>();
+  const { formatAmount } = useCurrency();
 
   const [viewMode, setViewMode] = useState<ViewMode>('management');
 
@@ -126,12 +127,12 @@ export default function JobReport() {
               <h3 className="text-sm font-semibold text-foreground-950 mb-3">{t('reports.contractValue')}</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
-                  { label: t('reports.originalContractValue'), value: formatGBP(job.financials.contractValue) },
-                  { label: t('reports.approvedVariationValue'), value: formatGBP(job.financials.approvedVariations) },
-                  { label: t('reports.revisedContractValue'), value: formatGBP(job.financials.revisedContract) },
-                  { label: t('reports.applicationsIssued'), value: formatGBP(job.financials.invoiced) },
-                  { label: t('reports.paymentsReceived'), value: formatGBP(job.financials.paid) },
-                  { label: t('reports.outstandingReceivables'), value: formatGBP(job.financials.outstanding) },
+                  { label: t('reports.originalContractValue'), value: formatAmount(job.financials.contractValue) },
+                  { label: t('reports.approvedVariationValue'), value: formatAmount(job.financials.approvedVariations) },
+                  { label: t('reports.revisedContractValue'), value: formatAmount(job.financials.revisedContract) },
+                  { label: t('reports.applicationsIssued'), value: formatAmount(job.financials.invoiced) },
+                  { label: t('reports.paymentsReceived'), value: formatAmount(job.financials.paid) },
+                  { label: t('reports.outstandingReceivables'), value: formatAmount(job.financials.outstanding) },
                 ].map((m, i) => (
                   <div key={i}>
                     <p className="text-xs text-foreground-400">{m.label}</p>
@@ -170,7 +171,7 @@ export default function JobReport() {
                   <div key={v.id} className="flex items-center justify-between p-3 bg-background-50 rounded-lg">
                     <div>
                       <p className="text-sm font-medium text-foreground-800">{v.reference} — {v.title}</p>
-                      <p className="text-xs text-foreground-400">{v.status} · {formatGBP(v.latestTotalPrice)}</p>
+                      <p className="text-xs text-foreground-400">{v.status} · {formatAmount(v.latestTotalPrice)}</p>
                     </div>
                     <button onClick={() => navigate(`/variations/${v.id}`)} className="text-xs text-primary-500 hover:underline cursor-pointer">
                       View

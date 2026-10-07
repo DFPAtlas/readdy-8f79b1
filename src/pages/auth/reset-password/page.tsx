@@ -2,9 +2,10 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthLayout from '@/components/feature/AuthLayout';
+import AuthLoadingScreen from '@/components/feature/AuthLoadingScreen';
 
 export default function ResetPasswordPage() {
-  const { updatePassword, error, clearError } = useAuth();
+  const { updatePassword, error, clearError, session, loading } = useAuth();
   const navigate = useNavigate();
 
   const [password, setPassword] = useState('');
@@ -43,6 +44,45 @@ export default function ResetPasswordPage() {
       setSuccess(true);
       setTimeout(() => navigate('/sign-in', { replace: true }), 3000);
     }
+  }
+
+  if (loading) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (!session) {
+    return (
+      <AuthLayout title="Reset link required" subtitle="Open the reset link from your email to continue.">
+        <div className="bg-status-red-pale border border-status-red/20 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-status-red flex items-center justify-center flex-shrink-0">
+              <i className="ri-error-warning-line text-white text-lg" style={{ width: '20px', height: '20px' }} />
+            </div>
+            <div>
+              <p className="text-sm text-main font-medium">This link didn&apos;t work</p>
+              <p className="text-sm text-muted mt-1">
+                This page needs a valid password reset link. Links expire quickly, so please request a new one.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <Link
+            to="/forgot-password"
+            className="w-full h-11 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
+          >
+            <i className="ri-mail-send-line" />
+            Request a new link
+          </Link>
+          <p className="text-center text-sm text-muted">
+            <Link to="/sign-in" className="text-primary-500 hover:text-primary-600 font-medium whitespace-nowrap">
+              &larr; Back to sign in
+            </Link>
+          </p>
+        </div>
+      </AuthLayout>
+    );
   }
 
   if (success) {

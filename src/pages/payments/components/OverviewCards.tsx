@@ -1,6 +1,8 @@
-import { retentionSummary, formatGBP } from '@/mocks/retention';
+import { retentionSummary } from '@/mocks/retention';
+import { useCurrency } from '@/hooks/useCurrency';
 
 export default function OverviewCards() {
+  const { formatAmount } = useCurrency();
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {/* Total retention withheld (held by us) */}
@@ -13,7 +15,7 @@ export default function OverviewCards() {
             Held by us
           </span>
         </div>
-        <p className="text-2xl font-bold text-main mt-3 tabular-nums">{formatGBP(retentionSummary.withheldHeldByUs)}</p>
+        <p className="text-2xl font-bold text-main mt-3 tabular-nums">{formatAmount(retentionSummary.withheldHeldByUs)}</p>
         <p className="text-sm text-muted mt-1">Total retention withheld</p>
         <p className="text-xs text-muted mt-2">Across 14 live subcontracts</p>
       </div>
@@ -28,7 +30,7 @@ export default function OverviewCards() {
             Held by clients
           </span>
         </div>
-        <p className="text-2xl font-bold text-main mt-3 tabular-nums">{formatGBP(retentionSummary.receivableHeldByClients)}</p>
+        <p className="text-2xl font-bold text-main mt-3 tabular-nums">{formatAmount(retentionSummary.receivableHeldByClients)}</p>
         <p className="text-sm text-muted mt-1">Retention receivable</p>
         <p className="text-xs text-muted mt-2">Due to be released by clients</p>
       </div>
@@ -60,7 +62,7 @@ export default function OverviewCards() {
             Active valuations
           </span>
         </div>
-        <p className="text-2xl font-bold text-main mt-3 tabular-nums">{formatGBP(retentionSummary.activeApplicationsTotal)}</p>
+        <p className="text-2xl font-bold text-main mt-3 tabular-nums">{formatAmount(retentionSummary.activeApplicationsTotal)}</p>
         <p className="text-sm text-muted mt-1">Active payment applications</p>
         <p className="text-xs text-muted mt-2">Across {retentionSummary.activeApplicationsJobs} jobs</p>
       </div>
