@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
 import { deadlinesService } from '@/services/deadlines.service';
-import { demoDeadlines, deadlineTypeMeta, deadlineTypeOptions, deadlineStatusMeta, computeStatus, type StatutoryDeadline, type DeadlineStatus, type DeadlineType } from '@/mocks/deadlines';
+import { deadlineTypeMeta, deadlineTypeOptions, deadlineStatusMeta, computeStatus, type StatutoryDeadline, type DeadlineStatus, type DeadlineType } from '@/mocks/deadlines';
 import DeadlineList from './components/DeadlineList';
 import DeadlineCalendar from './components/DeadlineCalendar';
 
@@ -11,6 +11,8 @@ export default function DeadlinesPage() {
   const { organisation } = useOrg();
   const [deadlines, setDeadlines] = useState<StatutoryDeadline[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [view, setView] = useState<ViewMode>('list');
   const [typeFilter, setTypeFilter] = useState<DeadlineType | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<DeadlineStatus | 'all'>('all');
@@ -20,18 +22,25 @@ export default function DeadlinesPage() {
     let active = true;
     async function load() {
       setLoading(true);
-      let rows: StatutoryDeadline[] = [];
-      if (organisation?.id) {
-        rows = await deadlinesService.getByOrganisation(organisation.id);
-      }
-      if (active) {
-        setDeadlines(rows.length > 0 ? rows : demoDeadlines);
-        setLoading(false);
+      setLoadError(false);
+      try {
+        const rows = organisation?.id
+          ? await deadlinesService.getByOrganisation(organisation.id)
+          : [];
+        if (active) setDeadlines(rows);
+      } catch (error) {
+        console.error('Failed to load organisation deadlines:', error);
+        if (active) {
+          setDeadlines([]);
+          setLoadError(true);
+        }
+      } finally {
+        if (active) setLoading(false);
       }
     }
-    load();
+    void load();
     return () => { active = false; };
-  }, [organisation?.id]);
+  }, [organisation?.id, reloadKey]);
 
   const jobs = useMemo(() => {
     const set = new Map<string, string>();
@@ -138,8 +147,29 @@ export default function DeadlinesPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
+        <div className="flex items-center justify-center py-20" role="status" aria-live="polite">
           <i className="ri-loader-4-line animate-spin text-2xl text-muted"></i>
+          <span className="sr-only">Loading deadlines</span>
+        </div>
+      ) : loadError ? (
+        <div className="rounded-xl border border-status-red/30 bg-status-red-pale p-5 text-center" role="alert">
+          <p className="text-sm font-semibold text-main">Deadlines could not be loaded.</p>
+          <p className="mt-1 text-sm text-muted">Please try again. We have not substituted sample deadlines.</p>
+          <button
+            type="button"
+            onClick={() => setReloadKey((key) => key + 1)}
+            className="mt-3 h-9 px-4 rounded-lg bg-white border border-border text-sm font-semibold text-main hover:bg-page"
+          >
+            Retry
+          </button>
+        </div>
+      ) : deadlines.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-page flex items-center justify-center mb-4">
+            <i className="ri-calendar-check-line text-2xl text-muted"></i>
+          </div>
+          <h3 className="text-base font-semibold text-main">No deadlines have been recorded yet</h3>
+          <p className="text-sm text-muted mt-1">Deadlines for this organisation will appear here when they are added.</p>
         </div>
       ) : view === 'list' ? (
         <DeadlineList deadlines={filtered} onAction={handleAction} />
