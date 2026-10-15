@@ -45,20 +45,14 @@ export default function Hero() {
             </a>
           </div>
 
-          <p className="mt-6 text-xs text-white/60 flex items-center justify-center gap-2 flex-wrap">
-            <span className="flex items-center gap-0.5">
-              <i className="ri-star-fill text-amber-400"></i>
-              <i className="ri-star-fill text-amber-400"></i>
-              <i className="ri-star-fill text-amber-400"></i>
-              <i className="ri-star-fill text-amber-400"></i>
-              <i className="ri-star-fill text-amber-400"></i>
-            </span>
-            4.8/5 from 500+ UK contractors · No credit card required
-          </p>
+
         </div>
 
-        {/* Product preview mockup */}
-        <div className="mt-14 md:mt-20 max-w-4xl mx-auto text-left">
+        {/* Product preview mockup — illustrative sample data */}
+        <p className="mt-12 text-xs font-medium text-white/70 text-center">
+          Illustrative preview · figures shown are sample data, not live customer results
+        </p>
+        <div className="mt-4 md:mt-6 max-w-4xl mx-auto text-left">
           <div className="bg-white rounded-2xl border border-white/20 shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-page">
               <div className="flex items-center gap-2">
