@@ -12,7 +12,8 @@ export interface DeadlineSummary {
 export const deadlinesService = {
   async getByOrganisation(orgId: string): Promise<StatutoryDeadline[]> {
     const supabase = getSupabase();
-    if (!supabase || !orgId) return [];
+    if (!orgId) return [];
+    if (!supabase) throw new Error('Database connection is unavailable.');
 
     const { data, error } = await supabase
       .from('statutory_deadlines')
@@ -23,7 +24,7 @@ export const deadlinesService = {
 
     if (error) {
       console.error('Failed to load deadlines:', error);
-      return [];
+      throw new Error('Could not load deadlines.');
     }
 
     return (data || []).map((d: Record<string, unknown>) => {
