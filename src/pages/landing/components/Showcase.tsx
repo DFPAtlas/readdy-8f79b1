@@ -121,7 +121,7 @@ export default function Showcase() {
             Built for commercial clarity
           </h2>
           <p className="mt-4 text-base text-muted leading-relaxed">
-            Every module is designed around the way commercial managers and buyers actually work — scannable in seconds, accurate to the penny.
+            The product screens below are illustrative previews using sample data; they do not show live customer records or verified results.
           </p>
         </div>
 
