@@ -23,6 +23,7 @@ export default function DeadlinesPage() {
     async function load() {
       setLoading(true);
       setLoadError(false);
+      setDeadlines([]);
       try {
         const rows = organisation?.id
           ? await deadlinesService.getByOrganisation(organisation.id)
@@ -102,7 +103,7 @@ export default function DeadlinesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className={`grid grid-cols-2 lg:grid-cols-4 gap-3 ${loading || loadError ? "hidden" : ""}`}>
         {[
           { label: 'Due in 7 days', value: summary.dueNext7Days, icon: 'ri-calendar-2-line', tone: 'bg-primary-50 text-primary-500' },
           { label: 'Overdue', value: summary.overdue, icon: 'ri-alert-line', tone: 'bg-status-red-pale text-status-red' },
@@ -122,7 +123,7 @@ export default function DeadlinesPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="bg-white border border-border rounded-xl p-3 flex flex-wrap items-center gap-2">
+      <div className={`bg-white border border-border rounded-xl p-3 flex flex-wrap items-center gap-2 ${loading || loadError ? "hidden" : ""}`}>
         <span className="text-xs font-semibold text-muted uppercase tracking-wider px-1">Filter</span>
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as DeadlineType | 'all')} className={filterSelectClass}>
           <option value="all">All notice types</option>
