@@ -2,7 +2,7 @@
 // Caches app shell and selected static resources only.
 // Never caches: auth, API, secrets, tokens, signed URLs.
 
-const CACHE_VERSION = 'v2.18.0';
+const CACHE_VERSION = 'v2.18.1';
 const STATIC_CACHE = `site-ledger-static-${CACHE_VERSION}`;
 const OFFLINE_PAGE = '/offline.html';
 
@@ -10,16 +10,22 @@ const OFFLINE_PAGE = '/offline.html';
 const PRECACHE_URLS = [
   '/',
   OFFLINE_PAGE,
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  '/icons/icon.svg',
+  '/icons/icon-maskable.svg',
 ];
 
-// Install: precache app shell
+// Install: cache each resource independently so one unavailable optional file
+// does not prevent the service worker from installing.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      return cache.addAll(PRECACHE_URLS).catch(() => {
-        // Gracefully handle individual cache failures
+    caches.open(STATIC_CACHE).then(async (cache) => {
+      const results = await Promise.allSettled(
+        PRECACHE_URLS.map((url) => cache.add(url))
+      );
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.warn(`BuildNerve precache failed for ${PRECACHE_URLS[index]}`, result.reason);
+        }
       });
     }).then(() => self.skipWaiting())
   );
@@ -90,7 +96,9 @@ self.addEventListener('fetch', (event) => {
           const networkResponse = await fetch(event.request);
           // Cache a clone
           const cache = await caches.open(STATIC_CACHE);
-          cache.put(event.request, networkResponse.clone());
+          cache.put(event.request, networkResponse.clone()).catch((err) => {
+            console.warn('BuildNerve cache write failed', err);
+          });
           return networkResponse;
         } catch (err) {
           // Offline — try cache for documents, static assets
