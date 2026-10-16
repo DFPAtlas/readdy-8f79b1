@@ -1,15 +1,17 @@
 # BuildNerve demo sandbox: implementation and seed plan
 
-Status: review plan only. No production data, accounts, schema, or deployment has been changed.
+Status: review-branch safety update. No production data, accounts, schema, or deployment has been changed.
+
+The branch now removes the legacy shared-login email behavior and stops the landing page from sending lead details to the Readdy form endpoint. The public demo request flow is temporarily paused and directs visitors to request a guided demo while the private per-visitor flow is built. This branch is not ready to enable self-serve demo access.
 
 ## What the repository does today
 
-- The landing page already has a demo request form, but it collects extra fields and posts the form to a Readdy form endpoint.
-- The form then calls `send-demo-email`. That function sends the same fixed demo account details to every requester; it does not issue an individual access link or provision a workspace.
+- Before this branch update, the landing page had a demo request form that collected extra fields and posted them to a Readdy form endpoint.
+- Before this branch update, that form called `send-demo-email`, which sent fixed shared demo account details and did not issue individual access links or provision workspaces.
 - Several app screens, including Workforce, Jobs, Clients, Reports, and Deadlines, still import local mock data. The CIS register is now wired to organisation-scoped Supabase records, so the displayed mock subcontractors do not appear in CIS.
 - Martin's Big Builds test workspace is distinct from any proposed demo workspace and must not receive demo seed records.
 
-The fixed shared login must be removed as part of this work. Do not deploy a new form or email flow while it still exposes shared credentials.
+The shared credentials have been removed from the branch. The old `send-demo-email` endpoint now returns `410 Gone` and does not send an email. Do not enable self-serve demo requests until individual sign-in, isolated workspace provisioning, expiry enforcement, and the blocked-action checks below are implemented and verified.
 
 ## Intended customer journey
 
@@ -72,3 +74,11 @@ Before calling the demo coherent, replace the local mock sources in the agreed c
 - Applying migrations to production.
 - Pulling or publishing through Readdy.
 - Changing or seeding Martin's Big Builds workspace.
+
+## Current branch checkpoint
+
+- Landing page no longer sends submitted form data to Readdy or the legacy shared-login endpoint.
+- The landing page explains that self-serve access is paused and offers the existing guided-demo contact route.
+- `send-demo-email` is a disabled tombstone; it returns `410 Gone` for all non-preflight requests.
+- Per-request email links, demo provisioning, seed data, expiry/cleanup, and end-to-end isolation tests are not implemented in this checkpoint.
+- Keep PR 7 in draft until those remaining implementation and verification gates are met.
