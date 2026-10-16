@@ -38,6 +38,18 @@ function fail(message: string, status = 400): Response {
 
 type Supabase = ReturnType<typeof createClient>;
 
+async function demoOrganisationRefusal(admin: Supabase, organisationId: string): Promise<Response | null> {
+  const { data: organisation, error } = await admin
+    .from("organisations")
+    .select("id, is_demo")
+    .eq("id", organisationId)
+    .maybeSingle();
+  if (error) return fail("Could not verify the organisation", 500);
+  if (!organisation) return fail("Organisation not found", 404);
+  if (organisation.is_demo) return fail("Invitations are disabled in demo workspaces", 403);
+  return null;
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }
@@ -199,6 +211,9 @@ async function handleCreate(
     return fail("Only an owner can invite another owner", 403);
   }
 
+  const demoRefusal = await demoOrganisationRefusal(admin, organisationId);
+  if (demoRefusal) return demoRefusal;
+
   const { data: org } = await admin.from("organisations").select("id, name").eq("id", organisationId).maybeSingle();
   if (!org) return fail("Organisation not found", 404);
 
@@ -279,6 +294,9 @@ async function handleResend(
   if (invitation.status === "accepted") return fail("This invitation has already been accepted", 409);
   if (invitation.status === "revoked") return fail("This invitation has been revoked", 409);
 
+  const demoRefusal = await demoOrganisationRefusal(admin, invitation.organisation_id);
+  if (demoRefusal) return demoRefusal;
+
   const { data: org } = await admin.from("organisations").select("name").eq("id", invitation.organisation_id).maybeSingle();
   if (!org) return fail("Organisation not found", 404);
 
@@ -331,6 +349,9 @@ async function handleRevoke(
   if (invitation.role === "owner" && membership.role !== "owner") {
     return fail("Only an owner can manage an owner invitation", 403);
   }
+
+  const demoRefusal = await demoOrganisationRefusal(admin, invitation.organisation_id);
+  if (demoRefusal) return demoRefusal;
 
   const { error: updateError } = await admin
     .from("invitations")
@@ -405,6 +426,9 @@ async function handleAccept(
   if (!callerEmail || callerEmail !== (invitation.email as string).trim().toLowerCase()) {
     return fail("This invitation was sent to a different email address.", 403);
   }
+
+  const demoRefusal = await demoOrganisationRefusal(admin, invitation.organisation_id);
+  if (demoRefusal) return demoRefusal;
 
   const { error: upsertError } = await admin
     .from("organisation_members")

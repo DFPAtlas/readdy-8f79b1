@@ -72,6 +72,15 @@ serve(async (req) => {
       return json(req, { error: "Only organisation owners or admins can manage billing" }, 403);
     }
 
+    const { data: organisation, error: organisationError } = await supabase
+      .from("organisations")
+      .select("is_demo")
+      .eq("id", organisationId)
+      .maybeSingle();
+    if (organisationError) throw organisationError;
+    if (!organisation) return json(req, { error: "Organisation not found" }, 404);
+    if (organisation.is_demo) return json(req, { error: "Billing is disabled in demo workspaces" }, 403);
+
     const { data: billingCustomer } = await supabase
       .from("organisation_billing_customers")
       .select("stripe_customer_id")

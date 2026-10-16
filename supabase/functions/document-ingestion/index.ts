@@ -174,6 +174,18 @@ serve(async (req: Request) => {
         });
       }
 
+      const { data: organisation, error: organisationError } = await supabaseClient
+        .from("organisations")
+        .select("is_demo")
+        .eq("id", organisationId)
+        .maybeSingle();
+      if (organisationError) throw organisationError;
+      if (organisation?.is_demo) {
+        return new Response(JSON.stringify({ error: "Uploads are disabled in demo workspaces" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Validate file type
       const allowedTypes = [
         "application/pdf",

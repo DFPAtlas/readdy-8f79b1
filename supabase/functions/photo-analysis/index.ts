@@ -74,7 +74,13 @@ serve(async (req: Request) => {
         .eq("user_id", user.id)
         .eq("status", "active")
         .maybeSingle();
-      return !error && !!membership;
+      if (error || !membership) return false;
+      const { data: organisation, error: organisationError } = await supabaseClient
+        .from("organisations")
+        .select("is_demo")
+        .eq("id", organisationId)
+        .maybeSingle();
+      return !organisationError && !!organisation && !organisation.is_demo;
     };
 
     const url = new URL(req.url);
