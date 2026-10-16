@@ -143,12 +143,47 @@ Deno.serve(async (req: Request) => {
 
     const body = req.method === "POST" ? await req.json() : {};
 
+    const guardOrganisation = async (organisationId: string): Promise<Response | null> => {
+      const { data: membership, error: membershipError } = await supabase
+        .from("organisation_members")
+        .select("id")
+        .eq("organisation_id", organisationId)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .maybeSingle();
+      if (membershipError) throw membershipError;
+      if (!membership) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+
+      const { data: organisation, error: organisationError } = await supabase
+        .from("organisations")
+        .select("is_demo")
+        .eq("id", organisationId)
+        .maybeSingle();
+      if (organisationError) throw organisationError;
+      if (!organisation) return new Response(JSON.stringify({ error: "Organisation not found" }), { status: 404, headers: corsHeaders });
+      if (organisation.is_demo) return new Response(JSON.stringify({ error: "Accounting integrations are disabled in demo workspaces" }), { status: 403, headers: corsHeaders });
+      return null;
+    };
+
+    const guardConnection = async (connectionId: string): Promise<Response | null> => {
+      const { data: connection, error } = await supabase
+        .from("integration_connections")
+        .select("organisation_id")
+        .eq("id", connectionId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!connection) return new Response(JSON.stringify({ error: "Connection not found" }), { status: 404, headers: corsHeaders });
+      return guardOrganisation(connection.organisation_id);
+    };
+
     // --- GET_AUTH_URL: Generate OAuth authorization URL ---
     if (path === "auth-url" && req.method === "POST") {
       const { provider, organisationId, connectionId: connId } = body;
       if (!provider || !organisationId) {
         return new Response(JSON.stringify({ error: "provider and organisationId required" }), { status: 400, headers: corsHeaders });
       }
+      const refusal = await guardOrganisation(organisationId);
+      if (refusal) return refusal;
 
       const config = await resolveConfig(supabase, provider, connId || null);
       if (!config || !config.clientId) {
@@ -177,6 +212,8 @@ Deno.serve(async (req: Request) => {
       if (!provider || !code || !connectionId) {
         return new Response(JSON.stringify({ error: "provider, code, and connectionId required" }), { status: 400, headers: corsHeaders });
       }
+      const refusal = await guardConnection(connectionId);
+      if (refusal) return refusal;
 
       const config = await resolveConfig(supabase, provider, connectionId);
       if (!config || !config.clientId || !config.clientSecret) {
@@ -289,6 +326,8 @@ Deno.serve(async (req: Request) => {
       if (!conn) {
         return new Response(JSON.stringify({ error: "Connection not found" }), { status: 404, headers: corsHeaders });
       }
+      const refusal = await guardOrganisation(conn.organisation_id);
+      if (refusal) return refusal;
 
       // Upsert credentials into the tokens table
       const { data: existing } = await supabase
@@ -320,6 +359,8 @@ Deno.serve(async (req: Request) => {
       if (!connectionId) {
         return new Response(JSON.stringify({ error: "connectionId required" }), { status: 400, headers: corsHeaders });
       }
+      const refusal = await guardConnection(connectionId);
+      if (refusal) return refusal;
 
       const config = await resolveConfig(supabase, provider || "xero", connectionId);
       return new Response(JSON.stringify({
@@ -344,6 +385,8 @@ Deno.serve(async (req: Request) => {
       if (!connectionId) {
         return new Response(JSON.stringify({ error: "connectionId required" }), { status: 400, headers: corsHeaders });
       }
+      const refusal = await guardConnection(connectionId);
+      if (refusal) return refusal;
 
       await supabase.from("integration_connection_tokens").delete().eq("connection_id", connectionId);
       await supabase.from("integration_connections").update({
@@ -361,6 +404,8 @@ Deno.serve(async (req: Request) => {
       if (!connectionId) {
         return new Response(JSON.stringify({ error: "connectionId required" }), { status: 400, headers: corsHeaders });
       }
+      const refusal = await guardConnection(connectionId);
+      if (refusal) return refusal;
 
       const { data: conn } = await supabase.from("integration_connections").select("*, provider:integration_providers(provider_key)").eq("id", connectionId).maybeSingle();
       if (!conn) return new Response(JSON.stringify({ error: "Connection not found" }), { status: 404, headers: corsHeaders });

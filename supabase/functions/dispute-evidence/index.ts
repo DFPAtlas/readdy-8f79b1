@@ -128,16 +128,20 @@ async function authorize(
 ) {
   const { data: dispute } = await supabase
     .from("disputes").select("*").eq("id", disputeId).maybeSingle();
-  if (!dispute) return { dispute: null, isParty: false, role: null };
+  if (!dispute) return { dispute: null, isParty: false, role: null, isDemo: false };
+
+  const { data: organisation } = await supabase
+    .from("organisations").select("is_demo").eq("id", dispute.organisation_id).maybeSingle();
+  const isDemo = organisation?.is_demo === true;
 
   const isClaimant = dispute.claimant_user_id === userId;
   const isRespondent = dispute.respondent_user_id === userId;
   const isParty = isClaimant || isRespondent;
 
-  if (!isParty) return { dispute, isParty: false, role: null };
+  if (!isParty) return { dispute, isParty: false, role: null, isDemo };
 
   const role = isClaimant ? "claimant" : "respondent";
-  return { dispute, isParty, role };
+  return { dispute, isParty, role, isDemo };
 }
 
 // Records a timeline event + audit entry + notification for an evidence action.
@@ -250,9 +254,10 @@ serve(async (req) => {
       if (!disputeId) return fail("disputeId is required");
       if (!file) return fail("A file is required");
 
-      const { dispute, isParty, role } = await authorize(supabase, user.id, disputeId);
+      const { dispute, isParty, role, isDemo } = await authorize(supabase, user.id, disputeId);
       if (!dispute) return fail("Dispute not found", 404);
       if (!isParty) return fail("Only parties to this dispute can submit evidence", 403);
+      if (isDemo) return fail("File uploads are disabled in demo workspaces", 403);
 
       const limitErr = await enforceSubmissionRateLimit(supabase, user.id);
       if (limitErr) return fail(limitErr, 429);
@@ -542,9 +547,10 @@ serve(async (req) => {
       if (!title) return fail("A title is required");
       if (!description) return fail("A note description is required");
 
-      const { dispute, isParty, role } = await authorize(supabase, user.id, disputeId);
+      const { dispute, isParty, role, isDemo } = await authorize(supabase, user.id, disputeId);
       if (!dispute) return fail("Dispute not found", 404);
       if (!isParty) return fail("Only parties can submit evidence", 403);
+      if (isDemo) return fail("Evidence submissions are disabled in demo workspaces", 403);
 
       const limitErr = await enforceSubmissionRateLimit(supabase, user.id);
       if (limitErr) return fail(limitErr, 429);
@@ -608,9 +614,10 @@ serve(async (req) => {
         return fail("Invalid project record type");
       }
 
-      const { dispute, isParty, role } = await authorize(supabase, user.id, disputeId);
+      const { dispute, isParty, role, isDemo } = await authorize(supabase, user.id, disputeId);
       if (!dispute) return fail("Dispute not found", 404);
       if (!isParty) return fail("Only parties can submit evidence", 403);
+      if (isDemo) return fail("Evidence submissions are disabled in demo workspaces", 403);
 
       const limitErr = await enforceSubmissionRateLimit(supabase, user.id);
       if (limitErr) return fail(limitErr, 429);
@@ -678,8 +685,9 @@ serve(async (req) => {
       }
       if (evidence.submission_status === "withdrawn") return fail("Already withdrawn", 409);
 
-      const { dispute, role } = await authorize(supabase, user.id, evidence.dispute_id);
+      const { dispute, role, isDemo } = await authorize(supabase, user.id, evidence.dispute_id);
       if (!dispute) return fail("Dispute not found", 404);
+      if (isDemo) return fail("Evidence changes are disabled in demo workspaces", 403);
 
       const { data: updated, error } = await supabase
         .from("dispute_evidence")

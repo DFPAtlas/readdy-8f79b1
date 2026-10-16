@@ -27,7 +27,10 @@ serve(async (req) => {
     const { data, error } = await supabase.rpc("expire_org_trials");
     if (error) throw error;
 
-    return new Response(JSON.stringify({ expired: data ?? 0 }), {
+    const { data: demoExpired, error: demoError } = await supabase.rpc("expire_demo_workspaces");
+    if (demoError) throw demoError;
+
+    return new Response(JSON.stringify({ expired: data ?? 0, demo_expired: demoExpired ?? 0 }), {
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   } catch (error) {

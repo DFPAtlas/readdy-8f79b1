@@ -1,79 +1,38 @@
 import { useState, type FormEvent } from 'react';
 
-const DEMO_FORM_URL = 'https://readdy.ai/api/form/da7c0cmij9sffln41rqg';
-
 export default function CtaSection() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [error, setError] = useState('');
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const honeypot = (form.elements.namedItem('website_alt') as HTMLInputElement)?.value?.trim();
-    if (honeypot) {
-      setStatus('success');
-      setErrorMsg('');
-      form.reset();
-      return;
-    }
-
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
     setStatus('loading');
-    setErrorMsg('');
+    setError('');
 
-    const email = (form.elements.namedItem('email') as HTMLInputElement)?.value?.trim() || '';
-    const name = (form.elements.namedItem('name') as HTMLInputElement)?.value?.trim() || '';
-
-    const fd = new FormData(form);
-    const params = new URLSearchParams();
-    fd.forEach((value, key) => {
-      if (key === 'website_alt') return;
-      const str = String(value);
-      if (str.trim() !== '') params.append(key, str);
-    });
-
+    const formData = new FormData(form);
     try {
-      // Capture the lead via the built-in form (best-effort).
-      await fetch(DEMO_FORM_URL, {
+      const response = await fetch(`${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/request-demo`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-      }).catch(() => null);
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          name: formData.get('name'),
+          email: formData.get('email'),
+          company: formData.get('company'),
+          website_alt: formData.get('website_alt'),
+        }),
+      });
 
-      // Send the demo login email.
-      const basePath = __BASE_PATH__.split('/').filter(Boolean).join('/');
-      const pathPrefix = basePath ? `/${basePath}` : '';
-      const signInUrl = `${window.location.origin}${pathPrefix}/sign-in`;
-
-      const res = await fetch(
-        `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/send-demo-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ email, name, signInUrl }),
-        }
-      );
-
-      if (!res.ok) {
-        let errMsg = "We couldn't send your demo email. Please try again.";
-        try {
-          const err = await res.json();
-          if (typeof err?.error === 'string') errMsg = err.error;
-        } catch {
-          /* ignore */
-        }
-        setStatus('error');
-        setErrorMsg(errMsg);
-        return;
-      }
-
+      if (!response.ok) throw new Error('Demo access requests are temporarily unavailable. Please contact us for a guided demo.');
       setStatus('success');
       form.reset();
-    } catch {
+    } catch (err) {
       setStatus('error');
-      setErrorMsg('Network error. Please try again.');
+      setError(err instanceof Error ? err.message : 'Demo access requests are temporarily unavailable.');
     }
   }
 
@@ -114,97 +73,30 @@ export default function CtaSection() {
         </div>
 
         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-2xl">
-          <h3 className="text-lg font-semibold text-main font-display">Book a personalised demo</h3>
-          <p className="mt-1 text-sm text-muted">Tell us a little about your business and we&apos;ll be in touch within one working day.</p>
+          <h3 className="text-lg font-semibold text-main font-display">Try the BuildNerve demo</h3>
+          <p className="mt-1 text-sm text-muted">Enter your details and we&apos;ll email a secure sign-in link to your private sample workspace.</p>
 
-          <form data-readdy-form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label htmlFor="demo-name" className="block text-xs font-medium text-main mb-1.5">Full name</label>
-              <input
-                id="demo-name"
-                name="name"
-                type="text"
-                required
-                className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors"
-                placeholder="Jane Smith"
-              />
+              <label htmlFor="demo-name" className="mb-1.5 block text-xs font-medium text-main">Full name</label>
+              <input id="demo-name" name="name" type="text" required maxLength={120} autoComplete="name" className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none" />
             </div>
             <div>
-              <label htmlFor="demo-email" className="block text-xs font-medium text-main mb-1.5">Work email</label>
-              <input
-                id="demo-email"
-                name="email"
-                type="email"
-                required
-                className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors"
-                placeholder="jane@yourcompany.co.uk"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="demo-company" className="block text-xs font-medium text-main mb-1.5">Company</label>
-                <input
-                  id="demo-company"
-                  name="company"
-                  type="text"
-                  className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors"
-                  placeholder="Your company"
-                />
-              </div>
-              <div>
-                <label htmlFor="demo-phone" className="block text-xs font-medium text-main mb-1.5">Phone</label>
-                <input
-                  id="demo-phone"
-                  name="phone"
-                  type="tel"
-                  className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors"
-                  placeholder="Optional"
-                />
-              </div>
+              <label htmlFor="demo-email" className="mb-1.5 block text-xs font-medium text-main">Work email</label>
+              <input id="demo-email" name="email" type="email" required maxLength={254} autoComplete="email" className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none" />
             </div>
             <div>
-              <label htmlFor="demo-message" className="block text-xs font-medium text-main mb-1.5">
-                What would you like to see?
-              </label>
-              <textarea
-                id="demo-message"
-                name="message"
-                rows={3}
-                maxLength={500}
-                className="w-full px-3.5 py-3 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors resize-none"
-                placeholder="Tell us about your projects and what you'd like to improve."
-              ></textarea>
+              <label htmlFor="demo-company" className="mb-1.5 block text-xs font-medium text-main">Company</label>
+              <input id="demo-company" name="company" type="text" required maxLength={120} autoComplete="organization" className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none" />
             </div>
-
-            {/* Anti-spam honeypot */}
-            <input
-              type="text"
-              name="website_alt"
-              tabIndex={-1}
-              autoComplete="off"
-              aria-hidden="true"
-              readOnly
-            />
-
-            <button
-              type="submit"
-              disabled={status === 'loading'}
-              className="w-full h-11 bg-primary-500 hover:bg-primary-600 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-            >
-              {status === 'loading' ? 'Sending…' : 'Request my demo'}
+            <input name="website_alt" type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
+            <button type="submit" disabled={status === 'loading'} className="w-full h-11 bg-primary-500 hover:bg-primary-600 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors">
+              {status === 'loading' ? 'Sending link…' : 'Email me a demo link'}
             </button>
-
-            {status === 'success' && (
-              <p className="text-sm text-status-green font-medium flex items-center gap-2">
-                <i className="ri-checkbox-circle-line"></i> Thanks — check your inbox for your demo login details.
-              </p>
-            )}
-            {status === 'error' && (
-              <p className="text-sm text-status-red font-medium flex items-center gap-2">
-                <i className="ri-error-warning-line"></i> {errorMsg}
-              </p>
-            )}
+            {status === 'success' && <p role="status" className="text-sm text-status-green font-medium">If the request is valid, a secure sign-in link will arrive shortly.</p>}
+            {status === 'error' && <p role="alert" className="text-sm text-status-red font-medium">{error}</p>}
           </form>
+          <p className="mt-3 text-xs text-muted text-center">Each visitor receives a separate workspace with fictional sample data. No shared passwords.</p>
         </div>
       </div>
     </section>

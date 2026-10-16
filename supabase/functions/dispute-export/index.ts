@@ -80,16 +80,20 @@ function fmtDateTime(iso: string | null | undefined): string {
 async function authorize(supabase: ReturnType<typeof createClient>, userId: string, disputeId: string) {
   const { data: dispute } = await supabase
     .from("disputes").select("*").eq("id", disputeId).maybeSingle();
-  if (!dispute) return { dispute: null, isParty: false, role: null };
+  if (!dispute) return { dispute: null, isParty: false, role: null, isDemo: false };
+
+  const { data: organisation } = await supabase
+    .from("organisations").select("is_demo").eq("id", dispute.organisation_id).maybeSingle();
+  const isDemo = organisation?.is_demo === true;
 
   const isClaimant = dispute.claimant_user_id === userId;
   const isRespondent = dispute.respondent_user_id === userId;
   const isParty = isClaimant || isRespondent;
 
-  if (!isParty) return { dispute, isParty: false, role: null };
+  if (!isParty) return { dispute, isParty: false, role: null, isDemo };
 
   const role = isClaimant ? "claimant" : "respondent";
-  return { dispute, isParty, role };
+  return { dispute, isParty, role, isDemo };
 }
 
 // Minimal staff resolution for the retention-purge sweep (operational staff).
@@ -417,9 +421,10 @@ serve(async (req) => {
       const config = body?.config ?? {};
       if (!disputeId) return fail("disputeId is required");
 
-      const { dispute, isParty, role } = await authorize(supabase, user.id, disputeId);
+      const { dispute, isParty, role, isDemo } = await authorize(supabase, user.id, disputeId);
       if (!dispute) return fail("Dispute not found", 404);
       if (!isParty) return fail("Only parties to this dispute can create a pack", 403);
+      if (isDemo) return fail("Evidence pack exports are disabled in demo workspaces", 403);
       if (dispute.jurisdiction !== "england_wales") return fail("Only England & Wales disputes are supported", 403);
       if (dispute.status === "draft") return fail("The dispute must be formally submitted", 409);
       if (TERMINAL_STATUSES.indexOf(dispute.status) !== -1) return fail("This dispute is already closed", 409);
@@ -900,9 +905,10 @@ serve(async (req) => {
         .from("dispute_exports").select("*").eq("id", exportId).maybeSingle();
       if (!exportRow) return fail("Not found", 404);
 
-      const { dispute, isParty, role } = await authorize(supabase, user.id, exportRow.dispute_id);
+      const { dispute, isParty, role, isDemo } = await authorize(supabase, user.id, exportRow.dispute_id);
       if (!dispute) return fail("Dispute not found", 404);
       if (!isParty) return fail("Access denied", 403);
+      if (isDemo) return fail("Evidence pack downloads are disabled in demo workspaces", 403);
       if (exportRow.status !== "ready") return fail("This pack is not available for download", 409);
       if (exportRow.retention_status === "deleted") return fail("This pack has been purged under the retention policy", 410);
 

@@ -30,6 +30,7 @@ interface OrgContextValue extends OrgState {
   isOwnerOrAdmin: boolean;
   isTrialing: boolean;
   trialDaysLeft: number | null;
+  isDemo: boolean;
   isReadOnly: boolean;
   switchOrganisation: (orgId: string) => Promise<void>;
   refreshOrganisations: () => Promise<void>;
@@ -217,7 +218,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     [loadOrganisations],
   );
 
-  const isReadOnly =
+  const isDemo = Boolean(state.organisation?.is_demo);
+  const isReadOnly = isDemo ||
     accessState === 'read_only'
     || accessState === 'billing_locked'
     || accessState === 'suspended_by_platform';
@@ -241,6 +243,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     isOwnerOrAdmin,
     isTrialing,
     trialDaysLeft,
+    isDemo,
     isReadOnly,
     switchOrganisation,
     refreshOrganisations,
