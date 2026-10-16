@@ -364,28 +364,21 @@ export async function getPlantHireSummary(orgId: string): Promise<PlantHireSumma
 
 export interface CisSummary {
   total: number;
-  verified: number;
-  pending: number;
-  lastChecked: string | null;
+  utrRecorded: number;
+  noUtrRecorded: number;
 }
 
 export async function getCisSummary(orgId: string): Promise<CisSummary> {
   const supabase = await client();
   const { data, error } = await supabase
     .from('cis_records')
-    .select('id, utr_recorded, last_checked')
+    .select('id, utr_recorded')
     .eq('organisation_id', orgId);
   if (error) throw error;
 
-  const rows = (data || []) as Record<string, unknown>[];
-  const verified = rows.filter((r) => r.utr_recorded === true).length;
-  const lastChecked = rows.reduce<string | null>((latest, r) => {
-    const value = (r.last_checked as string) || null;
-    if (!value) return latest;
-    return !latest || value > latest ? value : latest;
-  }, null);
-
-  return { total: rows.length, verified, pending: rows.length - verified, lastChecked };
+  const rows = data || [];
+  const utrRecorded = rows.filter((row) => row.utr_recorded).length;
+  return { total: rows.length, utrRecorded, noUtrRecorded: rows.length - utrRecorded };
 }
 
 // ─── Get-started checklist ─────────────────────────────────────────────
