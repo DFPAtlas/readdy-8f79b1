@@ -4,13 +4,6 @@ import { useWidgetData } from '@/hooks/useWidgetData';
 import { getCisSummary, type CisSummary } from '@/services/dashboard.service';
 import { WidgetError, WidgetEmpty, WidgetLoading } from './WidgetState';
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
 export default function CisStatus() {
   const navigate = useNavigate();
   const { organisation } = useOrg();
@@ -27,8 +20,8 @@ export default function CisStatus() {
             <i className="ri-government-line text-lg"></i>
           </span>
           <div>
-            <h3 className="text-base font-semibold text-main">HMRC CIS &amp; Subcontractors</h3>
-            <p className="text-xs text-muted mt-0.5">Subcontractor verification status</p>
+            <h3 className="text-base font-semibold text-main">CIS records</h3>
+            <p className="text-xs text-muted mt-0.5">Internal register · HMRC is not connected</p>
           </div>
         </div>
       </div>
@@ -40,34 +33,31 @@ export default function CisStatus() {
       ) : !data || data.total === 0 ? (
         <WidgetEmpty
           icon="ri-user-add-line"
-          text="Add a subcontractor to start CIS checks"
-          actionLabel="Add a subcontractor"
-          onAction={() => navigate('/workforce/invite')}
+          text="No internal CIS records have been added for this organisation"
+          actionLabel="Open CIS register"
+          onAction={() => navigate('/compliance')}
         />
       ) : (
         <div className="p-5 space-y-4">
-          {/* Verification summary */}
+          {/* Internal record summary */}
           <div className="bg-status-purple-pale rounded-lg p-4 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-status-purple uppercase tracking-wider">
-                Subcontractors on file
+                Internal records
               </p>
               <p className="text-lg font-bold text-main mt-0.5">{data.total} record{data.total === 1 ? '' : 's'}</p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-status-purple tabular-nums">{data.verified}</p>
-              <p className="text-[11px] text-muted">verified UTR</p>
+              <p className="text-2xl font-bold text-status-purple tabular-nums">{data.utrRecorded}</p>
+              <p className="text-[11px] text-muted">UTR marked on file</p>
             </div>
           </div>
 
-          {/* Detail */}
+          {/* Manual record status */}
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-sm font-semibold text-status-amber">{data.pending} awaiting verification</p>
-              <p className="text-xs text-muted mt-1">Last checked {formatDate(data.lastChecked)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-status-green">{data.verified} verified</p>
+              <p className="text-sm font-semibold text-status-amber">{data.noUtrRecorded} without a UTR recorded</p>
+              <p className="text-xs text-muted mt-1">This summary does not confirm an HMRC check.</p>
             </div>
           </div>
 

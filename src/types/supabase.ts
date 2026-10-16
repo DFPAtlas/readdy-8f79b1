@@ -137,6 +137,54 @@ export interface Database {
           { foreignKeyName: 'organisation_members_organisation_id_fkey'; columns: ['organisation_id']; referencedRelation: 'organisations'; referencedColumns: ['id'] },
         ];
       };
+      cis_records: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          person_id: string;
+          utr_recorded: boolean;
+          verification_ref: string | null;
+          deduction_rate: number | null;
+          gross_payment_status: boolean | null;
+          last_checked: string | null;
+          checked_by: string | null;
+          note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          person_id: string;
+          utr_recorded?: boolean;
+          verification_ref?: string | null;
+          deduction_rate?: number | null;
+          gross_payment_status?: boolean | null;
+          last_checked?: string | null;
+          checked_by?: string | null;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organisation_id?: string;
+          person_id?: string;
+          utr_recorded?: boolean;
+          verification_ref?: string | null;
+          deduction_rate?: number | null;
+          gross_payment_status?: boolean | null;
+          last_checked?: string | null;
+          checked_by?: string | null;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          { foreignKeyName: 'cis_records_organisation_id_fkey'; columns: ['organisation_id']; referencedRelation: 'organisations'; referencedColumns: ['id'] },
+          { foreignKeyName: 'cis_records_person_id_fkey'; columns: ['person_id']; referencedRelation: 'workforce_people'; referencedColumns: ['id'] },
+        ];
+      };
       clients: {
         Row: {
           id: string;
