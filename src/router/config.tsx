@@ -46,6 +46,7 @@ import AuthCallbackPage from "@/pages/auth/callback/page";
 import VerifyEmailPage from "@/pages/auth/verify-email/page";
 import AuthConfirmedPage from "@/pages/auth/confirmed/page";
 import AcceptInvitePage from "@/pages/auth/accept-invite/page";
+import DemoActivationPage from "@/pages/demo/activate/page";
 import NotificationsPage from "@/pages/notifications/page";
 import MessagesPage from "@/pages/messages/page";
 import NotificationPreferencesPage from "@/pages/settings/notifications/page";
@@ -201,6 +202,7 @@ const routes: RouteObject[] = [
   { path: "/verify-email", element: <VerifyEmailPage /> },
   { path: "/auth/confirmed", element: <AuthConfirmedPage /> },
   { path: "/accept-invite", element: <AcceptInvitePage /> },
+  { path: "/demo/activate", element: <DemoActivationPage /> },
 
   // First-run company onboarding (authenticated, no dashboard chrome)
   { path: "/onboarding", element: <AuthGuard><OnboardingPage /></AuthGuard> },

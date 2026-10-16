@@ -57,6 +57,9 @@ export interface Database {
           created_at: string;
           updated_at: string;
           archived_at: string | null;
+          is_demo: boolean;
+          demo_owner_user_id: string | null;
+          demo_expires_at: string | null;
         };
         Insert: {
           id?: string;
@@ -78,6 +81,9 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           archived_at?: string | null;
+          is_demo?: boolean;
+          demo_owner_user_id?: string | null;
+          demo_expires_at?: string | null;
         };
         Update: {
           id?: string;
@@ -99,6 +105,9 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           archived_at?: string | null;
+          is_demo?: boolean;
+          demo_owner_user_id?: string | null;
+          demo_expires_at?: string | null;
         };
         Relationships: [];
       };
@@ -1058,6 +1067,10 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      activate_demo_workspace: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
       create_organisation_with_owner: {
         Args: {
           p_name: string;
