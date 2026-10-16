@@ -1,6 +1,5 @@
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import LogoStrip from './components/LogoStrip';
 import Features from './components/Features';
 import Workflow from './components/Workflow';
 import Showcase from './components/Showcase';
@@ -13,7 +12,6 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <Hero />
-        <LogoStrip />
         <Features />
         <Workflow />
         <Showcase />
