@@ -40,13 +40,19 @@ export const paymentApplicationsService = {
 
     if (error) throw error;
 
-    const apps = data || [];
+    const apps: PaymentApplication[] = (data || []).map(row => {
+      const status = row.status;
+      if (status !== 'draft' && status !== 'submitted' && status !== 'certified' && status !== 'paid' && status !== 'disputed' && status !== 'void') {
+        throw new Error(`Unsupported payment application status: ${status}`);
+      }
+      return { ...row, status };
+    });
 
     // Fetch creator names
     const creatorIds = [...new Set(apps.map((a) => a.created_by).filter(Boolean))];
     if (creatorIds.length > 0) {
       const { data: profiles } = await supabase
-        .from('profiles_full')
+        .from('profiles')
         .select('id, full_name')
         .in('id', creatorIds as string[]);
 

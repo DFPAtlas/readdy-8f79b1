@@ -58,7 +58,7 @@ export default function EvidencePanel({ dispute, parties, myRole, onViewProject 
     return map;
   }, [parties]);
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
 
   const submitterOptions = useMemo(() => {
     const map = new Map<string, string>();

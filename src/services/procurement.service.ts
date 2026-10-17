@@ -482,7 +482,7 @@ export const rfqService = {
   async getRFQs(organisationId: string) {
     const { data, error } = await supabase()
       .from('requests_for_quotation')
-      .select('*, lines:rfq_lines(*), suppliers:rfq_suppliers(*, supplier:suppliers(trading_name))')
+      .select('*, lines:rfq_lines(*), suppliers:rfq_suppliers(*, supplier:suppliers(*))')
       .eq('organisation_id', organisationId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -497,7 +497,7 @@ export const poService = {
   async getPurchaseOrders(organisationId: string) {
     const { data, error } = await supabase()
       .from('purchase_orders')
-      .select('*, supplier:suppliers(trading_name), lines:purchase_order_lines(*)')
+      .select('*, supplier:suppliers(*), lines:purchase_order_lines(*)')
       .eq('organisation_id', organisationId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -568,7 +568,7 @@ export const inventoryService = {
   async getBalances(organisationId: string) {
     const { data, error } = await supabase()
       .from('inventory_balances')
-      .select('*, material_item:material_catalogue_items(description, unit_of_measure, internal_code), location:inventory_locations(name)')
+      .select('*, material_item:material_catalogue_items(*), location:inventory_locations(*)')
       .eq('organisation_id', organisationId)
       .order('location_id');
     if (error) throw error;

@@ -1,3 +1,4 @@
+import { DEFAULT_FILTERS } from '../filters';
 import { useState, useRef, useEffect } from 'react';
 
 export interface DisputeFilterState {
@@ -9,16 +10,6 @@ export interface DisputeFilterState {
   actionRequired: boolean;
   dateOpened: string;
 }
-
-export const DEFAULT_FILTERS: DisputeFilterState = {
-  search: '',
-  status: '',
-  role: '',
-  category: '',
-  project: '',
-  actionRequired: false,
-  dateOpened: '',
-};
 
 export interface FilterOption {
   value: string;

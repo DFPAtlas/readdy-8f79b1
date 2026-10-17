@@ -1,5 +1,5 @@
 // AI & Automation Settings Page
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
 import { assistService } from '@/services/assist.service';
 
@@ -27,12 +27,8 @@ export default function AiAutomationSettingsPage() {
 
   const orgId = organisation?.id;
 
-  useEffect(() => {
+  const loadSettings = useCallback(async () => {
     if (!orgId) return;
-    loadSettings();
-  }, [orgId]);
-
-  const loadSettings = async () => {
     try {
       setLoading(true);
       const data = await assistService.getSettings(orgId);
@@ -55,7 +51,9 @@ export default function AiAutomationSettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orgId]);
+
+  useEffect(() => { void loadSettings(); }, [loadSettings]);
 
   const handleSave = async () => {
     if (!orgId) return;

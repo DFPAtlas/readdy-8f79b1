@@ -48,7 +48,7 @@ export default function LegalPageLayout({
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [sections.length]);
 
   const showMeta = Boolean(effectiveDate || lastUpdated || version);
 

@@ -1,10 +1,12 @@
+import { DEFAULT_FILTERS } from './filters';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { disputesService } from '@/services/disputes.service';
 import type { DisputeListItem } from '@/types/disputes';
 import { DISPUTE_STATUS_LABELS, DISPUTE_CATEGORY_LABELS } from '@/types/disputes';
-import SummaryCards, { computeSummary } from '@/pages/disputes/components/SummaryCards';
-import DisputeFilters, { DEFAULT_FILTERS, type DisputeFilterState } from '@/pages/disputes/components/DisputeFilters';
+import SummaryCards from '@/pages/disputes/components/SummaryCards';
+import { computeSummary } from './summary';
+import DisputeFilters, { type DisputeFilterState } from '@/pages/disputes/components/DisputeFilters';
 import DisputeList from '@/pages/disputes/components/DisputeList';
 
 type SummaryKind = 'open' | 'awaiting' | 'negotiation' | 'resolved';

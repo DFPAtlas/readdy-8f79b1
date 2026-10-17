@@ -146,7 +146,7 @@ export default function VariationDetail() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div>
                 <p className="text-[10px] text-muted uppercase mb-1">Additional days</p>
-                <p className="text-sm font-semibold text-main">{currentVersion.programmeImpactDays || variation.programmeImpactDays} day{(currentVersion.programmeImpactDays || variation.programmeImpactDays) !== 1 ? 's' : ''}</p>
+                <p className="text-sm font-semibold text-main">{variation.programmeImpactDays} day{(variation.programmeImpactDays) !== 1 ? 's' : ''}</p>
               </div>
               {currentVersion.revisedCompletion && (
                 <div>

@@ -35,13 +35,6 @@ export default function AssistPanel({ isOpen, onClose, scopeType, scopeId, scope
 
   const orgId = organisation?.id;
 
-  // Load conversations on open
-  useEffect(() => {
-    if (!isOpen || !orgId) return;
-    loadConversations();
-    loadSettings();
-  }, [isOpen, orgId]);
-
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -71,21 +64,27 @@ export default function AssistPanel({ isOpen, onClose, scopeType, scopeId, scope
     };
   }, [isResizing]);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     if (!orgId) return;
     try {
       const data = await assistService.getSettings(orgId);
       setAiEnabled(data.settings?.ai_enabled ?? false);
     } catch { /* ignore */ }
-  };
+  }, [orgId]);
 
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     if (!orgId) return;
     try {
       const convs = await assistService.listConversations(orgId);
       setConversations(convs);
     } catch { /* ignore */ }
-  };
+  }, [orgId]);
+
+  useEffect(() => {
+    if (!isOpen || !orgId) return;
+    void loadConversations();
+    void loadSettings();
+  }, [isOpen, orgId, loadConversations, loadSettings]);
 
   const loadMessages = async (convId: number) => {
     try {
