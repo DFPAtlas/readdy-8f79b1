@@ -1,3 +1,4 @@
+import ProtectedLayout from '@/components/feature/ProtectedLayout';
 import type { RouteObject } from "react-router-dom";
 import { Outlet, Navigate } from "react-router-dom";
 import NotFound from "@/pages/NotFound";
@@ -153,16 +154,6 @@ import RetentionLifecyclePage from "@/pages/retention/page";
 import ProcurementPortal from "@/pages/procurement/portal/page";
 import DeadlinesPage from "@/pages/deadlines/page";
 import MobileLayout from "@/components/feature/MobileLayout";
-
-const ProtectedLayout = () => (
-  <AuthGuard>
-    <OrgGuard>
-      <DashboardLayout>
-        <Outlet />
-      </DashboardLayout>
-    </OrgGuard>
-  </AuthGuard>
-);
 
 const routes: RouteObject[] = [
   // Public routes (no auth required)

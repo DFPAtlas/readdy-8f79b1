@@ -31,7 +31,7 @@ interface AssistChatResponse {
   code?: string;
 }
 
-interface AssistSource {
+export interface AssistSource {
   index: number;
   source_type: string;
   source_id: string;
@@ -39,7 +39,7 @@ interface AssistSource {
   date?: string;
 }
 
-interface AssistConversation {
+export interface AssistConversation {
   id: number;
   title: string;
   scope_type: string;
@@ -51,7 +51,7 @@ interface AssistConversation {
   total_cost_pence: number;
 }
 
-interface AssistMessage {
+export interface AssistMessage {
   id: number;
   role: string;
   content: string;

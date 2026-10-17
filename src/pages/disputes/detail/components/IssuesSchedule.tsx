@@ -138,7 +138,7 @@ function IssueEditor({ open, issue, myRole, evidenceOptions, submitting, error, 
               <label className="text-xs font-medium text-muted">Resolution status</label>
               <select
                 value={resolutionStatus}
-                onChange={(e) => setResolutionStatus(e.target.value)}
+                onChange={(e) => setResolutionStatus(e.target.value as 'open' | 'partly_resolved' | 'resolved')}
                 className="mt-1 w-full h-10 px-3 rounded-lg border border-border bg-white text-sm text-main focus:outline-none focus:ring-2 focus:ring-primary-300 cursor-pointer"
               >
                 <option value="open">Open</option>

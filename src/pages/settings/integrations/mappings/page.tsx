@@ -24,10 +24,8 @@ export default function MappingsPage() {
       setLoading(true);
       const conns = await integrationConnectionsService.getConnections(organisation.id);
       setConnections(conns.filter(c => c.status === 'connected'));
-      if (conns.length > 0 && !selectedConnectionId) {
-        const first = conns.find(c => c.status === 'connected');
-        if (first) setSelectedConnectionId(first.id);
-      }
+      const first = conns.find(c => c.status === 'connected');
+      setSelectedConnectionId(current => conns.some(c => c.id === current && c.status === 'connected') ? current : (first?.id || ''));
     } catch (err) {
       console.error('Failed to load:', err);
     } finally {

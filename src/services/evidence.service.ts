@@ -563,7 +563,18 @@ export const evidenceService = {
         console.error('Failed to load photo analyses:', error);
         return [];
       }
-      return (data || []) as PhotoAnalysisRecord[];
+      return (data || []).map(row => {
+        const analysisType = row.analysis_type;
+        if (analysisType !== 'hazard' && analysisType !== 'quality' && analysisType !== 'defect') {
+          throw new Error(`Unsupported photo analysis type: ${analysisType}`);
+        }
+        const findings = Array.isArray(row.findings) ? row.findings.filter((finding): finding is Json & PhotoFinding => {
+          if (!finding || typeof finding !== 'object' || Array.isArray(finding)) return false;
+          return typeof finding.label === 'string' && typeof finding.description === 'string'
+            && ['low', 'medium', 'high', 'critical'].includes(String(finding.severity));
+        }) : [];
+        return { ...row, analysis_type: analysisType, findings };
+      });
     } catch (err) {
       console.error('Failed to load photo analyses:', err);
       return [];

@@ -349,6 +349,7 @@ export const demoEvidence: EvidenceRecord[] = [
   },
   {
     id: 'ev-1004',
+    attachments: [],
     evidenceType: 'site_instruction',
     title: 'Move two kitchen socket positions',
     caption: 'Client requested two double socket positions be moved 300mm left from marked positions. Discussed on site visit.',
@@ -692,6 +693,7 @@ export const demoDailyLogs: DailySiteLog[] = [
   },
   {
     id: 'log-0803',
+    plannedWork: '',
     jobId: 'sl-1048',
     jobRef: 'SL-1048',
     jobName: 'Oakfield kitchen extension',

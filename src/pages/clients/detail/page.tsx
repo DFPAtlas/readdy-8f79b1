@@ -156,7 +156,7 @@ export default function ClientDetail() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-main font-medium truncate">{c.subject}</p>
-                <p className="text-[11px] text-muted">{new Date(c.dateTime).toLocaleDateString('en-GB', { day: 'short', month: 'short' })} · {new Date(c.dateTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · {c.sender}</p>
+                <p className="text-[11px] text-muted">{new Date(c.dateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {new Date(c.dateTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · {c.sender}</p>
               </div>
               {c.visibility === 'internal_only' && (
                 <span className="text-[9px] font-medium text-status-amber bg-status-amber-pale px-1.5 py-0.5 rounded-full">{t('dashboard.clientDetail.internalOnly')}</span>

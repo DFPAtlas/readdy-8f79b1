@@ -1,3 +1,4 @@
+import type { Database } from '@/types/supabase';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { integrationConnectionsService, integrationOAuthService, syncConfigService, syncEngineService, integrationDashboardService } from '@/services/integrations.service';
@@ -26,7 +27,7 @@ const DIRECTION_LABELS: Record<string, string> = {
   disabled: 'Disabled',
 };
 
-const ENTITY_TYPES = ['client', 'supplier', 'sales_invoice', 'supplier_invoice', 'credit_note', 'payment_received', 'supplier_payment', 'tax_code', 'chart_of_account', 'tracking_category'];
+const ENTITY_TYPES: Database['public']['Enums']['sync_entity_type'][] = ['client', 'supplier', 'sales_invoice', 'supplier_invoice', 'credit_note', 'payment_received', 'supplier_payment', 'tax_code', 'chart_of_account', 'tracking_category'];
 
 export default function ConnectionDetail() {
   const { connectionId } = useParams<{ connectionId: string }>();
@@ -83,14 +84,7 @@ export default function ConnectionDetail() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Handle OAuth callback
-  useEffect(() => {
-    if (oauthCode && oauthProvider && connectionId && organisation?.id) {
-      handleOAuthCallback();
-    }
-  }, [oauthCode, oauthProvider, connectionId]);
-
-  const handleOAuthCallback = async () => {
+  const handleOAuthCallback = useCallback(async () => {
     if (!oauthCode || !oauthProvider || !connectionId) return;
     try {
       setSaving(true);
@@ -123,7 +117,11 @@ export default function ConnectionDetail() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [oauthCode, oauthProvider, connectionId, navigate, loadData]);
+
+  useEffect(() => {
+    if (organisation?.id) void handleOAuthCallback();
+  }, [organisation?.id, handleOAuthCallback]);
 
   const handleConnect = async () => {
     if (!connection || !organisation?.id) return;
@@ -184,10 +182,10 @@ export default function ConnectionDetail() {
     }
   };
 
-  const handleToggleDirection = async (entityType: string, currentDirection: string) => {
+  const handleToggleDirection = async (entityType: Database['public']['Enums']['sync_entity_type'], currentDirection: string) => {
     if (!connection) return;
-    const directions = ['disabled', 'siteledger_to_provider', 'provider_to_siteledger', 'two_way'];
-    const nextIdx = (directions.indexOf(currentDirection) + 1) % directions.length;
+    const directions: Database['public']['Enums']['sync_direction'][] = ['disabled', 'siteledger_to_provider', 'provider_to_siteledger', 'two_way'];
+    const nextIdx = (directions.findIndex(direction => direction === currentDirection) + 1) % directions.length;
     const nextDir = directions[nextIdx];
 
     try {

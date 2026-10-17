@@ -131,7 +131,7 @@ export default function NewJobWizard() {
   const updateDraft = (key: keyof WizardDraft, data: Record<string, unknown>) => {
     setDraft((prev) => {
       const next = { ...prev };
-      (next as Record<string, unknown>)[key] = { ...((next as Record<string, unknown>)[key] || {}), ...data };
+      (next as Record<string, unknown>)[key] = { ...(prev[key] || {}), ...data };
       return next;
     });
   };
@@ -145,8 +145,8 @@ export default function NewJobWizard() {
   // Returns the wizard step (index) that needs attention plus a safe user message,
   // or null when the record is ready to submit.
   const validateForSubmit = (): { step: number; message: string } | null => {
-    const s1 = draft.step1 || {};
-    const s2 = draft.step2 || {};
+    const s1: Partial<NonNullable<WizardDraft['step1']>> = draft.step1 || {};
+    const s2: Partial<NonNullable<WizardDraft['step2']>> = draft.step2 || {};
     if (!(s2.jobName || '').trim()) {
       return { step: 1, message: t('dashboard.validationJobName') };
     }
@@ -185,8 +185,8 @@ export default function NewJobWizard() {
       return;
     }
 
-    const s1 = draft.step1 || {};
-    const s2 = draft.step2 || {};
+    const s1: Partial<NonNullable<WizardDraft['step1']>> = draft.step1 || {};
+    const s2: Partial<NonNullable<WizardDraft['step2']>> = draft.step2 || {};
     const s3 = draft.step3 || {};
     const s4 = draft.step4 || {};
     const s5 = draft.step5 || {};
@@ -473,7 +473,7 @@ export default function NewJobWizard() {
   // ─── Step Renderers ──────────────────────────────────
 
   const renderStep1 = () => {
-    const s1 = draft.step1 || {};
+    const s1: Partial<NonNullable<WizardDraft['step1']>> = draft.step1 || {};
     const clientType = s1.clientType || 'new';
     const entity = s1.clientTypeEntity || 'individual';
     const filteredClients = clientSearch.trim()
@@ -708,7 +708,7 @@ export default function NewJobWizard() {
   };
 
   const renderStep2 = () => {
-    const s2 = draft.step2 || {};
+    const s2: Partial<NonNullable<WizardDraft['step2']>> = draft.step2 || {};
     const ref = s2.jobReference || (step2Ref || generateReference());
     if (!step2Ref && !s2.jobReference) setStep2Ref(ref);
 
@@ -1170,8 +1170,8 @@ export default function NewJobWizard() {
   };
 
   const renderStep6 = () => {
-    const s1 = draft.step1 || {};
-    const s2 = draft.step2 || {};
+    const s1: Partial<NonNullable<WizardDraft['step1']>> = draft.step1 || {};
+    const s2: Partial<NonNullable<WizardDraft['step2']>> = draft.step2 || {};
     const s3 = draft.step3 || {};
     const s4 = draft.step4 || {};
     const s5 = draft.step5 || {};

@@ -135,11 +135,11 @@ export default function DisputeDetailPage() {
     }
   };
 
-  const runClarificationRequest = async (input: RequestClarificationInput) => {
+  const runClarificationRequest = async (input: Omit<RequestClarificationInput, 'disputeId'>) => {
     setSubmitting(true);
     setActionError(null);
     try {
-      await disputesService.requestClarification(input);
+      await disputesService.requestClarification({ ...input, disputeId });
       showToast('Clarification requested.', 'success');
       setClarifyMode(null);
       await load();

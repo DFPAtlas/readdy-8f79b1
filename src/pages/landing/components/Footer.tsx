@@ -86,7 +86,8 @@ export default function Footer() {
       } catch {
         /* ignore parse errors */
       }
-      const serverMsg = parsed?.meta?.message || parsed?.message || parsed?.meta?.detail || responseText;
+      const meta = parsed.meta && typeof parsed.meta === 'object' ? parsed.meta as Record<string, unknown> : {};
+      const serverMsg = meta.message || parsed.message || meta.detail || responseText;
 
       if (res.ok && (parsed as { code?: string })?.code === 'OK') {
         setStatus('success');

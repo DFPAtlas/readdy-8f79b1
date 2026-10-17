@@ -1,43 +1,12 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { OrgContext, type Organisation, type OrganisationMember, type OrgState, type OrgContextValue } from './OrgContext';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabase';
 import { organisationsService } from '@/services/organisations.service';
 import { billingService, type OrganisationSubscription } from '@/services/billing.service';
 import type { Database } from '@/types/supabase';
 
-type Organisation = Database['public']['Tables']['organisations']['Row'];
-type OrganisationMember = Database['public']['Tables']['organisation_members']['Row'];
 
-export type OrgStatus = 'loading' | 'ready' | 'empty' | 'error';
-
-interface OrgState {
-  organisation: Organisation | null;
-  membership: OrganisationMember | null;
-  organisations: Organisation[];
-  loading: boolean;
-  error: string | null;
-  status: OrgStatus;
-}
-
-interface OrgContextValue extends OrgState {
-  accessState: string | null;
-  trialEnd: string | null;
-  subscription: OrganisationSubscription | null;
-  subscriptionStatus: string | null;
-  planName: string | null;
-  billingInterval: 'monthly' | 'annual' | null;
-  role: string | null;
-  isOwnerOrAdmin: boolean;
-  isTrialing: boolean;
-  trialDaysLeft: number | null;
-  isReadOnly: boolean;
-  switchOrganisation: (orgId: string) => Promise<void>;
-  refreshOrganisations: () => Promise<void>;
-  refreshBillingAccess: () => Promise<void>;
-  createOrganisation: (name: string, tradingName?: string) => Promise<{ error: string | null }>;
-}
-
-const OrgContext = createContext<OrgContextValue | undefined>(undefined);
 
 const ORG_STORAGE_KEY = 'buildnerveOrgId';
 const LEGACY_ORG_STORAGE_KEY = 'siteLedgerOrgId';
@@ -249,12 +218,4 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   };
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
-}
-
-export function useOrg(): OrgContextValue {
-  const ctx = useContext(OrgContext);
-  if (!ctx) {
-    throw new Error('useOrg must be used within an OrgProvider');
-  }
-  return ctx;
 }

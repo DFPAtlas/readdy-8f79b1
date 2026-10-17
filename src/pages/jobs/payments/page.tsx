@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSupabase } from '@/lib/supabase';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -26,9 +26,7 @@ export default function JobPaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { loadData(); }, [jobId]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!jobId) return;
     try {
       setLoading(true);
@@ -81,7 +79,9 @@ export default function JobPaymentsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [jobId]);
+
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const formatMoney = (pence: number): string =>
     formatAmount(pence / 100, { minimumFractionDigits: 2, maximumFractionDigits: 2 });

@@ -8,7 +8,7 @@ import { BNWordmarkDark } from '@/components/base/BuildNerveLogo';
 export default function ContractorOnboard() {
   const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
-  const { addToast } = useToast();
+  const { showToast } = useToast();
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -30,7 +30,7 @@ export default function ContractorOnboard() {
 
   const handleSaveAndContinue = () => {
     setSaved(true);
-    addToast(t('onboard.savedProgress'));
+    showToast(t('onboard.savedProgress'));
   };
 
   const handleSubmit = () => {

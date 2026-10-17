@@ -18,7 +18,7 @@ const en = {
     liveJobs: 'Live jobs',
     liveJobsDesc: 'Progress, team and the next important action.',
     viewAll: 'View all',
-    needsAttention: 'Needs attention',
+
     priorityItems: '3 priority items',
     todayOnSite: 'Today on site',
     todayDesc: 'Wednesday\'s workforce schedule',
@@ -173,7 +173,7 @@ const en = {
     mobileNumber: 'Mobile number',
     preferredContact: 'Preferred contact method',
     billingAddress: 'Billing address',
-    siteSection: 'Site',
+
     useBillingAsSite: 'Use billing address as site address',
     addressLine1: 'Address line 1',
     addressLine2: 'Address line 2',
@@ -746,7 +746,7 @@ const en = {
     reviewedBy: 'Reviewed by',
     reviewed: 'Reviewed',
     emergencyContact: 'Emergency contact',
-    contactName: 'Contact name',
+
     contactPhone: 'Contact phone',
     workPassport: 'Work Passport',
     hideSensitive: 'Hide sensitive data',
@@ -1510,19 +1510,19 @@ const en = {
     colCompletion: 'Target completion',
     colProgress: 'Progress',
     colRevisedContract: 'Revised contract',
-    colAppsIssued: 'Applications issued',
+
     colPaid: 'Paid',
-    colOutstanding: 'Outstanding',
+
     colVariations: 'Approved variations',
     colDelays: 'Open delays',
     colComplianceIssues: 'Compliance',
     colLastUpdate: 'Last site update',
     colHealth: 'Health',
     healthOnTrack: 'On track',
-    healthAttention: 'Attention needed',
+
     healthAtRisk: 'At risk',
     healthCritical: 'Critical',
-    healthInsufficient: 'Insufficient data',
+
     reasonsFor: 'Reasons for',
     statusActive: 'Active',
     statusCompleted: 'Completed',

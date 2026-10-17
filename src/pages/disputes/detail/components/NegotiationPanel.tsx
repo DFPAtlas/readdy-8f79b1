@@ -79,7 +79,7 @@ export default function NegotiationPanel({
     load();
   }, [load]);
 
-  const offers = data?.offers ?? [];
+  const offers = useMemo(() => data?.offers ?? [], [data?.offers]);
   const obligations = data?.obligations ?? [];
   const activeOffer = useMemo(
     () => offers.find((o) => o.id === data?.activeOfferId) ?? null,

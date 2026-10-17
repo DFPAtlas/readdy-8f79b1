@@ -1,32 +1,11 @@
+import { ConnectivityContext, type SyncCounts, type ConnectivityContextValue } from './ConnectivityContext';
 // BuildNerve Connectivity & Sync Context
 // Provides online/offline state, sync queue info, and sync triggers
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import * as offlineStore from '@/services/offline-store.service';
 
-interface SyncCounts {
-  queued: number;
-  blocked: number;
-  failed: number;
-  syncing: number;
-  total: number;
-}
 
-interface ConnectivityState {
-  isOnline: boolean;
-  connectionType: 'online' | 'offline' | 'poor';
-  syncCounts: SyncCounts;
-  lastSync: string | null;
-  swUpdateReady: boolean;
-}
-
-interface ConnectivityContextValue extends ConnectivityState {
-  refreshCounts: () => Promise<void>;
-  applyUpdate: () => void;
-  dismissUpdate: () => void;
-}
-
-const ConnectivityContext = createContext<ConnectivityContextValue | undefined>(undefined);
 
 export function ConnectivityProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -108,12 +87,4 @@ export function ConnectivityProvider({ children }: { children: ReactNode }) {
       {children}
     </ConnectivityContext.Provider>
   );
-}
-
-export function useConnectivity(): ConnectivityContextValue {
-  const ctx = useContext(ConnectivityContext);
-  if (!ctx) {
-    throw new Error('useConnectivity must be used within ConnectivityProvider');
-  }
-  return ctx;
 }

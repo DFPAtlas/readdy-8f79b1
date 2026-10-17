@@ -1,28 +1,12 @@
-import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react';
-
-interface ToastMessage {
-  id: string;
-  message: string;
-  type: 'success' | 'info' | 'warning';
-  exiting?: boolean;
-}
-
-interface ToastContextValue {
-  showToast: (message: string, type?: 'success' | 'info' | 'warning') => void;
-}
-
-const ToastContext = createContext<ToastContextValue>({ showToast: () => {} });
-
-export function useToast() {
-  return useContext(ToastContext);
-}
+import { ToastContext, type ToastMessage } from './Toast';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 
 let toastId = 0;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const showToast = useCallback((message: string, type: 'success' | 'info' | 'warning' = 'info') => {
+  const showToast = useCallback((message: string, type: 'success' | 'info' | 'warning' | 'error' = 'info') => {
     const id = `toast-${++toastId}`;
     setToasts((prev) => [...prev, { id, message, type }]);
 
@@ -40,12 +24,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     success: 'bg-primary-500',
     info: 'bg-status-blue',
     warning: 'bg-status-amber',
+    error: 'bg-status-red',
   };
 
   const iconMap = {
     success: 'ri-check-line',
     info: 'ri-information-line',
     warning: 'ri-error-warning-line',
+    error: 'ri-close-circle-line',
   };
 
   return (

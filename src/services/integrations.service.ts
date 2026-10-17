@@ -1,3 +1,4 @@
+import type { Database } from '@/types/supabase';
 import { getSupabase } from '@/lib/supabase';
 
 const supabase = () => getSupabase()!;
@@ -37,37 +38,9 @@ export interface IntegrationProvider {
   documentation_url: string | null;
 }
 
-export interface IntegrationConnection {
-  id: string;
-  organisation_id: string;
-  provider_id: string;
-  external_tenant_id: string | null;
-  external_tenant_name: string | null;
-  base_currency: string;
-  status: string;
-  granted_scopes: string[];
-  last_sync_at: string | null;
-  last_sync_status: string | null;
-  records_awaiting_sync: number;
-  records_needing_attention: number;
-  connected_at: string | null;
-  disconnected_at: string | null;
-  error_message: string | null;
-  config: any;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  provider?: IntegrationProvider;
-}
+export type IntegrationConnection = Database['public']['Tables']['integration_connections']['Row'] & { provider?: IntegrationProvider };
 
-export interface SyncConfig {
-  id: string;
-  connection_id: string;
-  entity_type: string;
-  direction: string;
-  conflict_rule: string;
-  is_active: boolean;
-}
+export type SyncConfig = Database['public']['Tables']['integration_sync_config']['Row'];
 
 export interface EntityMapping {
   id: string;
@@ -249,7 +222,7 @@ export const integrationConnectionsService = {
     return data as IntegrationConnection;
   },
 
-  async updateConnection(id: string, updates: Partial<IntegrationConnection>) {
+  async updateConnection(id: string, updates: Database['public']['Tables']['integration_connections']['Update']) {
     const { data, error } = await supabase()
       .from('integration_connections')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -336,7 +309,7 @@ export const syncConfigService = {
     return data as SyncConfig[];
   },
 
-  async upsertConfig(connectionId: string, entityType: string, direction: string, conflictRule: string, isActive: boolean) {
+  async upsertConfig(connectionId: string, entityType: Database['public']['Enums']['sync_entity_type'], direction: Database['public']['Enums']['sync_direction'], conflictRule: string, isActive: boolean) {
     const { data, error } = await supabase()
       .from('integration_sync_config')
       .upsert({
@@ -485,7 +458,7 @@ export const reconciliationService = {
     return data as ReconciliationItem[];
   },
 
-  async resolveItem(id: string, status: string, resolution: string, resolvedBy: string) {
+  async resolveItem(id: string, status: Database['public']['Enums']['reconciliation_status'], resolution: string, resolvedBy: string) {
     const { data, error } = await supabase()
       .from('integration_reconciliation_items')
       .update({

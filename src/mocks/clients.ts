@@ -238,6 +238,7 @@ export interface ProjectStage {
 
 export interface ClientVisibleEvidence {
   id: string;
+  projectId: string;
   caption: string;
   dateTime: string;
   uploadedBy: string;
@@ -601,6 +602,7 @@ export const demoProjectStages: ProjectStage[] = [
 export const demoClientEvidence: ClientVisibleEvidence[] = [
   {
     id: 'ev-1',
+    projectId: 'sl-1048',
     caption: 'Steel beam preparation — opening cleared and checked',
     dateTime: '2026-08-05T08:45:00Z',
     uploadedBy: 'Martin Hewett',
@@ -609,6 +611,7 @@ export const demoClientEvidence: ClientVisibleEvidence[] = [
   },
   {
     id: 'ev-2',
+    projectId: 'sl-1048',
     caption: 'Steel delivery on site — beams positioned for installation',
     dateTime: '2026-08-05T09:15:00Z',
     uploadedBy: 'James Lawrence',
@@ -617,6 +620,7 @@ export const demoClientEvidence: ClientVisibleEvidence[] = [
   },
   {
     id: 'ev-3',
+    projectId: 'sl-1048',
     caption: 'Drainage connection completed and tested',
     dateTime: '2026-08-04T16:00:00Z',
     uploadedBy: 'Adam Khan',
@@ -625,6 +629,7 @@ export const demoClientEvidence: ClientVisibleEvidence[] = [
   },
   {
     id: 'ev-4',
+    projectId: 'sl-1048',
     caption: 'Kitchen layout — wall positions marked out',
     dateTime: '2026-08-05T10:30:00Z',
     uploadedBy: 'Martin Hewett',
@@ -633,6 +638,7 @@ export const demoClientEvidence: ClientVisibleEvidence[] = [
   },
   {
     id: 'ev-5',
+    projectId: 'sl-1048',
     caption: 'Building Control inspection — foundation check',
     dateTime: '2026-08-01T11:00:00Z',
     uploadedBy: 'Martin Hewett',
@@ -641,6 +647,7 @@ export const demoClientEvidence: ClientVisibleEvidence[] = [
   },
   {
     id: 'ev-6',
+    projectId: 'sl-1048',
     caption: 'Blockwork progress — rear elevation taking shape',
     dateTime: '2026-08-03T14:30:00Z',
     uploadedBy: 'Martin Hewett',
@@ -980,7 +987,7 @@ export function getDecisionsByClient(clientId: string): ClientDecision[] {
 }
 
 export function getClientVisibleEvidence(projectId: string): ClientVisibleEvidence[] {
-  return demoClientEvidence.filter((e) => e.projectId === projectId || !e.visibility || e.visibility === 'client_visible');
+  return demoClientEvidence.filter((e) => e.projectId === projectId && e.visibility === 'client_visible');
 }
 
 export function getPortalAuditEventsForClient(clientId: string): PortalAuditEvent[] {
