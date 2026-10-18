@@ -139,6 +139,12 @@ export interface RequisitionLine {
 }
 
 export interface RequestForQuotation {
+  source_requisition_id: string | null;
+  currency: string;
+  revision: number;
+  awarded_quote_id: string | null;
+  purchase_order_id: string | null;
+  cancellation_reason: string | null;
   id: string;
   organisation_id: string;
   reference: string;
@@ -161,6 +167,7 @@ export interface RequestForQuotation {
 }
 
 export interface RfqLine {
+  requisition_line_id: string | null;
   id: string;
   rfq_id: string;
   line_number: number;
@@ -187,6 +194,12 @@ export interface RfqSupplier {
 }
 
 export interface SupplierQuoteResponse {
+  quote_reference: string | null;
+  recorded_by: string | null;
+  net_total_pence: number;
+  tax_total_pence: number;
+  gross_total_pence: number;
+  delivery_tax_rate: number;
   id: string;
   rfq_supplier_id: string;
   version: number;
@@ -203,6 +216,7 @@ export interface SupplierQuoteResponse {
 }
 
 export interface SupplierQuoteLine {
+  tax_rate: number;
   id: string;
   quote_response_id: string;
   rfq_line_id: string;
@@ -488,7 +502,7 @@ export const rfqService = {
   async getRFQs(organisationId: string) {
     const { data, error } = await supabase()
       .from('requests_for_quotation')
-      .select('*, lines:rfq_lines(*), suppliers:rfq_suppliers(*, supplier:suppliers(*))')
+      .select('*, lines:rfq_lines(*), suppliers:rfq_suppliers(*, supplier:suppliers(*), responses:supplier_quote_responses(*, lines:supplier_quote_lines(*)))')
       .eq('organisation_id', organisationId)
       .order('created_at', { ascending: false });
     if (error) throw error;

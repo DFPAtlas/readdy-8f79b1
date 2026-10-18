@@ -30,3 +30,13 @@ export async function writeRequisition(orgId: string, requestId: string, action:
   if (!data) throw new Error('The server did not confirm the save.');
   return data;
 }
+
+export type RfqAction = 'create_rfq' | 'update_rfq' | 'open_rfq' | 'record_quote' | 'close_rfq' | 'cancel_rfq' | 'award_rfq';
+export async function writeRfq(orgId: string, requestId: string, action: RfqAction, payload: Json): Promise<string> {
+  const client = getSupabase();
+  if (!client) throw new Error('The backend is unavailable.');
+  const { data, error } = await client.rpc('procurement_rfq_write', { p_org: orgId, p_request: requestId, p_action: action, p_data: payload });
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('The server did not confirm the save.');
+  return data;
+}
