@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { sidebarNavItems, businessPulse } from '@/mocks/dashboard';
 import { BNWordmarkLight, BNIcon } from '@/components/base/BuildNerveLogo';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/base/Toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { disputesService } from '@/services/disputes.service';
 import { authService } from '@/services/auth.service';
@@ -17,9 +18,15 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const { showToast } = useToast();
   const { organisation } = useOrg();
   const [expanded, setExpanded] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
+  const accountMenuId = useId();
   const [locked, setLocked] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [disputeActionCount, setDisputeActionCount] = useState(0);
@@ -80,6 +87,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const activeId = currentPath === '/app' ? 'overview' : currentPath.startsWith('/jobs') ? 'jobs' : currentPath.startsWith('/workforce') ? 'workforce' : currentPath.startsWith('/clients') ? 'clients' : currentPath.startsWith('/variations') ? 'variations' : currentPath.startsWith('/disputes') ? 'disputes' : currentPath.startsWith('/evidence') ? 'evidence' : currentPath.startsWith('/messages') ? 'messages' : currentPath.startsWith('/reports') ? 'reports' : currentPath.startsWith('/notifications') ? 'notifications' : currentPath.startsWith('/app/procurement') ? 'app/procurement' : currentPath.startsWith('/app/suppliers') ? 'app/procurement' : currentPath.startsWith('/app/documents/ingestion') ? 'app/documents/ingestion' : currentPath.startsWith('/app/settings/integrations') ? 'app/settings/integrations' : currentPath.startsWith('/settings/ai-automation') ? 'settings/ai-automation' : currentPath.startsWith('/settings/team') ? 'settings/team' : currentPath.startsWith('/settings/organisation') ? 'settings/organisation' : currentPath.startsWith('/settings/profile') ? 'settings/profile' : currentPath.startsWith('/app/settings/billing') ? 'app/settings/billing' : currentPath.replace('/', '') || 'overview';
 
   const handleNav = (id: string) => {
+    setAccountMenuOpen(false);
     if (id === 'overview') {
       navigate('/app');
     } else {
@@ -99,13 +107,14 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   }, [locked]);
 
   const handleMouseLeave = useCallback(() => {
-    if (locked) return;
+    if (locked || accountMenuOpen) return;
     hoverTimeoutRef.current = setTimeout(() => {
       setExpanded(false);
     }, 250);
-  }, [locked]);
+  }, [locked, accountMenuOpen]);
 
   const handleToggleClick = () => {
+    setAccountMenuOpen(false);
     setLocked((prev) => {
       const next = !prev;
       setExpanded(next);
@@ -120,6 +129,41 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    accountRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+    const dismiss = (event: PointerEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAccountMenuOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [accountMenuOpen]);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      setAccountMenuOpen(false);
+      onClose();
+      navigate('/sign-in', { replace: true });
+    } catch {
+      showToast('Unable to sign out. Please try again.', 'error');
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <>
@@ -264,7 +308,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </div>
 
         {/* User Profile */}
-        <div className={`pb-4 pt-1 overflow-hidden transition-all duration-300 ${expanded ? 'border-t border-white/[0.06] mx-4 px-4' : 'border-t border-white/[0.06] mx-2.5 px-2.5'}`}>
+        <div ref={accountRef} className={`relative pb-4 pt-1 transition-all duration-300 ${expanded ? 'border-t border-white/[0.06] mx-4 px-4' : 'border-t border-white/[0.06] mx-2.5 px-2.5'}`}>
           <div className={`flex items-center ${expanded ? 'gap-3' : 'justify-center gap-0'}`}>
             <div className="w-9 h-9 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-semibold">{displayInitials}</span>
@@ -275,16 +319,58 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             </div>
             {expanded && (
               <button
+                type="button"
+                ref={accountButtonRef}
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                aria-controls={accountMenuOpen ? accountMenuId : undefined}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9DB5AE] hover:bg-sidebar-hover hover:text-white transition-colors"
                 aria-label={t('dashboard.accountMenu')}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setAccountMenuOpen(open => !open);
                 }}
               >
                 <i className="ri-more-2-fill text-lg"></i>
               </button>
             )}
           </div>
+          {expanded && accountMenuOpen && (
+            <div
+              id={accountMenuId}
+              role="menu"
+              aria-label="Account options"
+              className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-border bg-white p-1.5 shadow-xl z-[60]"
+              onKeyDown={event => {
+                const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)'));
+                const current = items.indexOf(document.activeElement as HTMLButtonElement);
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  items[(current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
+                } else if (event.key === 'Home' || event.key === 'End') {
+                  event.preventDefault();
+                  items[event.key === 'Home' ? 0 : items.length - 1]?.focus();
+                } else if (event.key === 'Tab') {
+                  setAccountMenuOpen(false);
+                }
+              }}
+            >
+              {[
+                { id: 'settings/profile', label: 'My profile', icon: 'ri-user-settings-line' },
+                { id: 'settings/organisation', label: 'Company settings', icon: 'ri-building-2-line' },
+                { id: 'app/settings/billing', label: 'Billing', icon: 'ri-money-pound-circle-line' },
+              ].map(item => (
+                <button key={item.id} type="button" role="menuitem" onClick={() => handleNav(item.id)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-main hover:bg-page focus:bg-page focus:outline-none">
+                  <i className={item.icon} aria-hidden="true" />{item.label}
+                </button>
+              ))}
+              <button type="button" role="menuitem" disabled={signingOut} onClick={handleSignOut}
+                className="mt-1 flex w-full items-center gap-2 border-t border-border px-3 py-2 text-left text-sm text-status-red hover:bg-status-red-pale focus:bg-status-red-pale focus:outline-none disabled:opacity-50">
+                <i className="ri-logout-box-r-line" aria-hidden="true" />{signingOut ? 'Signing out…' : 'Sign out'}
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>
