@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { DeliveryForm } from '../components/ProcurementForms';
+import { useToast } from '@/components/base/Toast';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
-import { deliveryService } from '@/services/procurement.service';
+import { deliveryService, poService, type PurchaseOrder } from '@/services/procurement.service';
 
 const STATUS_COLORS: Record<string, string> = {
   complete: 'bg-green-100 text-green-700',
@@ -12,22 +14,31 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ProcurementDeliveries() {
-  const { organisation } = useOrg();
+  const { organisation, role, isReadOnly } = useOrg();
+  const { showToast } = useToast();
+  const [orders,setOrders] = useState<PurchaseOrder[]>([]);
+  const [showForm,setShowForm] = useState(false);
+  const [error,setError] = useState('');
+  const canReceive = !isReadOnly && ['owner','admin','finance','project_manager','site_supervisor'].includes(role || '');
   const [receipts, setReceipts] = useState<any[]>([]);
   const [issues, setIssues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'receipts' | 'issues'>('receipts');
 
-  useEffect(() => {
-    if (!organisation?.id) return;
-    Promise.all([
-      deliveryService.getGoodsReceipts(organisation.id),
-      deliveryService.getDeliveryIssues(organisation.id),
-    ])
-      .then(([r, i]) => { setReceipts(r); setIssues(i); })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [organisation?.id]);
+  const loadVersion = useRef(0);
+  const load = useCallback(async () => {
+    const version = ++loadVersion.current;
+    setReceipts([]);setIssues([]);setOrders([]);setError('');
+    if (!organisation?.id) { setLoading(false);return; }
+    setLoading(true);
+    try {
+      const [r,i,o] = await Promise.all([deliveryService.getGoodsReceipts(organisation.id),deliveryService.getDeliveryIssues(organisation.id),poService.getPurchaseOrders(organisation.id)]);
+      if (version === loadVersion.current) { setReceipts(r);setIssues(i);setOrders(o); }
+    } catch(err) { if (version === loadVersion.current) setError(err instanceof Error?err.message:'Deliveries could not be loaded.'); }
+    finally { if (version === loadVersion.current) setLoading(false); }
+  },[organisation?.id]);
+  const invalidateLoad = useCallback(() => { loadVersion.current++; },[]);
+  useEffect(() => { void load(); return invalidateLoad; },[load,invalidateLoad]);
 
   const problemReceipts = receipts.filter((r: any) => ['partial', 'damaged', 'short', 'rejected'].includes(r.status));
 
@@ -49,7 +60,7 @@ export default function ProcurementDeliveries() {
           <h1 className="text-2xl font-semibold text-foreground-950">Deliveries</h1>
           <p className="text-sm text-foreground-600 mt-1">{receipts.length} goods receipts, {issues.length} delivery issues</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-background-50 rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors whitespace-nowrap cursor-pointer">
+        <button type="button" onClick={()=>setShowForm(current=>!current)} disabled={!canReceive} className="disabled:opacity-50 flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-background-50 rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors whitespace-nowrap cursor-pointer">
           <i className="ri-add-line text-base" />
           Record delivery
         </button>
@@ -77,6 +88,8 @@ export default function ProcurementDeliveries() {
         </div>
       )}
 
+      {error && <div role="alert" className="rounded-lg border border-status-red p-4 text-sm text-status-red">{error} <button type="button" onClick={()=>void load()} className="underline">Retry</button></div>}
+      {showForm && <DeliveryForm key={organisation?.id} orders={orders} onSaved={()=>{setShowForm(false);showToast('Delivery saved and order quantities updated.','success');void load();}} onCancel={()=>setShowForm(false)} />}
       {/* Tab switcher */}
       <div className="flex gap-2">
         <button
@@ -121,12 +134,13 @@ export default function ProcurementDeliveries() {
                       <span>{receipt.lines.length} line{receipt.lines.length !== 1 ? 's' : ''}</span>
                     )}
                   </div>
+                  {receipt.lines?.length>0 && <details className="mt-3 text-sm"><summary className="cursor-pointer text-primary-600">View delivered quantities</summary><ul className="mt-2 space-y-1">{receipt.lines.map((line: any)=><li key={line.id}>{orders.flatMap(order=>order.lines||[]).find(item=>item.id===line.purchase_order_line_id)?.description || 'Order line'}: {line.accepted_quantity} accepted, {line.rejected_quantity||0} rejected, {line.damaged_quantity||0} damaged</li>)}</ul></details>}
                   {receipt.notes && <p className="text-sm text-foreground-600 mt-2">{receipt.notes}</p>}
                 </div>
               </div>
             </div>
           ))}
-          {receipts.length === 0 && (
+          {!error && receipts.length === 0 && (
             <div className="text-center py-12 bg-background-50 border border-background-200/70 rounded-xl">
               <p className="text-sm text-foreground-600">No goods receipts yet</p>
             </div>
@@ -161,7 +175,7 @@ export default function ProcurementDeliveries() {
               </div>
             </div>
           ))}
-          {issues.length === 0 && (
+          {!error && issues.length === 0 && (
             <div className="text-center py-12 bg-background-50 border border-background-200/70 rounded-xl">
               <p className="text-sm text-foreground-600">No delivery issues</p>
             </div>

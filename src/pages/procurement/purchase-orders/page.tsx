@@ -1,4 +1,8 @@
-import { useState, useEffect } from 'react';
+import { formatPence } from '@/lib/money';
+import { PurchaseOrderForm } from '../components/ProcurementForms';
+import { writeProcurement } from '@/services/procurement-writes.service';
+import { useToast } from '@/components/base/Toast';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
 import { poService } from '@/services/procurement.service';
 import type { PurchaseOrder } from '@/services/procurement.service';
@@ -30,18 +34,39 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function ProcurementPurchaseOrders() {
-  const { organisation } = useOrg();
+  const { organisation, role, isReadOnly } = useOrg();
+  const { showToast } = useToast();
+  const [showForm,setShowForm] = useState(false);
+  const [error,setError] = useState('');
+  const [approving,setApproving] = useState<string|null>(null);
+  const approvalBusy = useRef(false);
+  const canCreate = !isReadOnly && ['owner','admin','project_manager','finance'].includes(role || '');
+  const canApprove = !isReadOnly && ['owner','admin','finance'].includes(role || '');
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  useEffect(() => {
-    if (!organisation?.id) return;
-    poService.getPurchaseOrders(organisation.id)
-      .then(setOrders)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [organisation?.id]);
+  const loadVersion = useRef(0);
+  const load = useCallback(async () => {
+    const version = ++loadVersion.current;
+    setOrders([]);setError('');
+    if (!organisation?.id) { setLoading(false); return; }
+    setLoading(true);
+    try { const rows = await poService.getPurchaseOrders(organisation.id); if (version === loadVersion.current) setOrders(rows); }
+    catch(err) { if (version === loadVersion.current) setError(err instanceof Error ? err.message : 'Purchase orders could not be loaded.'); }
+    finally { if (version === loadVersion.current) setLoading(false); }
+  },[organisation?.id]);
+  const invalidateLoad = useCallback(() => { loadVersion.current++; },[]);
+  useEffect(() => { void load(); return invalidateLoad; },[load,invalidateLoad]);
+  const approve = async (orderId:string) => {
+    if (!organisation || approvalBusy.current) return;
+    approvalBusy.current=true;setApproving(orderId);
+    try {
+      await writeProcurement(organisation.id,crypto.randomUUID(),'approve_order',{purchase_order_id:orderId});
+      showToast('Purchase order approved. No supplier email has been sent.','success');
+    } catch(err) { showToast(err instanceof Error?err.message:'Approval failed.','error'); }
+    finally { await load(); approvalBusy.current=false;setApproving(null); }
+  };
 
   const filtered = statusFilter === 'all' ? orders : orders.filter((po) => po.status === statusFilter);
 
@@ -68,12 +93,14 @@ export default function ProcurementPurchaseOrders() {
           <h1 className="text-2xl font-semibold text-foreground-950">Purchase Orders</h1>
           <p className="text-sm text-foreground-600 mt-1">{orders.length} purchase orders</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-background-50 rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors whitespace-nowrap cursor-pointer">
+        <button type="button" onClick={()=>setShowForm(current=>!current)} disabled={!canCreate} className="disabled:opacity-50 flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-background-50 rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors whitespace-nowrap cursor-pointer">
           <i className="ri-add-line text-base" />
           Create PO
         </button>
       </div>
 
+      {error && <div role="alert" className="rounded-lg border border-status-red p-4 text-sm text-status-red">{error} <button type="button" onClick={()=>void load()} className="underline">Retry</button></div>}
+      {showForm && <PurchaseOrderForm key={organisation?.id} onSaved={()=>{setShowForm(false);showToast('Draft purchase order saved.','success');void load();}} onCancel={()=>setShowForm(false)} />}
       <div className="flex gap-2 overflow-x-auto pb-1">
         <button
           onClick={() => setStatusFilter('all')}
@@ -125,10 +152,12 @@ export default function ProcurementPurchaseOrders() {
                     </span>
                   )}
                 </div>
+                {po.lines && <details className="mb-3 text-sm"><summary className="cursor-pointer text-primary-600">View order lines</summary><ul className="mt-2 space-y-1">{po.lines.map(line=><li key={line.id}>{line.description}: {line.quantity} {line.unit_of_measure}; accepted {line.received_quantity||0} · unit price {new Intl.NumberFormat('en-GB',{style:'currency',currency:organisation?.default_currency || 'GBP'}).format(line.unit_price_pence/100)}</li>)}</ul></details>}
+                {po.status==='draft' && canApprove && <button type="button" disabled={approving!==null} onClick={()=>void approve(po.id)} className="mb-3 rounded-lg bg-primary-500 px-3 py-2 text-sm text-white disabled:opacity-50">{approving===po.id?'Approving…':'Approve order'}</button>}
                 <div className="flex items-center gap-4 text-xs text-foreground-600">
                   {po.gross_total_pence != null && (
                     <span className="font-semibold text-foreground-900">
-                      £{(po.gross_total_pence / 100).toFixed(2)}
+                      {formatPence(po.gross_total_pence,organisation?.default_currency)}
                     </span>
                   )}
                   {po.order_date && (
@@ -141,13 +170,13 @@ export default function ProcurementPurchaseOrders() {
         ))}
       </div>
 
-      {filtered.length === 0 && (
+      {!error && filtered.length === 0 && (
         <div className="text-center py-16 bg-background-50 border border-background-200/70 rounded-xl">
           <div className="w-14 h-14 rounded-full bg-background-100 flex items-center justify-center mx-auto mb-4">
             <i className="ri-clipboard-line text-2xl text-foreground-500" />
           </div>
           <h3 className="text-base font-semibold text-foreground-900">No purchase orders found</h3>
-          <p className="text-sm text-foreground-600 mt-1">Create purchase orders from awarded RFQs or approved requisitions</p>
+          <p className="text-sm text-foreground-600 mt-1">Use Create PO to save a draft purchase order</p>
         </div>
       )}
     </div>
