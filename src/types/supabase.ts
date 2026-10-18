@@ -7002,6 +7002,9 @@ export type Database = {
       }
       procurement_approvals: {
         Row: {
+          action: string
+          requisition_revision: number | null
+          review_snapshot: Json
           approval_rule_id: string | null
           approver_id: string
           created_at: string
@@ -7012,6 +7015,9 @@ export type Database = {
           requisition_id: string | null
         }
         Insert: {
+          action?: string
+          requisition_revision?: number | null
+          review_snapshot?: Json
           approval_rule_id?: string | null
           approver_id: string
           created_at?: string
@@ -7022,6 +7028,9 @@ export type Database = {
           requisition_id?: string | null
         }
         Update: {
+          action?: string
+          requisition_revision?: number | null
+          review_snapshot?: Json
           approval_rule_id?: string | null
           approver_id?: string
           created_at?: string
@@ -7425,6 +7434,9 @@ export type Database = {
       }
       purchase_requisitions: {
         Row: {
+          revision: number
+          currency: string
+          review_steps: Json
           approved_at: string | null
           cost_code: string | null
           created_at: string
@@ -7444,6 +7456,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          revision?: number
+          currency?: string
+          review_steps?: Json
           approved_at?: string | null
           cost_code?: string | null
           created_at?: string
@@ -7463,6 +7478,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          revision?: number
+          currency?: string
+          review_steps?: Json
           approved_at?: string | null
           cost_code?: string | null
           created_at?: string
@@ -10350,6 +10368,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      procurement_requisition_write: {
+        Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
+        Returns: string
+      }
       procurement_invoice_write: {
         Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
         Returns: string
