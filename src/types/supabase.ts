@@ -8080,6 +8080,12 @@ export type Database = {
       }
       requests_for_quotation: {
         Row: {
+          source_requisition_id: string | null
+          currency: string
+          revision: number
+          awarded_quote_id: string | null
+          purchase_order_id: string | null
+          cancellation_reason: string | null
           awarded_at: string | null
           closed_at: string | null
           commercial_notes: string | null
@@ -8099,6 +8105,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          source_requisition_id?: string | null
+          currency?: string
+          revision?: number
+          awarded_quote_id?: string | null
+          purchase_order_id?: string | null
+          cancellation_reason?: string | null
           awarded_at?: string | null
           closed_at?: string | null
           commercial_notes?: string | null
@@ -8118,6 +8130,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          source_requisition_id?: string | null
+          currency?: string
+          revision?: number
+          awarded_quote_id?: string | null
+          purchase_order_id?: string | null
+          cancellation_reason?: string | null
           awarded_at?: string | null
           closed_at?: string | null
           commercial_notes?: string | null
@@ -8364,6 +8382,7 @@ export type Database = {
       }
       rfq_lines: {
         Row: {
+          requisition_line_id: string | null
           created_at: string
           description: string
           id: string
@@ -8376,6 +8395,7 @@ export type Database = {
           unit_of_measure: string
         }
         Insert: {
+          requisition_line_id?: string | null
           created_at?: string
           description: string
           id?: string
@@ -8388,6 +8408,7 @@ export type Database = {
           unit_of_measure?: string
         }
         Update: {
+          requisition_line_id?: string | null
           created_at?: string
           description?: string
           id?: string
@@ -9289,6 +9310,7 @@ export type Database = {
       }
       supplier_quote_lines: {
         Row: {
+          tax_rate: number
           alternative_item: string | null
           availability: string | null
           created_at: string
@@ -9299,6 +9321,7 @@ export type Database = {
           unit_price_pence: number | null
         }
         Insert: {
+          tax_rate?: number
           alternative_item?: string | null
           availability?: string | null
           created_at?: string
@@ -9309,6 +9332,7 @@ export type Database = {
           unit_price_pence?: number | null
         }
         Update: {
+          tax_rate?: number
           alternative_item?: string | null
           availability?: string | null
           created_at?: string
@@ -9337,6 +9361,12 @@ export type Database = {
       }
       supplier_quote_responses: {
         Row: {
+          quote_reference: string | null
+          recorded_by: string | null
+          net_total_pence: number
+          tax_total_pence: number
+          gross_total_pence: number
+          delivery_tax_rate: number
           alternatives_text: string | null
           created_at: string
           delivery_charge_pence: number | null
@@ -9351,6 +9381,12 @@ export type Database = {
           version: number
         }
         Insert: {
+          quote_reference?: string | null
+          recorded_by?: string | null
+          net_total_pence?: number
+          tax_total_pence?: number
+          gross_total_pence?: number
+          delivery_tax_rate?: number
           alternatives_text?: string | null
           created_at?: string
           delivery_charge_pence?: number | null
@@ -9365,6 +9401,12 @@ export type Database = {
           version?: number
         }
         Update: {
+          quote_reference?: string | null
+          recorded_by?: string | null
+          net_total_pence?: number
+          tax_total_pence?: number
+          gross_total_pence?: number
+          delivery_tax_rate?: number
           alternatives_text?: string | null
           created_at?: string
           delivery_charge_pence?: number | null
@@ -10368,6 +10410,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      procurement_rfq_write: {
+        Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
+        Returns: string
+      }
       procurement_requisition_write: {
         Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
         Returns: string
