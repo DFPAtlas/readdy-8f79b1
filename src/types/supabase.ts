@@ -10530,6 +10530,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      client_portal_overview: {
+        Args: { p_hash: string }
+        Returns: Json
+      }
       procurement_approval_rule_write: {
         Args: { p_org: string; p_request: string; p_data: Json }
         Returns: string
