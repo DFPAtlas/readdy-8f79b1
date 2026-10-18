@@ -2,13 +2,11 @@ import { useNavigate } from 'react-router-dom';
 import { useOrg } from '@/contexts/OrgContext';
 import { useWidgetData } from '@/hooks/useWidgetData';
 import { getPlantHireSummary, type PlantHireSummary } from '@/services/dashboard.service';
-import { useCurrency } from '@/hooks/useCurrency';
 import { WidgetError, WidgetEmpty, WidgetLoading } from './WidgetState';
 
 export default function ProcurementLeakage() {
   const navigate = useNavigate();
   const { organisation } = useOrg();
-  const { formatPence } = useCurrency();
   const { data, loading, error, reload } = useWidgetData<PlantHireSummary>(
     organisation?.id ?? null,
     getPlantHireSummary,
@@ -44,12 +42,7 @@ export default function ProcurementLeakage() {
               <p className="text-3xl font-bold text-main tabular-nums">{data?.machinesOnHire ?? 0}</p>
               <p className="text-xs text-muted mt-1">machines on hire</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-main tabular-nums">
-                {formatPence(data?.standingRatePence ?? 0, { maximumFractionDigits: 0 })}
-              </p>
-              <p className="text-xs text-muted mt-1">standing hire rate</p>
-            </div>
+            <button className="text-sm text-primary-600 underline" onClick={() => navigate('/app/procurement/hire')}>Review supplier rates</button>
           </div>
 
           {/* Overdue-for-off-hire alerts */}
@@ -69,7 +62,7 @@ export default function ProcurementLeakage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => navigate('/procurement/hire')}
+                    onClick={() => navigate('/app/procurement/hire')}
                     className="mt-2.5 w-full h-9 px-3 bg-status-amber text-white hover:bg-status-amber/90 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <i className="ri-stop-circle-line text-sm"></i>

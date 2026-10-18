@@ -4698,6 +4698,7 @@ export type Database = {
       }
       material_allocations: {
         Row: {
+          location_id: string | null
           allocated_at: string | null
           allocated_by: string | null
           created_at: string
@@ -4717,6 +4718,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          location_id?: string | null
           allocated_at?: string | null
           allocated_by?: string | null
           created_at?: string
@@ -4736,6 +4738,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          location_id?: string | null
           allocated_at?: string | null
           allocated_by?: string | null
           created_at?: string
@@ -6220,6 +6223,16 @@ export type Database = {
       }
       plant_hire_records: {
         Row: {
+          revision: number
+          currency: string
+          supplier_confirmation_reference: string | null
+          actual_start_date: string | null
+          collected_date: string | null
+          cancellation_reason: string | null
+          dispute_from_status: string | null
+          dispute_reason: string | null
+          resolution_reason: string | null
+          last_extension_reference: string | null
           certificate_url: string | null
           charging_unit: string | null
           collection_address: string | null
@@ -6248,6 +6261,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          revision?: number
+          currency?: string
+          supplier_confirmation_reference?: string | null
+          actual_start_date?: string | null
+          collected_date?: string | null
+          cancellation_reason?: string | null
+          dispute_from_status?: string | null
+          dispute_reason?: string | null
+          resolution_reason?: string | null
+          last_extension_reference?: string | null
           certificate_url?: string | null
           charging_unit?: string | null
           collection_address?: string | null
@@ -6276,6 +6299,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          revision?: number
+          currency?: string
+          supplier_confirmation_reference?: string | null
+          actual_start_date?: string | null
+          collected_date?: string | null
+          cancellation_reason?: string | null
+          dispute_from_status?: string | null
+          dispute_reason?: string | null
+          resolution_reason?: string | null
+          last_extension_reference?: string | null
           certificate_url?: string | null
           charging_unit?: string | null
           collection_address?: string | null
@@ -8708,6 +8741,7 @@ export type Database = {
       }
       stock_movements: {
         Row: {
+          reserved_delta: number
           created_at: string
           id: string
           job_id: string | null
@@ -8723,6 +8757,7 @@ export type Database = {
           unit_cost_pence: number | null
         }
         Insert: {
+          reserved_delta?: number
           created_at?: string
           id?: string
           job_id?: string | null
@@ -8738,6 +8773,7 @@ export type Database = {
           unit_cost_pence?: number | null
         }
         Update: {
+          reserved_delta?: number
           created_at?: string
           id?: string
           job_id?: string | null
@@ -10455,6 +10491,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      procurement_stock_hire_write: {
+        Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
+        Returns: string
+      }
       procurement_return_credit_write: {
         Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
         Returns: string
@@ -10614,6 +10654,7 @@ export type Database = {
         | "rejected"
         | "unplanned"
       hire_status:
+        | "cancelled"
         | "requested"
         | "confirmed"
         | "on_hire"
@@ -10935,6 +10976,7 @@ export const Constants = {
         "unplanned",
       ],
       hire_status: [
+        "cancelled",
         "requested",
         "confirmed",
         "on_hire",
