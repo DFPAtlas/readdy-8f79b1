@@ -59,9 +59,9 @@ function buildCards(kpis: DashboardKpis, formatPence: (v: number) => string): Kp
       id: 'retention',
       icon: 'ri-safe-2-line',
       tone: 'green',
-      label: 'Retention Currently Held',
-      value: formatPence(kpis.retentionHeldPence),
-      supporting: 'withheld across your retention records',
+      label: 'Retention Records',
+      value: String(kpis.retentionRecordCount),
+      supporting: 'View the register for balances by currency and direction',
     },
   ];
 }

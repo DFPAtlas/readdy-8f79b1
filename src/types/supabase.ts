@@ -8372,8 +8372,114 @@ export type Database = {
           },
         ]
       }
+      retention_release_requests: {
+        Row: {
+          id: string
+          organisation_id: string
+          retention_id: string
+          stage: string
+          amount_pence: number
+          settled_pence: number
+          status: string
+          requested_by: string
+          approved_by: string | null
+          approved_at: string | null
+          revision: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organisation_id?: string
+          retention_id?: string
+          stage?: string
+          amount_pence?: number
+          settled_pence?: number
+          status?: string
+          requested_by?: string
+          approved_by?: string | null
+          approved_at?: string | null
+          revision?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organisation_id?: string
+          retention_id?: string
+          stage?: string
+          amount_pence?: number
+          settled_pence?: number
+          status?: string
+          requested_by?: string
+          approved_by?: string | null
+          approved_at?: string | null
+          revision?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      retention_history: {
+        Row: {
+          id: string
+          organisation_id: string
+          retention_id: string
+          release_id: string | null
+          actor_id: string
+          action: string
+          reason: string
+          amount_pence: number | null
+          payment_reference: string | null
+          effective_date: string | null
+          reverses_id: string | null
+          before_record: Json | null
+          after_record: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organisation_id?: string
+          retention_id?: string
+          release_id?: string | null
+          actor_id?: string
+          action?: string
+          reason?: string
+          amount_pence?: number | null
+          payment_reference?: string | null
+          effective_date?: string | null
+          reverses_id?: string | null
+          before_record?: Json | null
+          after_record?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organisation_id?: string
+          retention_id?: string
+          release_id?: string | null
+          actor_id?: string
+          action?: string
+          reason?: string
+          amount_pence?: number | null
+          payment_reference?: string | null
+          effective_date?: string | null
+          reverses_id?: string | null
+          before_record?: Json | null
+          after_record?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
       retention_records: {
         Row: {
+          reference: string | null
+          counterparty: string | null
+          currency: string | null
+          pc_share_bps: number | null
+          pc_due_date: string | null
+          defects_due_date: string | null
+          pc_completed_date: string | null
+          defects_completed_date: string | null
+          revision: number
+          voided_at: string | null
           amount_pence: number
           created_at: string
           due_date: string | null
@@ -8388,6 +8494,16 @@ export type Database = {
           withheld_pence: number
         }
         Insert: {
+          reference?: string | null
+          counterparty?: string | null
+          currency?: string | null
+          pc_share_bps?: number | null
+          pc_due_date?: string | null
+          defects_due_date?: string | null
+          pc_completed_date?: string | null
+          defects_completed_date?: string | null
+          revision?: number
+          voided_at?: string | null
           amount_pence: number
           created_at?: string
           due_date?: string | null
@@ -8402,6 +8518,16 @@ export type Database = {
           withheld_pence?: number
         }
         Update: {
+          reference?: string | null
+          counterparty?: string | null
+          currency?: string | null
+          pc_share_bps?: number | null
+          pc_due_date?: string | null
+          defects_due_date?: string | null
+          pc_completed_date?: string | null
+          defects_completed_date?: string | null
+          revision?: number
+          voided_at?: string | null
           amount_pence?: number
           created_at?: string
           due_date?: string | null
@@ -10549,6 +10675,10 @@ export type Database = {
       client_portal_overview: {
         Args: { p_hash: string }
         Returns: Json
+      }
+      retention_write: {
+        Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
+        Returns: string
       }
       procurement_approval_rule_write: {
         Args: { p_org: string; p_request: string; p_data: Json }
