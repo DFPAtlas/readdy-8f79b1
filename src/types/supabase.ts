@@ -7304,6 +7304,7 @@ export type Database = {
       }
       purchase_orders: {
         Row: {
+          currency: string
           acknowledged_at: string | null
           approved_by: string | null
           closed_at: string | null
@@ -7335,6 +7336,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          currency?: string
           acknowledged_at?: string | null
           approved_by?: string | null
           closed_at?: string | null
@@ -7366,6 +7368,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          currency?: string
           acknowledged_at?: string | null
           approved_by?: string | null
           closed_at?: string | null
@@ -10347,6 +10350,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      procurement_invoice_write: {
+        Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
+        Returns: string
+      }
       procurement_write: {
         Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
         Returns: string

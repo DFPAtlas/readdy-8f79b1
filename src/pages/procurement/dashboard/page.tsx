@@ -12,16 +12,23 @@ export default function ProcurementDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organisation } = useOrg();
-  const [summary, setSummary] = useState<any>(null);
+  const [summary, setSummary] = useState<Awaited<ReturnType<typeof procurementDashboardService.getSummary>> | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+
   useEffect(() => {
-    if (!organisation?.id) return;
+    let active = true;
+    setSummary(null); setError('');
+    if (!organisation?.id) { setLoading(false); return; }
+    setLoading(true);
     procurementDashboardService.getSummary(organisation.id)
-      .then(setSummary)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [organisation?.id]);
+      .then((data) => { if (active) setSummary(data); })
+      .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Could not load procurement totals.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [organisation?.id, retry]);
 
   if (loading) {
     return (
@@ -33,6 +40,8 @@ export default function ProcurementDashboard() {
       </div>
     );
   }
+
+  if (error) return <div role="alert" className="rounded-lg bg-red-50 p-5 text-red-700"><p>{error}</p><button className="underline mt-2" onClick={() => setRetry(value => value + 1)}>Try again</button></div>;
 
   const cards = [
     { label: 'Requisitions awaiting', value: summary?.requisitionsAwaitingApproval ?? 0, icon: 'ri-file-list-3-line', color: 'bg-accent-100 text-accent-700', onClick: () => navigate('/app/procurement/requisitions') },
