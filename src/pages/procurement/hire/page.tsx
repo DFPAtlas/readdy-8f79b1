@@ -1,124 +1,54 @@
-import { useState, useEffect } from 'react';
+import { hireActions } from '@/services/procurement-stock-hire';
+import { useEffect, useRef, useState } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
-import { hireService } from '@/services/procurement.service';
-import type { PlantHireRecord } from '@/services/procurement.service';
-
-const STATUS_COLORS: Record<string, string> = {
-  requested: 'bg-blue-100 text-blue-700',
-  confirmed: 'bg-secondary-100 text-secondary-700',
-  on_hire: 'bg-green-100 text-green-700',
-  off_hired: 'bg-background-200 text-foreground-600',
-  disputed: 'bg-red-100 text-red-700',
-  closed: 'bg-background-200 text-foreground-500',
-};
-
+import { hireService, supplierService, type PlantHireRecord, type Supplier } from '@/services/procurement.service';
+import { jobsService } from '@/services/jobs.service';
+import type { StockHireAction } from '@/services/procurement-writes.service';
+import { HireForm, HireActionForm, type JobOption } from '../components/StockHireForms';
+import { button } from '../components/ReturnCreditForms';
+import { formatPence } from '@/lib/money';
 export default function ProcurementHire() {
-  const { organisation } = useOrg();
-  const [records, setRecords] = useState<PlantHireRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!organisation?.id) return;
-    hireService.getHireRecords(organisation.id)
-      .then(setRecords)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [organisation?.id]);
-
-  const onHire = records.filter((r) => r.status === 'on_hire');
-  const dueBack = onHire.filter((r) => {
-    if (!r.hire_end_date) return false;
-    const d = new Date(r.hire_end_date);
-    const now = new Date();
-    const weekEnd = new Date(now);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    return d <= weekEnd;
-  });
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-foreground-600">Loading hire records...</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground-950">Plant &amp; Tool Hire</h1>
-          <p className="text-sm text-foreground-600 mt-1">{onHire.length} currently on hire, {dueBack.length} due back this week</p>
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-background-50 rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors whitespace-nowrap cursor-pointer">
-          <i className="ri-add-line text-base" />
-          Record hire
-        </button>
-      </div>
-
-      {/* Due back alert */}
-      {dueBack.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <div className="flex items-center gap-2">
-            <i className="ri-alert-line text-amber-600 text-lg" />
-            <span className="text-sm font-medium text-amber-800">{dueBack.length} item{dueBack.length !== 1 ? 's' : ''} due back this week</span>
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-3">
-        {records.map((record) => (
-          <div key={record.id} className="bg-background-50 border border-background-200/70 rounded-xl p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[record.status] || ''}`}>
-                    {record.status.replace('_', ' ')}
-                  </span>
-                  <span className="font-semibold text-foreground-900">{record.equipment_description}</span>
-                  {record.hire_reference && (
-                    <span className="font-mono text-xs text-foreground-600">Ref: {record.hire_reference}</span>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-foreground-700">
-                  <span className="flex items-center gap-1">
-                    <i className="ri-building-2-line text-xs" />
-                    {record.supplier?.trading_name || '—'}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <i className="ri-calendar-line text-xs" />
-                    {new Date(record.hire_start_date).toLocaleDateString('en-GB')}
-                    {record.hire_end_date ? ` — ${new Date(record.hire_end_date).toLocaleDateString('en-GB')}` : ''}
-                  </span>
-                  {record.rate_pence != null && (
-                    <span className="font-medium">
-                      £{(record.rate_pence / 100).toFixed(2)}/{record.charging_unit.replace('per_', '')}
-                    </span>
-                  )}
-                </div>
-                {record.operator_required && (
-                  <div className="mt-2">
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Operator required</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {records.length === 0 && (
-        <div className="text-center py-16 bg-background-50 border border-background-200/70 rounded-xl">
-          <div className="w-14 h-14 rounded-full bg-background-100 flex items-center justify-center mx-auto mb-4">
-            <i className="ri-tools-line text-2xl text-foreground-500" />
-          </div>
-          <h3 className="text-base font-semibold text-foreground-900">No hire records</h3>
-          <p className="text-sm text-foreground-600 mt-1">Record external plant, equipment and tool hire here</p>
-        </div>
-      )}
-    </div>
-  );
+    const { organisation, role, isReadOnly } = useOrg();
+    const orgId = organisation?.id;
+    const [records, setRecords] = useState<PlantHireRecord[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [jobs, setJobs] = useState<JobOption[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [reload, setReload] = useState(0);
+    const [edit, setEdit] = useState<string | null>(null);
+    const [action, setAction] = useState<{
+        id: string;
+        action: StockHireAction;
+    } | null>(null);
+    const currentOrg = useRef(orgId);
+    currentOrg.current = orgId;
+    const manager = !isReadOnly && ['owner', 'admin', 'finance', 'project_manager'].includes(role ?? '');
+    const operator = !isReadOnly && (manager || role === 'site_supervisor');
+    const finance = !isReadOnly && ['owner', 'admin', 'finance'].includes(role ?? '');
+    useEffect(() => { let active = true; setRecords([]); setSuppliers([]); setJobs([]); setEdit(null); setAction(null); setError(''); if (!orgId) {
+        setLoading(false);
+        return;
+    } setLoading(true); Promise.all([hireService.getHireRecords(orgId), supplierService.getSuppliers(orgId), jobsService.getJobs(orgId)]).then(([h, s, j]) => { if (active) {
+        setRecords(h);
+        setSuppliers(s);
+        setJobs(j);
+    } }).catch(e => { if (active)
+        setError(e instanceof Error ? e.message : 'Could not load hire records.'); }).finally(() => { if (active)
+        setLoading(false); }); return () => { active = false; }; }, [orgId, reload]);
+    function saved() { if (currentOrg.current === orgId) {
+        setEdit(null);
+        setAction(null);
+        setReload(v => v + 1);
+    } }
+    function canAct(value: StockHireAction) { return ['close_hire', 'resolve_hire'].includes(value) ? finance : ['start_hire', 'off_hire', 'dispute_hire'].includes(value) ? operator : manager; }
+    const activeHires = records.filter(r => r.status === 'on_hire' || (r.status === 'disputed' && r.dispute_from_status === 'on_hire'));
+    const due = new Date();
+    due.setDate(due.getDate() + 7);
+    const dueBack = activeHires.filter(r => r.hire_end_date && r.hire_end_date <= due.toLocaleDateString('en-CA'));
+    const selected = records.find(r => r.id === action?.id);
+    if (loading)
+        return <p role="status" className="p-8">Loading hire records…</p>;
+    return <div className="space-y-5"><div className="flex justify-between flex-wrap gap-3"><div><h1 className="text-2xl font-semibold">Plant and tool hire</h1><p className="text-sm">{activeHires.length} hire records active · {dueBack.length} due within seven days or overdue</p></div>{manager && !edit && !action && <button className={button} onClick={() => setEdit('new')}>Record requested hire</button>}</div>{isReadOnly && <p>This workspace is read-only.</p>}{error && <div role="alert" className="text-red-700">{error} <button className={button} onClick={() => setReload(v => v + 1)}>Reload</button></div>}{edit && orgId && <HireForm key={`${orgId}:${edit}`} record={records.find(r => r.id === edit)} suppliers={suppliers} jobs={jobs} onSaved={saved} onCancel={() => setEdit(null)}/>}{selected && action && orgId && <HireActionForm key={`${orgId}:${selected.id}:${selected.revision}:${action.action}`} record={selected} action={action.action} onSaved={saved} onCancel={() => setAction(null)}/>}
+ {records.map(record => <article key={record.id} className="bg-white border border-border rounded-xl p-5 space-y-3"><div className="flex justify-between gap-3"><h2 className="font-semibold">{record.equipment_description} × {record.quantity}</h2><span className="capitalize">{record.status.replaceAll('_', ' ')}</span></div><p className="text-sm">{record.supplier?.trading_name} · Reference {record.hire_reference ?? 'Not recorded'} · {jobs.find(j => j.id === record.job_id)?.project_name ?? 'No job'}</p><p className="text-sm">Planned {record.hire_start_date} to {record.hire_end_date ?? 'open-ended'} · {formatPence(record.rate_pence, record.currency)} {record.charging_unit?.replaceAll('_', ' ') ?? 'rate unit not recorded'} per equipment unit · Deposit {formatPence(record.deposit_pence, record.currency)}</p><p className="text-sm">Actual start: {record.actual_start_date ?? 'Not recorded'} · Off-hire: {record.off_hire_date ?? 'Not recorded'} · Collection: {record.collected_date ?? 'Not recorded'}</p>{record.operator_required && <p className="text-sm">Operator required</p>}{record.delivery_address && <p className="text-sm">Delivery: {record.delivery_address}</p>}{record.supplier_confirmation_reference && <p className="text-sm">Booking confirmation: {record.supplier_confirmation_reference}</p>}{record.last_extension_reference && <p className="text-sm">Latest extension: {record.last_extension_reference}</p>}{record.off_hire_reference && <p className="text-sm">Off-hire reference: {record.off_hire_reference}</p>}{record.cancellation_reason && <p className="text-sm">Cancellation: {record.cancellation_reason}</p>}{record.dispute_reason && <p className="text-sm">Dispute: {record.dispute_reason} · Previous state: {record.dispute_from_status?.replaceAll('_', ' ')} · Resolution: {record.resolution_reason ?? 'Pending'}</p>}{!!record.damage_charges_pence && <p className="text-sm">Recorded damage: {formatPence(record.damage_charges_pence, record.currency)} — {record.damage_notes}</p>}{!edit && !action && <div className="flex flex-wrap gap-2">{record.status === 'requested' && manager && <button className={button} onClick={() => setEdit(record.id)}>Edit request</button>}{hireActions[record.status]?.filter(a => canAct(a.action)).map(a => <button key={a.action} className={button} onClick={() => setAction({ id: record.id, action: a.action })}>{a.label}</button>)}</div>}</article>)}{!records.length && !error && <p className="p-8 border rounded-xl">No hire records yet.</p>}</div>;
 }

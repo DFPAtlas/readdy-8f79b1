@@ -21,17 +21,6 @@ export const VARIATION_CLOSED_STATUSES = ['approved', 'declined', 'rejected'];
 // Payment applications that represent money still owed to the company.
 export const PAYMENT_OUTSTANDING_STATUSES = ['submitted', 'certified'];
 
-// Plant hire statuses that mean the item has left the books.
-const PLANT_OFF_HIRE_STATUSES = [
-  'off_hire',
-  'off-hired',
-  'offhire',
-  'returned',
-  'closed',
-  'completed',
-  'cancelled',
-];
-
 const DAY_MS = 86_400_000;
 
 async function client() {
@@ -323,7 +312,6 @@ export interface PlantHireOverdueItem {
 
 export interface PlantHireSummary {
   machinesOnHire: number;
-  standingRatePence: number;
   overdue: PlantHireOverdueItem[];
 }
 
@@ -331,12 +319,12 @@ export async function getPlantHireSummary(orgId: string): Promise<PlantHireSumma
   const supabase = await client();
   const { data, error } = await supabase
     .from('plant_hire_records')
-    .select('id, equipment_description, quantity, rate_pence, hire_end_date, status')
+    .select('id, equipment_description, quantity, hire_end_date, status, dispute_from_status')
     .eq('organisation_id', orgId);
   if (error) throw error;
 
   const rows = (data || []) as Record<string, unknown>[];
-  const onHire = rows.filter((r) => !PLANT_OFF_HIRE_STATUSES.includes(String(r.status || '').toLowerCase()));
+  const onHire = rows.filter((r) => r.status === 'on_hire' || (r.status === 'disputed' && r.dispute_from_status === 'on_hire'));
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -355,7 +343,6 @@ export async function getPlantHireSummary(orgId: string): Promise<PlantHireSumma
 
   return {
     machinesOnHire: onHire.reduce((total, r) => total + (Number(r.quantity) || 0), 0),
-    standingRatePence: sumPence(onHire, 'rate_pence'),
     overdue,
   };
 }

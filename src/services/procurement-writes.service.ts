@@ -59,3 +59,13 @@ export async function writeReturnCredit(orgId: string, requestId: string, action
   if (!data) throw new Error('The server did not confirm the save.');
   return data;
 }
+
+export type StockHireAction = 'create_material' | 'create_location' | 'set_count' | 'receipt_stock' | 'supplier_return_stock' | 'reserve_stock' | 'release_stock' | 'issue_stock' | 'return_job_stock' | 'transfer_stock' | 'create_hire' | 'update_hire' | 'confirm_hire' | 'start_hire' | 'extend_hire' | 'off_hire' | 'close_hire' | 'cancel_hire' | 'dispute_hire' | 'resolve_hire';
+export async function writeStockHire(orgId: string, requestId: string, action: StockHireAction, payload: Json): Promise<string> {
+  const client = getSupabase();
+  if (!client) throw new Error('The backend is unavailable.');
+  const {data,error} = await client.rpc('procurement_stock_hire_write',{p_org:orgId,p_request:requestId,p_action:action,p_data:payload});
+  if(error) throw new Error(error.message);
+  if(!data) throw new Error('The server did not confirm the save.');
+  return data;
+}

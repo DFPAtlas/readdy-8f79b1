@@ -11,6 +11,8 @@ export default function ProcurementPortal() {
       <Link className="rounded-lg bg-primary-500 px-4 py-3 text-sm font-semibold text-white" to="/app/procurement/purchase-orders">Purchase orders</Link>
       <Link className="rounded-lg border border-border bg-white px-4 py-3 text-sm font-semibold text-main" to="/app/procurement/deliveries">Record deliveries</Link>
       <Link className="rounded-lg border border-border bg-white px-4 py-3 text-sm font-semibold text-main" to="/app/procurement/supplier-invoices">Supplier invoices</Link>
+      <Link className="rounded-lg border border-border bg-white px-4 py-3 text-sm font-semibold text-main" to="/app/procurement/inventory">Stock and job allocations</Link>
+      <Link className="rounded-lg border border-border bg-white px-4 py-3 text-sm font-semibold text-main" to="/app/procurement/hire">Plant and tool hire</Link>
     </div>
     <div className="rounded-2xl border border-status-amber/40 bg-status-amber-pale p-5" role="status">
       <p className="font-semibold text-main">Further procurement workflows are still being completed</p>

@@ -334,11 +334,23 @@ export interface InventoryBalance {
   minimum_level: number;
   reorder_level: number;
   last_counted_date: string | null;
+  updated_at: string;
   material_item?: MaterialCatalogueItem;
   location?: InventoryLocation;
 }
 
 export interface PlantHireRecord {
+  revision: number;
+  currency: string;
+  supplier_confirmation_reference: string | null;
+  actual_start_date: string | null;
+  collected_date: string | null;
+  cancellation_reason: string | null;
+  dispute_from_status: string | null;
+  dispute_reason: string | null;
+  resolution_reason: string | null;
+  last_extension_reference: string | null;
+
   id: string;
   organisation_id: string;
   supplier_id: string;
@@ -578,6 +590,16 @@ export const deliveryService = {
 // INVENTORY
 // ============================================================================
 export const inventoryService = {
+  async getMovements(organisationId: string) {
+    const {data,error}=await supabase().from('stock_movements').select('*').eq('organisation_id',organisationId).order('created_at',{ascending:false});
+    if(error) throw error;
+    return data;
+  },
+  async getAllocations(organisationId: string) {
+    const {data,error}=await supabase().from('material_allocations').select('*').eq('organisation_id',organisationId).not('location_id','is',null);
+    if(error) throw error;
+    return data;
+  },
   async getLocations(organisationId: string) {
     const { data, error } = await supabase()
       .from('inventory_locations')
@@ -641,7 +663,7 @@ export const procurementDashboardService = {
       supabase().from('purchase_orders').select('id,status,gross_total_pence,required_delivery_date').eq('organisation_id', organisationId),
       supabase().from('goods_receipts').select('id,status').eq('organisation_id', organisationId),
       supabase().from('supplier_invoices').select('id,status,gross_amount_pence').eq('organisation_id', organisationId),
-      supabase().from('plant_hire_records').select('id,status,hire_end_date').eq('organisation_id', organisationId),
+      supabase().from('plant_hire_records').select('id,status,hire_end_date,dispute_from_status').eq('organisation_id', organisationId),
     ]);
 
     for (const result of [reqRes, rfqRes, poRes, deliveryRes, invoiceRes, hireRes]) {
@@ -672,7 +694,7 @@ export const procurementDashboardService = {
         const now = new Date();
         const weekEnd = new Date(now);
         weekEnd.setDate(weekEnd.getDate() + 7);
-        return d <= weekEnd && h.status === 'on_hire';
+        return d <= weekEnd && (h.status === 'on_hire' || (h.status === 'disputed' && h.dispute_from_status === 'on_hire'));
       }).length,
       committedCost: (poRes.data || []).filter((p: any) => !['cancelled', 'superseded'].includes(p.status)).reduce((s: number, p: any) => s + (p.gross_total_pence || 0), 0),
       invoicedCost: (invoiceRes.data || []).filter((i: any) => i.status !== 'cancelled').reduce((s: number, i: any) => s + (i.gross_amount_pence || 0), 0),
