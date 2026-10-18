@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ClientPortalManagement from '@/pages/settings/client-portal/page';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -227,7 +228,7 @@ export default function JobDetail() {
       case 'schedule':
         return renderSchedule();
       case 'clientPortal':
-        return <PanelUnavailable description={t('dashboard.detail.clientPortalUnavailable')} />;
+        return <ClientPortalManagement jobId={jobId}/>;
       default:
         return <PanelUnavailable description={t('dashboard.detail.complianceUnavailable')} />;
     }

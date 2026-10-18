@@ -358,6 +358,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               {[
                 { id: 'settings/profile', label: 'My profile', icon: 'ri-user-settings-line' },
                 { id: 'settings/organisation', label: 'Company settings', icon: 'ri-building-2-line' },
+                { id: 'settings/client-portal', label: 'Client portal access', icon: 'ri-shield-user-line' },
                 { id: 'app/settings/billing', label: 'Billing', icon: 'ri-money-pound-circle-line' },
               ].map(item => (
                 <button key={item.id} type="button" role="menuitem" onClick={() => handleNav(item.id)}
