@@ -1,3 +1,4 @@
+import type { Json, Database } from '@/types/supabase';
 import { getSupabase } from '@/lib/supabase';
 
 const supabase = () => getSupabase()!;
@@ -98,6 +99,10 @@ export interface MaterialCatalogueItem {
 }
 
 export interface PurchaseRequisition {
+  revision: number;
+  currency: string;
+  review_steps: Json;
+  approvals?: Database['public']['Tables']['procurement_approvals']['Row'][];
   id: string;
   organisation_id: string;
   reference: string;
@@ -458,7 +463,7 @@ export const requisitionService = {
   async getRequisitions(organisationId: string) {
     const { data, error } = await supabase()
       .from('purchase_requisitions')
-      .select('*, lines:requisition_lines(*)')
+      .select('*, lines:requisition_lines(*), approvals:procurement_approvals(*)')
       .eq('organisation_id', organisationId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -468,7 +473,7 @@ export const requisitionService = {
   async getRequisition(id: string) {
     const { data, error } = await supabase()
       .from('purchase_requisitions')
-      .select('*, lines:requisition_lines(*)')
+      .select('*, lines:requisition_lines(*), approvals:procurement_approvals(*)')
       .eq('id', id)
       .maybeSingle();
     if (error) throw error;
