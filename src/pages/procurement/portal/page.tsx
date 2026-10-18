@@ -7,6 +7,7 @@ export default function ProcurementPortal() {
     <div className="flex flex-wrap gap-3">
       <Link className="rounded-lg border border-border bg-white px-4 py-3 text-sm font-semibold text-main" to="/app/procurement/requisitions">Material requisitions</Link>
       <Link className="rounded-lg border border-border bg-white px-4 py-3 text-sm font-semibold text-main" to="/app/procurement/rfqs">Supplier quotations</Link>
+      <Link className="rounded-lg border border-border bg-white px-4 py-3 text-sm font-semibold text-main" to="/app/procurement/returns">Returns and credit notes</Link>
       <Link className="rounded-lg bg-primary-500 px-4 py-3 text-sm font-semibold text-white" to="/app/procurement/purchase-orders">Purchase orders</Link>
       <Link className="rounded-lg border border-border bg-white px-4 py-3 text-sm font-semibold text-main" to="/app/procurement/deliveries">Record deliveries</Link>
       <Link className="rounded-lg border border-border bg-white px-4 py-3 text-sm font-semibold text-main" to="/app/procurement/supplier-invoices">Supplier invoices</Link>

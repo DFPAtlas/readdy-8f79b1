@@ -1,0 +1,100 @@
+-- Development transaction tests. Fixtures, roles and billing changes are rolled back.
+BEGIN;
+SET LOCAL ROLE authenticated;
+DO $test$
+DECLARE org uuid:=current_setting('test.organisation_id')::uuid;actor uuid:=current_setting('test.actor_id')::uuid;
+ supplier uuid;po uuid;po_line uuid;receipt uuid;receipt_line uuid;invoice uuid;ret uuid;pending uuid;credit uuid;replacement uuid;
+ payload jsonb;credit_payload jsonb;request uuid:=gen_random_uuid();complete_request uuid:=gen_random_uuid();credit_request uuid:=gen_random_uuid();failed boolean;before_count integer;
+BEGIN
+ PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated')::text,true);
+ supplier:=public.procurement_write(org,gen_random_uuid(),'create_supplier','{"trading_name":"Returns credit rollback supplier"}');
+ po:=public.procurement_write(org,gen_random_uuid(),'create_order',jsonb_build_object('supplier_id',supplier,'po_number','RET-PO-ROLLBACK-'||gen_random_uuid(),'lines',jsonb_build_array(jsonb_build_object('description','Materials','quantity',10,'unit_price_pence',100,'tax_rate',0.2))));
+ PERFORM public.procurement_write(org,gen_random_uuid(),'approve_order',jsonb_build_object('purchase_order_id',po));
+ SELECT id INTO po_line FROM public.purchase_order_lines WHERE purchase_order_id=po;
+ receipt:=public.procurement_write(org,gen_random_uuid(),'record_delivery',jsonb_build_object('purchase_order_id',po,'arrival_date',CURRENT_DATE,'lines',jsonb_build_array(jsonb_build_object('purchase_order_line_id',po_line,'accepted_quantity',6,'damaged_quantity',2,'rejected_quantity',2))));
+ SELECT id INTO receipt_line FROM public.goods_receipt_lines WHERE goods_receipt_id=receipt;
+ invoice:=public.procurement_invoice_write(org,gen_random_uuid(),'create_invoice',jsonb_build_object('purchase_order_id',po,'invoice_number','RET-INV-ROLLBACK','invoice_date',CURRENT_DATE,'lines',jsonb_build_array(jsonb_build_object('purchase_order_line_id',po_line,'quantity',6,'unit_price_pence',100,'tax_rate',0.2))));
+ IF (SELECT status FROM public.supplier_invoices WHERE id=invoice)<>'matched' THEN RAISE EXCEPTION 'Initial invoice did not match';END IF;
+ payload:=jsonb_build_object('purchase_order_id',po,'reference','RET-ROLLBACK-'||gen_random_uuid(),'reason','Return materials','return_method','supplier_collection','supplier_id',gen_random_uuid(),'lines',jsonb_build_array(jsonb_build_object('goods_receipt_line_id',receipt_line,'condition','accepted','quantity',2),jsonb_build_object('goods_receipt_line_id',receipt_line,'condition','damaged','quantity',1)));
+ ret:=public.procurement_return_credit_write(org,request,'create_return',payload);
+ IF public.procurement_return_credit_write(org,request,'create_return',payload)<>ret THEN RAISE EXCEPTION 'Return replay failed';END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.supplier_returns WHERE id=ret AND supplier_id=supplier AND status='authorised' AND NOT credit_note_received) OR (SELECT received_quantity FROM public.purchase_order_lines WHERE id=po_line)<>6 THEN RAISE EXCEPTION 'Return save derived identity or premature movement incorrect';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,request,'create_return',payload||'{"reason":"changed"}');EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Changed return replay accepted';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'create_return',payload||jsonb_build_object('reference',' '||lower(payload->>'reference')||' '));EXCEPTION WHEN unique_violation THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Duplicate return accepted';END IF;
+ SELECT count(*) INTO before_count FROM public.supplier_returns WHERE organisation_id=org;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'create_return',jsonb_set(payload,'{lines,0,quantity}','5')||jsonb_build_object('reference','INVALID-'||gen_random_uuid()));EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed OR (SELECT count(*) FROM public.supplier_returns WHERE organisation_id=org)<>before_count THEN RAISE EXCEPTION 'Over-return not rejected atomically';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'create_return',jsonb_set(payload,'{lines,0,condition}','"missing"')||jsonb_build_object('reference','INVALID-'||gen_random_uuid()));EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Missing goods returned';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'create_return',jsonb_set(payload,'{lines,0,goods_receipt_line_id}',to_jsonb(gen_random_uuid()))||jsonb_build_object('reference','INVALID-'||gen_random_uuid()));EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Unrelated receipt line accepted';END IF;
+ PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'collect_return',jsonb_build_object('return_id',ret,'revision',1,'date',CURRENT_DATE));
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'cancel_return',jsonb_build_object('return_id',ret,'revision',2));EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Collected return cancelled';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'complete_return',jsonb_build_object('return_id',ret,'revision',1,'date',CURRENT_DATE));EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Stale return completed';END IF;
+ PERFORM public.procurement_return_credit_write(org,complete_request,'complete_return',jsonb_build_object('return_id',ret,'revision',2,'date',CURRENT_DATE));
+ PERFORM public.procurement_return_credit_write(org,complete_request,'complete_return',jsonb_build_object('return_id',ret,'revision',2,'date',CURRENT_DATE));
+ IF (SELECT received_quantity FROM public.purchase_order_lines WHERE id=po_line)<>4 OR (SELECT accepted_quantity FROM public.goods_receipt_lines WHERE id=receipt_line)<>6 THEN RAISE EXCEPTION 'Net accepted quantity incorrect or receipt history mutated';END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.supplier_returns WHERE id=ret AND status='returned' AND returned_at=CURRENT_DATE AND NOT credit_note_received) THEN RAISE EXCEPTION 'Physical return falsely marked credited';END IF;
+ PERFORM public.procurement_invoice_write(org,gen_random_uuid(),'recheck_invoice',jsonb_build_object('invoice_id',invoice));
+ IF (SELECT status FROM public.supplier_invoices WHERE id=invoice)<>'exception' THEN RAISE EXCEPTION 'Invoice matched returned goods as still accepted';END IF;
+ credit_payload:=jsonb_build_object('invoice_id',invoice,'return_id',ret,'reference','RET-CN-ROLLBACK','date',CURRENT_DATE,'net_amount_pence',100,'tax_amount_pence',20,'reason','Credit document received','supplier_id',gen_random_uuid());
+ credit:=public.procurement_return_credit_write(org,credit_request,'record_credit',credit_payload);
+ IF public.procurement_return_credit_write(org,credit_request,'record_credit',credit_payload)<>credit THEN RAISE EXCEPTION 'Credit replay failed';END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.supplier_credit_notes WHERE id=credit AND amount_pence=120 AND supplier_id=supplier AND recorded_by=actor AND supplier_invoice_id=invoice AND supplier_return_id=ret) THEN RAISE EXCEPTION 'Credit totals or derived links wrong';END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.supplier_returns WHERE id=ret AND credit_note_received AND credit_note_amount_pence=120 AND status='returned') THEN RAISE EXCEPTION 'Recorded credit not reflected on return';END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.supplier_invoices WHERE id=invoice AND status='exception' AND payment_status='unpaid' AND paid_at IS NULL) THEN RAISE EXCEPTION 'Credit cleared exceptions or made a payment';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'record_credit',credit_payload||'{"reference":" ret-cn-rollback "}');EXCEPTION WHEN unique_violation THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Duplicate credit accepted';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'record_credit',credit_payload||'{"reference":"OVER-CREDIT","net_amount_pence":700,"tax_amount_pence":140}');EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Over-credit accepted';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'record_credit',credit_payload||jsonb_build_object('reference','FOREIGN','return_id',gen_random_uuid()));EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Unrelated return linked to credit';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_invoice_write(org,gen_random_uuid(),'cancel_invoice',jsonb_build_object('invoice_id',invoice));EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Invoice with active credit cancelled';END IF;
+ PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'void_credit',jsonb_build_object('credit_id',credit,'reason','Incorrect credit amount entered'));
+ IF NOT EXISTS(SELECT 1 FROM public.supplier_credit_notes WHERE id=credit AND status='void' AND voided_by=actor AND void_reason='Incorrect credit amount entered') OR (SELECT credit_note_received FROM public.supplier_returns WHERE id=ret) THEN RAISE EXCEPTION 'Void history or return aggregate incorrect';END IF;
+ replacement:=public.procurement_return_credit_write(org,gen_random_uuid(),'record_credit',credit_payload||'{"net_amount_pence":200,"tax_amount_pence":40}');
+ IF replacement=credit OR (SELECT credit_note_amount_pence FROM public.supplier_returns WHERE id=ret)<>240 THEN RAISE EXCEPTION 'Corrected credit replacement failed';END IF;
+ -- Cancel a pending return and ensure its quantities are released.
+ pending:=public.procurement_return_credit_write(org,gen_random_uuid(),'create_return',payload||jsonb_build_object('reference','RET-ROLLBACK-'||gen_random_uuid(),'lines',jsonb_build_array(jsonb_build_object('goods_receipt_line_id',receipt_line,'condition','accepted','quantity',1))));
+ PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'cancel_return',jsonb_build_object('return_id',pending,'revision',1));
+ pending:=public.procurement_return_credit_write(org,gen_random_uuid(),'create_return',payload||jsonb_build_object('reference','RET-ROLLBACK-'||gen_random_uuid(),'lines',jsonb_build_array(jsonb_build_object('goods_receipt_line_id',receipt_line,'condition','accepted','quantity',4))));
+ PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'cancel_return',jsonb_build_object('return_id',pending,'revision',1));
+ -- A replacement receipt restores net accepted quantity; original returned goods are not counted twice.
+ PERFORM public.procurement_write(org,gen_random_uuid(),'record_delivery',jsonb_build_object('purchase_order_id',po,'arrival_date',CURRENT_DATE,'lines',jsonb_build_array(jsonb_build_object('purchase_order_line_id',po_line,'accepted_quantity',2))));
+ PERFORM public.procurement_invoice_write(org,gen_random_uuid(),'recheck_invoice',jsonb_build_object('invoice_id',invoice));
+ IF (SELECT received_quantity FROM public.purchase_order_lines WHERE id=po_line)<>6 OR (SELECT status FROM public.supplier_invoices WHERE id=invoice)<>'matched' THEN RAISE EXCEPTION 'Replacement delivery net matching incorrect';END IF;
+ IF has_table_privilege('authenticated','public.supplier_returns','UPDATE') OR has_table_privilege('authenticated','public.supplier_return_lines','INSERT') OR has_table_privilege('authenticated','public.supplier_credit_notes','TRUNCATE') THEN RAISE EXCEPTION 'Direct writes permitted';END IF;
+ PERFORM set_config('test.credit_invoice',invoice::text,true);PERFORM set_config('test.credit_return',ret::text,true);
+ PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',gen_random_uuid(),'role','authenticated')::text,true);
+ IF EXISTS(SELECT 1 FROM public.supplier_returns WHERE id=ret) OR EXISTS(SELECT 1 FROM public.supplier_return_lines WHERE supplier_return_id=ret) OR EXISTS(SELECT 1 FROM public.supplier_credit_notes WHERE id=replacement) THEN RAISE EXCEPTION 'Other identity reads return/credit data';END IF;
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'record_credit',credit_payload);EXCEPTION WHEN insufficient_privilege THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Other identity writes credits';END IF;
+ PERFORM set_config('request.jwt.claims','{}',true);
+ failed:=false;BEGIN PERFORM public.procurement_return_credit_write(org,gen_random_uuid(),'create_return',payload);EXCEPTION WHEN OTHERS THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Null auth bypass';END IF;
+END $test$;
+RESET ROLE;
+UPDATE public.organisation_members SET role='project_manager' WHERE organisation_id=current_setting('test.organisation_id')::uuid AND user_id=current_setting('test.actor_id')::uuid;
+SET LOCAL ROLE authenticated;
+DO $test$
+DECLARE failed boolean:=false;
+BEGIN
+ PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('test.actor_id'),'role','authenticated')::text,true);
+ BEGIN PERFORM public.procurement_return_credit_write(current_setting('test.organisation_id')::uuid,gen_random_uuid(),'record_credit',jsonb_build_object('invoice_id',current_setting('test.credit_invoice')));EXCEPTION WHEN insufficient_privilege THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Project manager recorded financial credit';END IF;
+END $test$;
+RESET ROLE;
+UPDATE public.organisation_subscriptions SET access_state='read_only' WHERE organisation_id=current_setting('test.organisation_id')::uuid;
+SET LOCAL ROLE authenticated;
+DO $test$
+DECLARE failed boolean:=false;
+BEGIN
+ BEGIN PERFORM public.procurement_return_credit_write(current_setting('test.organisation_id')::uuid,gen_random_uuid(),'cancel_return',jsonb_build_object('return_id',current_setting('test.credit_return')));EXCEPTION WHEN insufficient_privilege THEN failed:=true;END;
+ IF NOT failed THEN RAISE EXCEPTION 'Read-only workspace wrote return';END IF;
+END $test$;
+ROLLBACK;
