@@ -10347,6 +10347,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      procurement_write: {
+        Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
+        Returns: string
+      }
       can_access_message_attachment: {
         Args: { p_message_id: string; p_organisation_id: string }
         Returns: boolean
