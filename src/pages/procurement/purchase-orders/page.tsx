@@ -157,7 +157,7 @@ export default function ProcurementPurchaseOrders() {
                 <div className="flex items-center gap-4 text-xs text-foreground-600">
                   {po.gross_total_pence != null && (
                     <span className="font-semibold text-foreground-900">
-                      {formatPence(po.gross_total_pence,organisation?.default_currency)}
+                      {formatPence(po.gross_total_pence,po.currency)}
                     </span>
                   )}
                   {po.order_date && (

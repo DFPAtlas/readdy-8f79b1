@@ -1,143 +1,91 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
-import { supplierInvoiceService } from '@/services/procurement.service';
+import { poService, supplierInvoiceService, type PurchaseOrder } from '@/services/procurement.service';
+import { writeInvoice, type InvoiceAction } from '@/services/procurement-writes.service';
+import { formatPence } from '@/lib/money';
+import { InvoiceForm } from '../components/InvoiceForm';
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-background-200 text-foreground-600',
-  received: 'bg-blue-100 text-blue-700',
-  pending_match: 'bg-amber-100 text-amber-700',
-  matched: 'bg-secondary-100 text-secondary-700',
-  exception: 'bg-red-100 text-red-700',
-  approved: 'bg-green-100 text-green-700',
-  paid: 'bg-green-100 text-green-700',
-  disputed: 'bg-red-100 text-red-700',
-  cancelled: 'bg-background-200 text-foreground-500',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'Draft',
-  received: 'Received',
-  pending_match: 'Pending match',
-  matched: 'Matched',
-  exception: 'Exception',
-  approved: 'Approved',
-  paid: 'Paid',
-  disputed: 'Disputed',
-  cancelled: 'Cancelled',
-};
-
+type Invoice = Awaited<ReturnType<typeof supplierInvoiceService.getInvoices>>[number];
+const button = 'rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50';
+function matchPassed(invoice: Invoice) {
+  const match = invoice.match;
+  return match?.match_type === 'three_way' && match.price_match && match.quantity_match && match.tax_match && Array.isArray(match.exceptions) && match.exceptions.length === 0;
+}
 export default function ProcurementSupplierInvoices() {
-  const { organisation } = useOrg();
-  const [invoices, setInvoices] = useState<any[]>([]);
+  const { organisation, role, isReadOnly } = useOrg();
+  const orgId = organisation?.id;
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-
+  const [error, setError] = useState('');
+  const [revision, setRevision] = useState(0);
+  const [showForm, setShowForm] = useState(false);
+  const [filter, setFilter] = useState('all');
+  const [busyId, setBusyId] = useState('');
+  const [cancelId, setCancelId] = useState('');
+  const [message, setMessage] = useState('');
+  const busy = useRef(false);
+  const currentOrg = useRef(orgId);
+  currentOrg.current = orgId;
+  const canWrite = !isReadOnly && ['owner','admin','finance','project_manager'].includes(role || '');
+  const canApprove = !isReadOnly && ['owner','admin','finance'].includes(role || '');
   useEffect(() => {
-    if (!organisation?.id) return;
-    supplierInvoiceService.getInvoices(organisation.id)
-      .then(setInvoices)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [organisation?.id]);
-
-  const filtered = statusFilter === 'all' ? invoices : invoices.filter((inv) => inv.status === statusFilter);
-
-  const statusCounts = invoices.reduce((acc: Record<string, number>, inv) => {
-    acc[inv.status] = (acc[inv.status] || 0) + 1;
-    return acc;
-  }, {});
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-foreground-600">Loading supplier invoices...</span>
-        </div>
-      </div>
-    );
+    let active = true;
+    setInvoices([]); setOrders([]); setError(''); setShowForm(false); setCancelId(''); setMessage('');
+    if (!orgId) { setLoading(false); return; }
+    setLoading(true);
+    Promise.all([supplierInvoiceService.getInvoices(orgId), poService.getPurchaseOrders(orgId)])
+      .then(([rows, purchaseOrders]) => { if (active) { setInvoices(rows); setOrders(purchaseOrders); } })
+      .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Could not load invoices.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [orgId, revision]);
+  async function action(invoice: Invoice, operation: Exclude<InvoiceAction, 'create_invoice'>) {
+    if (!orgId || busy.current) return;
+    const actionOrg = orgId;
+    busy.current = true; setBusyId(invoice.id); setError('');
+    try {
+      await writeInvoice(actionOrg, crypto.randomUUID(), operation, { invoice_id: invoice.id });
+      const rows = await supplierInvoiceService.getInvoices(actionOrg);
+      if (currentOrg.current === actionOrg) {
+        setInvoices(rows); setCancelId('');
+        setMessage(operation === 'approve_invoice' ? 'Invoice approved. No payment has been made.' : operation === 'cancel_invoice' ? 'Invoice cancelled. Record a corrected invoice if needed.' : 'Matching checks refreshed. Review the result below.');
+      }
+    } catch (reason) {
+      if (currentOrg.current === actionOrg) setError(reason instanceof Error ? reason.message : 'The action failed.');
+    } finally { busy.current = false; setBusyId(''); }
   }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground-950">Supplier Invoices</h1>
-          <p className="text-sm text-foreground-600 mt-1">{invoices.length} invoices — separate from BuildNerve subscriptions and construction payment applications</p>
-        </div>
-      </div>
-
-      {/* Status tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        <button
-          onClick={() => setStatusFilter('all')}
-          className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap cursor-pointer transition-colors ${statusFilter === 'all' ? 'bg-primary-500 text-background-50' : 'bg-background-100 text-foreground-700 hover:bg-background-200'}`}
-        >All ({invoices.length})</button>
-        {['received', 'pending_match', 'matched', 'exception', 'approved', 'paid'].map((status) => (
-          (statusCounts[status] || 0) > 0 && (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap cursor-pointer transition-colors ${statusFilter === status ? 'bg-primary-500 text-background-50' : 'bg-background-100 text-foreground-700 hover:bg-background-200'}`}
-            >{STATUS_LABELS[status] || status} ({statusCounts[status] || 0})</button>
-          )
-        ))}
-      </div>
-
-      <div className="space-y-3">
-        {filtered.map((inv: any) => (
-          <div key={inv.id} className="bg-background-50 border border-background-200/70 rounded-xl p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[inv.status] || ''}`}>
-                    {STATUS_LABELS[inv.status] || inv.status}
-                  </span>
-                  <span className="font-mono text-sm font-semibold text-foreground-900">{inv.invoice_number}</span>
-                  <span className="text-sm text-foreground-700">{inv.supplier?.trading_name || '—'}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-foreground-600 mb-2">
-                  {inv.invoice_date && (
-                    <span>Issued: {new Date(inv.invoice_date).toLocaleDateString('en-GB')}</span>
-                  )}
-                  {inv.due_date && (
-                    <span className={new Date(inv.due_date) < new Date() && inv.status !== 'paid' ? 'text-red-600 font-medium' : ''}>
-                      Due: {new Date(inv.due_date).toLocaleDateString('en-GB')}
-                    </span>
-                  )}
-                  {inv.purchase_order?.po_number && (
-                    <span className="font-mono">PO: {inv.purchase_order.po_number}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-bold text-foreground-950">
-                    £{(inv.gross_amount_pence / 100).toFixed(2)}
-                  </span>
-                  {inv.match && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      inv.match.match_type === 'three_way' ? 'bg-green-100 text-green-700' :
-                      inv.match.match_type === 'two_way' ? 'bg-blue-100 text-blue-700' :
-                      'bg-background-200 text-foreground-600'
-                    }`}>
-                      {inv.match.match_type === 'three_way' ? '3-way match' : inv.match.match_type === 'two_way' ? '2-way match' : 'Unmatched'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filtered.length === 0 && (
-        <div className="text-center py-16 bg-background-50 border border-background-200/70 rounded-xl">
-          <div className="w-14 h-14 rounded-full bg-background-100 flex items-center justify-center mx-auto mb-4">
-            <i className="ri-bill-line text-2xl text-foreground-500" />
-          </div>
-          <h3 className="text-base font-semibold text-foreground-900">No supplier invoices</h3>
-          <p className="text-sm text-foreground-600 mt-1">Supplier invoices appear here when matched to purchase orders</p>
-        </div>
-      )}
+  if (loading) return <p role="status" className="p-8">Loading supplier invoices…</p>;
+  const filtered = invoices.filter(invoice => filter === 'all' || invoice.status === filter);
+  return <div className="space-y-5">
+    <div className="flex flex-wrap gap-3 items-center justify-between">
+      <div><h1 className="text-2xl font-semibold">Supplier invoices</h1><p className="text-sm text-muted">Record invoices, review order and delivery checks, then approve separately.</p></div>
+      {canWrite && <button className={button} disabled={!!busyId} onClick={() => setShowForm(value => !value)}>{showForm ? 'Close invoice form' : 'Record invoice'}</button>}
     </div>
-  );
+    {isReadOnly && <p className="text-sm">Your workspace is read-only. You can view invoices; upgrade to make changes.</p>}
+    {error && <div role="alert" className="rounded-lg bg-red-50 p-4 text-red-700"><p>{error}</p><button className="underline" disabled={!!busyId} onClick={() => setRevision(value => value + 1)}>Reload records</button></div>}
+    {message && <p role="status" className="rounded-lg bg-blue-50 p-3 text-sm">{message}</p>}
+    {showForm && orgId && <InvoiceForm key={orgId} orders={orders} onCancel={() => setShowForm(false)} onSaved={() => { if (currentOrg.current === orgId) { setShowForm(false); setRevision(value => value + 1); } }} />}
+    <label className="block text-sm">Status <select className="rounded border border-border p-2" value={filter} onChange={event => setFilter(event.target.value)}><option value="all">All ({invoices.length})</option>{['received','pending_match','matched','exception','approved','paid','cancelled'].map(status => <option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></label>
+    {filtered.map(invoice => {
+      const passed = matchPassed(invoice);
+      const mutable = ['draft','received','pending_match','matched','exception'].includes(invoice.status) && invoice.approval_status !== 'approved' && invoice.payment_status === 'unpaid';
+      const exceptions = Array.isArray(invoice.match?.exceptions) ? invoice.match.exceptions : [];
+      return <article key={invoice.id} className="rounded-xl border border-border bg-white p-5 space-y-3">
+        <div className="flex flex-wrap gap-3 justify-between"><h2 className="font-semibold">{invoice.invoice_number} — {invoice.supplier?.trading_name || 'Supplier'}</h2><span className="text-sm capitalize">{invoice.status.replaceAll('_',' ')}</span></div>
+        <p className="text-sm">PO: {invoice.purchase_order?.po_number || 'Not linked'} · Invoice date: {invoice.invoice_date || 'Not recorded'} · Due: {invoice.due_date || 'Not recorded'}</p>
+        <p className="font-semibold">{formatPence(invoice.gross_amount_pence, invoice.currency)}</p>
+        {invoice.status !== 'cancelled' && <p className={`text-sm ${passed ? 'text-green-700' : 'text-amber-700'}`}>{passed ? 'Three-way checks passed at last check' : 'Matching requires review'}{invoice.match?.matched_at ? ` · ${new Date(invoice.match.matched_at).toLocaleString('en-GB')}` : ''}</p>}
+        {invoice.status !== 'cancelled' && exceptions.length > 0 && <ul className="list-disc pl-5 text-sm text-red-700">{exceptions.map((exception, index) => <li key={index}>{typeof exception === 'string' ? exception : JSON.stringify(exception)}</li>)}</ul>}
+        <details><summary className="cursor-pointer text-sm">Invoice lines and totals</summary><div className="overflow-x-auto"><table className="w-full text-sm mt-3"><thead><tr><th className="text-left">Description</th><th>Quantity</th><th>Unit price</th><th>VAT</th><th>Net</th></tr></thead><tbody>{[...invoice.lines].sort((a,b) => a.line_number - b.line_number).map(line => <tr key={line.id}><td className="py-2">{line.description}</td><td className="text-center">{line.quantity}</td><td className="text-center">{formatPence(line.unit_price_pence, invoice.currency)}</td><td className="text-center">{line.tax_rate == null ? 'Unknown' : `${line.tax_rate * 100}%`}</td><td className="text-center">{formatPence(line.line_total_pence ?? 0, invoice.currency)}</td></tr>)}</tbody></table></div><p className="text-sm mt-2">Net {formatPence(invoice.net_amount_pence, invoice.currency)} · VAT {formatPence(invoice.tax_amount_pence ?? 0, invoice.currency)}</p>{invoice.notes && <p className="text-sm mt-2 whitespace-pre-wrap">{invoice.notes}</p>}</details>
+        {mutable && <div className="flex flex-wrap gap-2">
+          {canWrite && <button className={button} disabled={!!busyId} onClick={() => action(invoice, 'recheck_invoice')}>{busyId === invoice.id ? 'Working…' : 'Recheck match'}</button>}
+          {canApprove && <button className={button} disabled={!!busyId || !passed} onClick={() => action(invoice, 'approve_invoice')}>Approve invoice</button>}
+          {canApprove && <button className={button} disabled={!!busyId} onClick={() => setCancelId(invoice.id)}>Cancel incorrect invoice</button>}
+        </div>}
+        {cancelId === invoice.id && <div className="rounded-lg bg-amber-50 p-3 text-sm"><p>Cancel this invoice? It stays in the record but no longer counts towards invoiced quantities. A corrected invoice can then be recorded.</p><button className={button} disabled={!!busyId} onClick={() => action(invoice, 'cancel_invoice')}>Confirm cancellation</button> <button className={button} disabled={!!busyId} onClick={() => setCancelId('')}>Keep invoice</button></div>}
+      </article>;
+    })}
+    {!error && filtered.length === 0 && <p className="rounded-xl border border-border p-8 text-center">No invoices in this view.{canWrite ? ' Use Record invoice to enter one against an approved order.' : ''}</p>}
+  </div>;
 }

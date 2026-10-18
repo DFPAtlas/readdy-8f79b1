@@ -208,6 +208,7 @@ export interface SupplierQuoteLine {
 }
 
 export interface PurchaseOrder {
+  currency: string;
   id: string;
   organisation_id: string;
   po_number: string;
@@ -598,7 +599,7 @@ export const supplierInvoiceService = {
   async getInvoices(organisationId: string) {
     const { data, error } = await supabase()
       .from('supplier_invoices')
-      .select('*, supplier:suppliers(trading_name), purchase_order:purchase_orders(po_number), match:invoice_matches(*)')
+      .select('*, supplier:suppliers(trading_name), purchase_order:purchase_orders(po_number), match:invoice_matches(*), lines:supplier_invoice_lines(*)')
       .eq('organisation_id', organisationId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -620,6 +621,9 @@ export const procurementDashboardService = {
       supabase().from('plant_hire_records').select('id,status,hire_end_date').eq('organisation_id', organisationId),
     ]);
 
+    for (const result of [reqRes, rfqRes, poRes, deliveryRes, invoiceRes, hireRes]) {
+      if (result.error) throw result.error;
+    }
     return {
       requisitionsAwaitingApproval: (reqRes.data || []).filter((r: any) => r.status === 'submitted' || r.status === 'under_review').length,
       rfqsAwaitingResponse: (rfqRes.data || []).filter((r: any) => r.status === 'issued').length,
@@ -638,7 +642,7 @@ export const procurementDashboardService = {
         const now = new Date();
         return d < now && !['fully_delivered', 'closed', 'cancelled'].includes(p.status);
       }).length,
-      unmatchedInvoices: (invoiceRes.data || []).filter((i: any) => i.status === 'received' || i.status === 'pending_match').length,
+      unmatchedInvoices: (invoiceRes.data || []).filter((i: any) => i.status === 'received' || i.status === 'pending_match' || i.status === 'exception').length,
       hireDueBack: (hireRes.data || []).filter((h: any) => {
         if (!h.hire_end_date) return false;
         const d = new Date(h.hire_end_date);
