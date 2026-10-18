@@ -60,7 +60,7 @@ export interface DashboardKpis {
   variationsAwaitingPence: number;
   paymentOutstandingCount: number;
   paymentOutstandingPence: number;
-  retentionHeldPence: number;
+  retentionRecordCount: number;
 }
 
 export async function getDashboardKpis(orgId: string): Promise<DashboardKpis> {
@@ -69,7 +69,7 @@ export async function getDashboardKpis(orgId: string): Promise<DashboardKpis> {
     supabase.from('jobs').select('id, status').eq('organisation_id', orgId).is('archived_at', null),
     supabase.from('variations').select('status, total_pence').eq('organisation_id', orgId).is('archived_at', null),
     supabase.from('payment_applications').select('status, amount_due_pence').eq('organisation_id', orgId),
-    supabase.from('retention_records').select('withheld_pence, released_pence').eq('organisation_id', orgId),
+    supabase.from('retention_records').select('id').eq('organisation_id', orgId).is('voided_at', null),
   ]);
   if (jobsRes.error) throw jobsRes.error;
   if (varRes.error) throw varRes.error;
@@ -87,10 +87,7 @@ export async function getDashboardKpis(orgId: string): Promise<DashboardKpis> {
     PAYMENT_OUTSTANDING_STATUSES.includes(p.status as string),
   );
 
-  const retentionHeldPence = retention.reduce(
-    (total, r) => total + ((Number(r.withheld_pence) || 0) - (Number(r.released_pence) || 0)),
-    0,
-  );
+  const retentionRecordCount = retention.length;
 
   return {
     activeJobs,
@@ -98,7 +95,7 @@ export async function getDashboardKpis(orgId: string): Promise<DashboardKpis> {
     variationsAwaitingPence: sumPence(awaitingVars, 'total_pence'),
     paymentOutstandingCount: outstandingPayments.length,
     paymentOutstandingPence: sumPence(outstandingPayments, 'amount_due_pence'),
-    retentionHeldPence,
+    retentionRecordCount,
   };
 }
 
