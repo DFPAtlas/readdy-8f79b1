@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import ts from 'typescript';
+import {createHash} from 'node:crypto';
+async function load(source){const {outputText}=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}});return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);}
+test('portal gateway authenticates with a hash, denies malformed requests and hides backend errors',async()=>{
+ const source=(await fs.readFile(new URL('../supabase/functions/get-portal-schedule/index.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'');let handler;const calls=[];const signed=[];let error=null;
+ globalThis.__portalServe=value=>{handler=value;};globalThis.__portalClient=()=>({async rpc(name,args){calls.push({name,args});return {data:name==='client_portal_asset'?{bucket:'authorised-bucket',path:'org/job/authorised.pdf',filename:'contract.pdf'}:name==='client_portal_write'?'saved-response':{projects:[],events:[],variations:[],payments:[],permissions:{}},error};},storage:{from(bucket){return {async createSignedUrl(path,seconds,options){signed.push({bucket,path,seconds,options});return {data:{signedUrl:'https://example.invalid/signed-file'},error:null};}};}}});globalThis.__portalEnv={get:()=> 'test-config'};
+ try{
+ await load('const serve=globalThis.__portalServe;const createClient=globalThis.__portalClient;const Deno={env:globalThis.__portalEnv};\n'+source);
+ const url='https://example.invalid/portal';const token='secret-token-for-boundary-test-'.repeat(2);
+ assert.equal((await handler(new Request(url))).status,405);
+ assert.equal((await handler(new Request(url,{method:'POST',body:JSON.stringify({token:'short'})}))).status,400);assert.equal(calls.length,0);
+ const request=()=>new Request(url,{method:'POST',body:JSON.stringify({token})});const response=await handler(request());assert.equal(response.status,200);assert.equal(response.headers.get('Cache-Control'),'no-store');assert.equal(calls[0].name,'client_portal_overview');assert.deepEqual(calls[0].args,{p_hash:createHash('sha256').update(token).digest('hex')});assert.ok(!(await response.text()).includes(token));
+ const write=await handler(new Request(url,{method:'POST',body:JSON.stringify({token,action:'respond',request_id:'request-id',response_type:'approved',data:{version:1}})}));assert.equal(write.status,200);assert.deepEqual(await write.json(),{id:'saved-response'});assert.equal(calls.at(-1).name,'client_portal_write');assert.deepEqual(calls.at(-1).args.p_data,{version:1});
+ const assetRequest=()=>new Request(url,{method:'POST',body:JSON.stringify({token,action:'asset',kind:'document',id:'document-id',bucket:'attacker-bucket',path:'another-project/secret.pdf'})});
+ const file=await handler(assetRequest());assert.equal(file.status,200);assert.deepEqual(signed,[{bucket:'authorised-bucket',path:'org/job/authorised.pdf',seconds:60,options:{download:'contract.pdf'}}]);assert.deepEqual(calls.at(-1).args,{p_hash:createHash('sha256').update(token).digest('hex'),p_kind:'document',p_id:'document-id'});
+ error={code:'P0001',message:'private detail'};const stale=await handler(new Request(url,{method:'POST',body:JSON.stringify({token,action:'respond',request_id:'new-request',response_type:'approved',data:{version:0}})}));assert.equal(stale.status,409);assert.ok(!(await stale.text()).includes('private detail'));
+ error={code:'42501',message:'private database detail'};const denied=await handler(request());assert.equal(denied.status,403);assert.ok(!(await denied.text()).includes('private database detail'));assert.equal((await handler(assetRequest())).status,403);assert.equal(signed.length,1);
+ error={code:'XX000',message:'private database detail'};const unavailable=await handler(request());assert.equal(unavailable.status,503);assert.ok(!(await unavailable.text()).includes('private database detail'));
+ }finally{delete globalThis.__portalServe;delete globalThis.__portalClient;delete globalThis.__portalEnv;}
+});
+test('calendar download escapes externally entered text and avoids invalid timed events',async()=>{
+ const source=await fs.readFile(new URL('../src/lib/portal-calendar.ts',import.meta.url),'utf8');const {portalEventIcs}=await load(source);const base={id:'event-1',title:'Visit\nATTENDEE:someone@example.invalid',event_date:'2026-10-18T00:00:00+00:00',event_time:'10:30',location:'Site, London; room 1',job_id:'job-1'};const text=portalEventIcs(base);assert.ok(text.includes('SUMMARY:Visit\\nATTENDEE:'));assert.ok(!text.includes('\r\nATTENDEE:'));assert.ok(text.includes('DTSTART:20261018T103000'));assert.ok(text.includes('LOCATION:Site\\, London\\; room 1'));assert.ok(portalEventIcs({...base,event_time:'99:99'}).includes('DTSTART;VALUE=DATE:20261018'));assert.throws(()=>portalEventIcs({...base,event_date:'bad'}));
+});
+
+test('downloaded report escapes shared text and retains per-record currency and decision snapshots',async()=>{
+ const source=await fs.readFile(new URL('../src/lib/portal-report.ts',import.meta.url),'utf8');const {portalReport}=await load(source);const data={client_name:'<img src=x onerror=alert(1)>',currency:'EUR',projects:[{project_name:'<script>alert(1)</script>',reference:'TEST'}],events:[],variations:[{reference:'V1',title:'<b>Extra work</b>',status:'approved',currency:'GBP',total_pence:12000}],responses:[{name:'Client',type:'approved',version:1,reviewed_snapshot:{currency:'GBP',total_pence:12000,title:'<script>bad</script>'}}],payments:[{reference:'P1',application_date:'2026-10-18',status:'submitted',currency:'GBP',amount_due_pence:10000}]};const html=portalReport(data);assert.ok(!html.includes('<script>'));assert.ok(!html.includes('<img'));assert.ok(html.includes('&lt;script&gt;'));assert.ok(html.includes('GBP 120.00'));assert.ok(html.includes('GBP 100.00'));assert.ok(html.includes('Recorded client decisions'));
+});

@@ -23,6 +23,7 @@ import ClientDetail from "@/pages/clients/detail/page";
 import VariationsWorkspace from "@/pages/variations/page";
 import NewVariationWizard from "@/pages/variations/new/page";
 import VariationDetail from "@/pages/variations/detail/page";
+import ClientPortalManagement from "@/pages/settings/client-portal/page";
 import ClientPortal from "@/pages/portal/page";
 import FullSchedulePage from "@/pages/portal/schedule/page";
 import ClientVariationDetail from "@/pages/portal/variation/page";
@@ -403,6 +404,7 @@ const routes: RouteObject[] = [
           { path: "import-export", element: <ImportExportPage /> },
         ],
       },
+      { path: "/settings/client-portal", element: <ClientPortalManagement /> },
       {
         path: "/compliance",
         element: <CompliancePage />,

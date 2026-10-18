@@ -1,0 +1,41 @@
+-- Development transaction: synthetic grants and project records are rolled back.
+BEGIN;
+DO $test$
+DECLARE org uuid:=current_setting('test.organisation_id')::uuid;other_org uuid;client1 uuid;client2 uuid;foreign_client uuid;job1 uuid;job2 uuid;job3 uuid;foreign_job uuid;grant_id uuid;hash text:=replace(gen_random_uuid()::text,'-','')||replace(gen_random_uuid()::text,'-','');result jsonb;failed boolean;
+BEGIN
+ INSERT INTO public.organisations(name) VALUES('Portal rollback other company') RETURNING id INTO other_org;
+ INSERT INTO public.clients(organisation_id,client_type,first_name,last_name) VALUES(org,'individual','Portal rollback','Client A') RETURNING id INTO client1;
+ INSERT INTO public.clients(organisation_id,client_type,first_name,last_name) VALUES(org,'individual','Portal rollback','Client B') RETURNING id INTO client2;
+ INSERT INTO public.clients(organisation_id,client_type,first_name) VALUES(other_org,'individual','Foreign client') RETURNING id INTO foreign_client;
+ INSERT INTO public.jobs(organisation_id,client_id,reference,project_name) VALUES(org,client1,'PORTAL-ROLLBACK-A','Permitted project') RETURNING id INTO job1;
+ INSERT INTO public.jobs(organisation_id,client_id,reference,project_name) VALUES(org,client1,'PORTAL-ROLLBACK-B','Unscoped project') RETURNING id INTO job2;
+ INSERT INTO public.jobs(organisation_id,client_id,reference,project_name) VALUES(org,client2,'PORTAL-ROLLBACK-C','Other client project') RETURNING id INTO job3;
+ INSERT INTO public.jobs(organisation_id,client_id,reference,project_name) VALUES(other_org,foreign_client,'PORTAL-ROLLBACK-D','Other company project') RETURNING id INTO foreign_job;
+ INSERT INTO public.portal_access(organisation_id,client_id,email,access_type,token_hash,job_scope,permissions,expires_at) VALUES(org,client1,'portal-rollback@example.invalid','client',hash,ARRAY[job1,job3,foreign_job],ARRAY['progress','schedule','variations','financials'],now()+interval '1 day') RETURNING id INTO grant_id;
+ INSERT INTO public.timeline_events(organisation_id,job_id,event_type,title,event_date,visibility,metadata) VALUES(org,job1,'inspection','Shared inspection',CURRENT_DATE,'client_visible','{"event_time":"10:00","location":"Site","private_note":"never expose metadata"}'),(org,job1,'inspection','Private inspection',CURRENT_DATE,'internal_only','{}'),(org,job3,'inspection','Other client inspection',CURRENT_DATE,'client_visible','{}');
+ INSERT INTO public.variations(organisation_id,job_id,reference,title,client_price_pence,vat_pence,total_pence,internal_cost_pence,status) VALUES(org,job1,'PORTAL-ROLLBACK-V1','Shared variation',10000,2000,12000,5000,'sent'),(org,job1,'PORTAL-ROLLBACK-V2','Draft variation',100,0,100,5,'draft'),(org,job3,'PORTAL-ROLLBACK-V3','Other client variation',100,0,100,5,'sent');
+ INSERT INTO public.payment_applications(organisation_id,job_id,reference,application_date,valuation_pence,amount_due_pence,status) VALUES(org,job1,'PORTAL-ROLLBACK-P1',CURRENT_DATE,10000,10000,'submitted'),(org,job1,'PORTAL-ROLLBACK-P2',CURRENT_DATE,1000,1000,'draft'),(org,job3,'PORTAL-ROLLBACK-P3',CURRENT_DATE,1000,1000,'submitted');
+ EXECUTE 'SET LOCAL ROLE service_role';
+ result:=public.client_portal_overview(hash);
+ IF jsonb_array_length(result->'projects')<>1 OR result->'projects'->0->>'id'<>job1::text OR jsonb_array_length(result->'events')<>1 OR jsonb_array_length(result->'variations')<>1 OR jsonb_array_length(result->'payments')<>1 THEN RAISE EXCEPTION 'Portal scope/publication filtering failed';END IF;
+ IF result::text LIKE '%internal_cost%' OR result::text LIKE '%private_note%' OR result::text LIKE '%token_hash%' OR result::text LIKE '%portal-rollback@example.invalid%' OR result::text LIKE '%Private inspection%' THEN RAISE EXCEPTION 'Private fields leaked';END IF;
+ UPDATE public.portal_access SET permissions=ARRAY['perm-schedule'] WHERE id=grant_id;
+ result:=public.client_portal_overview(hash);
+ IF jsonb_array_length(result->'events')<>1 OR jsonb_array_length(result->'variations')<>0 OR jsonb_array_length(result->'payments')<>0 OR result->'projects'->0 ? 'progress' THEN RAISE EXCEPTION 'Permissions not enforced';END IF;
+ UPDATE public.portal_access SET permissions=ARRAY['progress'],job_scope='{}' WHERE id=grant_id;
+ result:=public.client_portal_overview(hash);IF jsonb_array_length(result->'projects')<>2 THEN RAISE EXCEPTION 'Client-wide scope did not include own projects only';END IF;
+ UPDATE public.jobs SET archived_at=now() WHERE id=job2;result:=public.client_portal_overview(hash);IF jsonb_array_length(result->'projects')<>1 THEN RAISE EXCEPTION 'Archived project exposed';END IF;
+ UPDATE public.portal_access SET permissions='{}' WHERE id=grant_id;
+ failed:=false;BEGIN PERFORM public.client_portal_overview(hash);EXCEPTION WHEN insufficient_privilege THEN failed:=true;END;IF NOT failed THEN RAISE EXCEPTION 'Empty permission link accepted';END IF;
+ UPDATE public.portal_access SET permissions=ARRAY['progress'],status='revoked' WHERE id=grant_id;
+ failed:=false;BEGIN PERFORM public.client_portal_overview(hash);EXCEPTION WHEN insufficient_privilege THEN failed:=true;END;IF NOT failed THEN RAISE EXCEPTION 'Revoked grant accepted';END IF;
+ UPDATE public.portal_access SET status='active',expires_at=now()-interval '1 minute' WHERE id=grant_id;
+ failed:=false;BEGIN PERFORM public.client_portal_overview(hash);EXCEPTION WHEN insufficient_privilege THEN failed:=true;END;IF NOT failed THEN RAISE EXCEPTION 'Expired grant accepted';END IF;
+ UPDATE public.portal_access SET expires_at=now()+interval '1 day',access_type='subcontractor' WHERE id=grant_id;
+ failed:=false;BEGIN PERFORM public.client_portal_overview(hash);EXCEPTION WHEN insufficient_privilege THEN failed:=true;END;IF NOT failed THEN RAISE EXCEPTION 'Subcontractor grant accepted as client';END IF;
+ UPDATE public.portal_access SET access_type='client',client_id=foreign_client WHERE id=grant_id;
+ failed:=false;BEGIN PERFORM public.client_portal_overview(hash);EXCEPTION WHEN insufficient_privilege THEN failed:=true;END;IF NOT failed THEN RAISE EXCEPTION 'Foreign client accepted';END IF;
+ failed:=false;BEGIN PERFORM public.client_portal_overview(repeat('0',64));EXCEPTION WHEN insufficient_privilege THEN failed:=true;END;IF NOT failed THEN RAISE EXCEPTION 'Unknown hash accepted';END IF;
+ IF has_function_privilege('anon','public.client_portal_overview(text)','EXECUTE') OR has_function_privilege('authenticated','public.client_portal_overview(text)','EXECUTE') OR NOT has_function_privilege('service_role','public.client_portal_overview(text)','EXECUTE') THEN RAISE EXCEPTION 'RPC grants wrong';END IF;
+END $test$;
+ROLLBACK;

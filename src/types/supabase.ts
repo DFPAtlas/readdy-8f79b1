@@ -6090,6 +6090,7 @@ export type Database = {
       }
       payment_applications: {
         Row: {
+          currency: string
           amount_due_pence: number
           application_date: string
           created_at: string
@@ -6105,6 +6106,7 @@ export type Database = {
           valuation_pence: number
         }
         Insert: {
+          currency?: string
           amount_due_pence: number
           application_date: string
           created_at?: string
@@ -6120,6 +6122,7 @@ export type Database = {
           valuation_pence: number
         }
         Update: {
+          currency?: string
           amount_due_pence?: number
           application_date?: string
           created_at?: string
@@ -6890,6 +6893,7 @@ export type Database = {
       }
       portal_access: {
         Row: {
+          revision: number
           accepted_at: string | null
           access_type: string
           client_id: string | null
@@ -6907,6 +6911,7 @@ export type Database = {
           token_hash: string
         }
         Insert: {
+          revision?: number
           accepted_at?: string | null
           access_type: string
           client_id?: string | null
@@ -6924,6 +6929,7 @@ export type Database = {
           token_hash: string
         }
         Update: {
+          revision?: number
           accepted_at?: string | null
           access_type?: string
           client_id?: string | null
@@ -10097,6 +10103,7 @@ export type Database = {
       }
       variation_responses: {
         Row: {
+          reviewed_snapshot: Json
           confirmation_text: string | null
           created_at: string
           id: string
@@ -10110,6 +10117,7 @@ export type Database = {
           variation_version: number
         }
         Insert: {
+          reviewed_snapshot?: Json
           confirmation_text?: string | null
           created_at?: string
           id?: string
@@ -10123,6 +10131,7 @@ export type Database = {
           variation_version: number
         }
         Update: {
+          reviewed_snapshot?: Json
           confirmation_text?: string | null
           created_at?: string
           id?: string
@@ -10199,6 +10208,7 @@ export type Database = {
       }
       variations: {
         Row: {
+          currency: string
           approval_deadline: string | null
           archived_at: string | null
           assumptions: string | null
@@ -10228,6 +10238,7 @@ export type Database = {
           work_before_approval: boolean
         }
         Insert: {
+          currency?: string
           approval_deadline?: string | null
           archived_at?: string | null
           assumptions?: string | null
@@ -10257,6 +10268,7 @@ export type Database = {
           work_before_approval?: boolean
         }
         Update: {
+          currency?: string
           approval_deadline?: string | null
           archived_at?: string | null
           assumptions?: string | null
@@ -10530,6 +10542,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      client_portal_manage: { Args: { p_org: string; p_request: string; p_action: string; p_data: Json }; Returns: string }
+      client_portal_inbox: { Args: { p_org: string }; Returns: Json }
+      client_portal_write: { Args: { p_hash: string; p_request: string; p_action: string; p_data: Json }; Returns: string }
+      client_portal_asset: { Args: { p_hash: string; p_kind: string; p_id: string }; Returns: Json }
+      client_portal_overview: {
+        Args: { p_hash: string }
+        Returns: Json
+      }
       procurement_approval_rule_write: {
         Args: { p_org: string; p_request: string; p_data: Json }
         Returns: string

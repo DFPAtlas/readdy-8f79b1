@@ -1,146 +1,24 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const responseHeaders = {
-  ...corsHeaders,
-  "Content-Type": "application/json",
-  "Cache-Control": "no-store",
-};
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: responseHeaders });
-}
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-  if (req.method !== "POST") {
-    return json({ error: "Method not allowed" }, 405);
-  }
-
-  try {
-    if (!supabaseUrl || !serviceKey) {
-      console.error("get-portal-schedule: missing Supabase environment");
-      return json({ error: "Schedule service unavailable" }, 503);
-    }
-
-    const body = await req.json().catch(() => ({}));
-    const token = typeof body?.token === "string" ? body.token.trim() : "";
-    if (token.length < 32 || token.length > 512) {
-      return json({ error: "Invalid portal link" }, 400);
-    }
-
-    const encoded = new TextEncoder().encode(token);
-    const digest = await crypto.subtle.digest("SHA-256", encoded);
-    const tokenHash = Array.from(new Uint8Array(digest))
-      .map((byte) => byte.toString(16).padStart(2, "0"))
-      .join("");
-
-    const supabase = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false },
-    });
-
-    const { data: access, error: accessError } = await supabase
-      .from("portal_access")
-      .select("id, organisation_id, client_id, job_scope, status, expires_at")
-      .eq("token_hash", tokenHash)
-      .eq("status", "active")
-      .maybeSingle();
-
-    if (accessError) {
-      console.error("get-portal-schedule access lookup failed:", accessError.message);
-      return json({ error: "Schedule service unavailable" }, 503);
-    }
-    if (!access) {
-      return json({ error: "Invalid or expired portal link" }, 404);
-    }
-    if (access.expires_at && new Date(access.expires_at).getTime() < Date.now()) {
-      return json({ error: "Portal link expired" }, 403);
-    }
-
-    let jobsQuery = supabase
-      .from("jobs")
-      .select("id")
-      .eq("organisation_id", access.organisation_id)
-      .is("archived_at", null);
-
-    if (Array.isArray(access.job_scope) && access.job_scope.length > 0) {
-      jobsQuery = jobsQuery.in("id", access.job_scope);
-    } else if (access.client_id) {
-      jobsQuery = jobsQuery.eq("client_id", access.client_id);
-    } else {
-      return json({ events: [], client: null });
-    }
-
-    const { data: jobs, error: jobsError } = await jobsQuery;
-    if (jobsError) {
-      console.error("get-portal-schedule job lookup failed:", jobsError.message);
-      return json({ error: "Schedule service unavailable" }, 503);
-    }
-
-    const jobIds = (jobs ?? []).map((job) => job.id);
-    if (jobIds.length === 0) {
-      return json({ events: [], client: access.client_id });
-    }
-
-    const { data: timelineEvents, error: eventsError } = await supabase
-      .from("timeline_events")
-      .select("id, event_type, title, event_date, metadata")
-      .eq("organisation_id", access.organisation_id)
-      .in("job_id", jobIds)
-      .eq("visibility", "client_visible")
-      .order("event_date", { ascending: true });
-
-    if (eventsError) {
-      console.error("get-portal-schedule event lookup failed:", eventsError.message);
-      return json({ error: "Schedule service unavailable" }, 503);
-    }
-
-    const allowedPortalTypes = new Set(["site_visit", "milestone", "payment", "meeting", "handover"]);
-    const typeMap: Record<string, string> = {
-      inspection: "site_visit",
-      payment: "payment",
-      completion: "handover",
-    };
-
-    const events = (timelineEvents ?? []).map((event) => {
-      const metadata = event.metadata && typeof event.metadata === "object" ? event.metadata as Record<string, unknown> : {};
-      const requestedType = typeof metadata.portal_event_type === "string" ? metadata.portal_event_type : "";
-      const eventType = allowedPortalTypes.has(requestedType)
-        ? requestedType
-        : (typeMap[event.event_type] ?? "meeting");
-
-      return {
-        id: event.id,
-        event_type: eventType,
-        title: event.title,
-        event_date: event.event_date,
-        event_time: typeof metadata.event_time === "string" ? metadata.event_time : null,
-        location: typeof metadata.location === "string" ? metadata.location : null,
-      };
-    });
-
-    const { error: touchError } = await supabase
-      .from("portal_access")
-      .update({ last_accessed_at: new Date().toISOString() })
-      .eq("id", access.id);
-    if (touchError) {
-      console.error("get-portal-schedule access timestamp failed:", touchError.message);
-    }
-
-    return json({ events, client: access.client_id });
-  } catch (err) {
-    console.error("get-portal-schedule unexpected error:", err);
-    return json({ error: "Schedule fetch failed" }, 500);
-  }
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
+const headers={...cors,"Content-Type":"application/json","Cache-Control":"no-store","Referrer-Policy":"no-referrer","X-Content-Type-Options":"nosniff"};
+function json(body:unknown,status=200){return new Response(JSON.stringify(body),{status,headers});}
+serve(async(req:Request)=>{
+ if(req.method==='OPTIONS')return new Response('ok',{headers:cors});if(req.method!=='POST')return json({error:'Method not allowed'},405);
+ const url=Deno.env.get('SUPABASE_URL');const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');if(!url||!key)return json({error:'Portal service unavailable'},503);
+ try{
+  const text=await req.text();if(text.length>20000)return json({error:'Request too large'},413);let body;try{body=JSON.parse(text);}catch{return json({error:'Invalid request'},400);}
+  const token=typeof body?.token==='string'?body.token.trim():'';if(token.length<32||token.length>512)return json({error:'Invalid portal link'},400);
+  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(byte=>byte.toString(16).padStart(2,'0')).join('');
+  const client=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const action=body.action??'overview';let result;
+  if(action==='overview')result=await client.rpc('client_portal_overview',{p_hash:hash});
+  else if(action==='respond')result=await client.rpc('client_portal_write',{p_hash:hash,p_request:body.request_id,p_action:body.response_type,p_data:body.data});
+  else if(action==='asset'){
+   const {data:asset,error}=await client.rpc('client_portal_asset',{p_hash:hash,p_kind:body.kind,p_id:body.id});
+   if(error)result={data:null,error};
+   else{const {data,error:storageError}=await client.storage.from(asset.bucket).createSignedUrl(asset.path,60,{download:asset.filename});if(storageError)return json({error:'This file is unavailable. Contact your contractor.'},404);return json({url:data.signedUrl,expires_in:60});}
+  }else return json({error:'Invalid portal action'},400);
+  const {data,error}=result;if(error){if(error.code==='42501')return json({error:action==='overview'?'This link is invalid, expired, revoked or has no viewing permissions. Contact your contractor.':'This action is unavailable. Refresh or contact your contractor.'},403);if(error.code==='P0001'||error.code?.startsWith('22'))return json({error:'The record changed or the response is invalid. Refresh, review the latest details and try again.'},409);console.error('Portal request failed',error.code);return json({error:'Portal service unavailable'},503);}
+  return json(action==='respond'?{id:data}:data);
+ }catch{return json({error:'Portal service unavailable'},503);}
 });
