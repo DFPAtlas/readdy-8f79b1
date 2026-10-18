@@ -120,6 +120,7 @@ import ProcurementInventory from "@/pages/procurement/inventory/page";
 import ProcurementHire from "@/pages/procurement/hire/page";
 import ProcurementSupplierInvoices from "@/pages/procurement/supplier-invoices/page";
 import ProcurementReturns from "@/pages/procurement/returns/page";
+import ProcurementApprovalRules from "@/pages/procurement/approval-rules/page";
 import ProcurementTemplates from "@/pages/procurement/templates/page";
 import IntegrationsHub from "@/pages/settings/integrations/page";
 import ConnectionDetail from "@/pages/settings/integrations/connection/page";
@@ -420,6 +421,7 @@ const routes: RouteObject[] = [
           { path: "supplier-invoices", element: <ProcurementSupplierInvoices /> },
           { path: "returns", element: <ProcurementReturns /> },
           { path: "templates", element: <ProcurementTemplates /> },
+          { path: "approval-rules", element: <ProcurementApprovalRules /> },
         ],
       },
       { path: "/app/suppliers", element: <SuppliersDirectory /> },

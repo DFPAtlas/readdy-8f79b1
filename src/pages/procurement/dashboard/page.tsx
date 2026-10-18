@@ -125,6 +125,7 @@ export default function ProcurementDashboard() {
             { label: 'Returns', icon: 'ri-arrow-go-back-line', path: '/app/procurement/returns' },
             { label: 'Plant hire', icon: 'ri-tools-line', path: '/app/procurement/hire' },
             { label: 'Supplier invoices', icon: 'ri-bill-line', path: '/app/procurement/supplier-invoices' },
+            { label: 'Approval rules', icon: 'ri-shield-check-line', path: '/app/procurement/approval-rules' },
             { label: 'Templates', icon: 'ri-file-copy-line', path: '/app/procurement/templates' },
           ].map((link) => (
             <button

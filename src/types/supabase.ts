@@ -6957,8 +6957,43 @@ export type Database = {
           },
         ]
       }
+      procurement_rule_history: {
+        Row: {
+          id: string
+          organisation_id: string
+          rule_id: string
+          actor_id: string
+          reason: string
+          before_record: Json | null
+          after_record: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organisation_id: string
+          rule_id: string
+          actor_id: string
+          reason: string
+          before_record?: Json | null
+          after_record: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organisation_id?: string
+          rule_id?: string
+          actor_id?: string
+          reason?: string
+          before_record?: Json | null
+          after_record?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
       procurement_approval_rules: {
         Row: {
+          revision: number
+          currency: string
           approval_order: number
           approver_role: string
           cost_code: string | null
@@ -6976,6 +7011,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          revision?: number
+          currency?: string
           approval_order?: number
           approver_role: string
           cost_code?: string | null
@@ -6993,6 +7030,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          revision?: number
+          currency?: string
           approval_order?: number
           approver_role?: string
           cost_code?: string | null
@@ -10491,6 +10530,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      procurement_approval_rule_write: {
+        Args: { p_org: string; p_request: string; p_data: Json }
+        Returns: string
+      }
       procurement_stock_hire_write: {
         Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
         Returns: string
