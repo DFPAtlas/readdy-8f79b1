@@ -227,6 +227,9 @@ export interface SupplierQuoteLine {
 }
 
 export interface PurchaseOrder {
+  cancelled_by: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
   currency: string;
   id: string;
   organisation_id: string;

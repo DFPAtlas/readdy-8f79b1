@@ -40,3 +40,12 @@ export async function writeRfq(orgId: string, requestId: string, action: RfqActi
   if (!data) throw new Error('The server did not confirm the save.');
   return data;
 }
+
+export async function cancelPurchaseOrder(orgId: string, requestId: string, payload: Json): Promise<string> {
+  const client = getSupabase();
+  if (!client) throw new Error('The backend is unavailable.');
+  const { data, error } = await client.rpc('procurement_cancel_order', { p_org: orgId, p_request: requestId, p_data: payload });
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('The server did not confirm cancellation.');
+  return data;
+}

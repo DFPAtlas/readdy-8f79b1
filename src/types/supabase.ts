@@ -7313,6 +7313,9 @@ export type Database = {
       }
       purchase_orders: {
         Row: {
+          cancelled_by: string | null
+          cancelled_at: string | null
+          cancellation_reason: string | null
           currency: string
           acknowledged_at: string | null
           approved_by: string | null
@@ -7345,6 +7348,9 @@ export type Database = {
           version: number
         }
         Insert: {
+          cancelled_by?: string | null
+          cancelled_at?: string | null
+          cancellation_reason?: string | null
           currency?: string
           acknowledged_at?: string | null
           approved_by?: string | null
@@ -7377,6 +7383,9 @@ export type Database = {
           version?: number
         }
         Update: {
+          cancelled_by?: string | null
+          cancelled_at?: string | null
+          cancellation_reason?: string | null
           currency?: string
           acknowledged_at?: string | null
           approved_by?: string | null
@@ -10410,6 +10419,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      procurement_cancel_order: {
+        Args: { p_org: string; p_request: string; p_data: Json }
+        Returns: string
+      }
       procurement_rfq_write: {
         Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
         Returns: string
