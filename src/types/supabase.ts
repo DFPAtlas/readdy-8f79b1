@@ -7313,6 +7313,7 @@ export type Database = {
       }
       purchase_orders: {
         Row: {
+          returns_recorded_at: string | null
           cancelled_by: string | null
           cancelled_at: string | null
           cancellation_reason: string | null
@@ -7348,6 +7349,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          returns_recorded_at?: string | null
           cancelled_by?: string | null
           cancelled_at?: string | null
           cancellation_reason?: string | null
@@ -7383,6 +7385,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          returns_recorded_at?: string | null
           cancelled_by?: string | null
           cancelled_at?: string | null
           cancellation_reason?: string | null
@@ -8959,6 +8962,13 @@ export type Database = {
       }
       supplier_credit_notes: {
         Row: {
+          supplier_return_id: string | null
+          net_amount_pence: number
+          tax_amount_pence: number
+          recorded_by: string | null
+          voided_by: string | null
+          voided_at: string | null
+          void_reason: string | null
           amount_pence: number
           created_at: string
           credit_note_date: string | null
@@ -8974,6 +8984,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          supplier_return_id?: string | null
+          net_amount_pence?: number
+          tax_amount_pence?: number
+          recorded_by?: string | null
+          voided_by?: string | null
+          voided_at?: string | null
+          void_reason?: string | null
           amount_pence?: number
           created_at?: string
           credit_note_date?: string | null
@@ -8989,6 +9006,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          supplier_return_id?: string | null
+          net_amount_pence?: number
+          tax_amount_pence?: number
+          recorded_by?: string | null
+          voided_by?: string | null
+          voided_at?: string | null
+          void_reason?: string | null
           amount_pence?: number
           created_at?: string
           credit_note_date?: string | null
@@ -9441,6 +9465,7 @@ export type Database = {
       }
       supplier_return_lines: {
         Row: {
+          return_condition: string | null
           created_at: string
           description: string
           goods_receipt_line_id: string | null
@@ -9451,6 +9476,7 @@ export type Database = {
           unit_price_pence: number | null
         }
         Insert: {
+          return_condition?: string | null
           created_at?: string
           description: string
           goods_receipt_line_id?: string | null
@@ -9461,6 +9487,7 @@ export type Database = {
           unit_price_pence?: number | null
         }
         Update: {
+          return_condition?: string | null
           created_at?: string
           description?: string
           goods_receipt_line_id?: string | null
@@ -9489,6 +9516,9 @@ export type Database = {
       }
       supplier_returns: {
         Row: {
+          revision: number
+          returned_at: string | null
+          currency: string
           collection_address: string | null
           collection_date: string | null
           created_at: string
@@ -9509,6 +9539,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          revision?: number
+          returned_at?: string | null
+          currency?: string
           collection_address?: string | null
           collection_date?: string | null
           created_at?: string
@@ -9529,6 +9562,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          revision?: number
+          returned_at?: string | null
+          currency?: string
           collection_address?: string | null
           collection_date?: string | null
           created_at?: string
@@ -10419,6 +10455,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      procurement_return_credit_write: {
+        Args: { p_org: string; p_request: string; p_action: string; p_data: Json }
+        Returns: string
+      }
       procurement_cancel_order: {
         Args: { p_org: string; p_request: string; p_data: Json }
         Returns: string

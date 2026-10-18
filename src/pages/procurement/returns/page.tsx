@@ -1,99 +1,24 @@
-import { useState, useEffect } from 'react';
-import { useOrg } from '@/contexts/OrgContext';
-import { deliveryService } from '@/services/procurement.service';
-
-const STATUS_COLORS: Record<string, string> = {
-  authorised: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-amber-100 text-amber-700',
-  collected: 'bg-secondary-100 text-secondary-700',
-  returned: 'bg-green-100 text-green-700',
-  credited: 'bg-green-100 text-green-700',
-  cancelled: 'bg-background-200 text-foreground-600',
-};
-
-export default function ProcurementReturns() {
-  const { organisation } = useOrg();
-  const [returns, setReturns] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!organisation?.id) return;
-    deliveryService.getReturns(organisation.id)
-      .then(setReturns)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [organisation?.id]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-foreground-600">Loading returns...</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground-950">Supplier Returns</h1>
-          <p className="text-sm text-foreground-600 mt-1">{returns.length} return records</p>
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-background-50 rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors whitespace-nowrap cursor-pointer">
-          <i className="ri-add-line text-base" />
-          Create return
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        {returns.map((ret: any) => (
-          <div key={ret.id} className="bg-background-50 border border-background-200/70 rounded-xl p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[ret.status] || ''}`}>
-                    {ret.status.replace('_', ' ')}
-                  </span>
-                  <span className="font-mono text-sm font-semibold text-foreground-900">{ret.return_reference}</span>
-                  <span className="text-sm text-foreground-700">{ret.supplier?.trading_name || '—'}</span>
-                </div>
-                <p className="text-sm text-foreground-700 mb-2">{ret.reason}</p>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-foreground-600">
-                  {ret.collection_date && (
-                    <span className="flex items-center gap-1">
-                      <i className="ri-calendar-line" />
-                      Collection: {new Date(ret.collection_date).toLocaleDateString('en-GB')}
-                    </span>
-                  )}
-                  {ret.return_method && <span className="capitalize">{ret.return_method}</span>}
-                  {ret.lines && (
-                    <span>{ret.lines.length} item{ret.lines.length !== 1 ? 's' : ''}</span>
-                  )}
-                  {ret.credit_note_received && (
-                    <span className="text-green-600 font-medium">Credit received</span>
-                  )}
-                  {ret.credit_note_reference && (
-                    <span className="font-mono">CN: {ret.credit_note_reference}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {returns.length === 0 && (
-        <div className="text-center py-16 bg-background-50 border border-background-200/70 rounded-xl">
-          <div className="w-14 h-14 rounded-full bg-background-100 flex items-center justify-center mx-auto mb-4">
-            <i className="ri-arrow-go-back-line text-2xl text-foreground-500" />
-          </div>
-          <h3 className="text-base font-semibold text-foreground-900">No returns yet</h3>
-          <p className="text-sm text-foreground-600 mt-1">Create return records for damaged, short or rejected goods</p>
-        </div>
-      )}
-    </div>
-  );
+import {useEffect,useRef,useState} from 'react';
+import {useOrg} from '@/contexts/OrgContext';
+import {deliveryService,poService,supplierInvoiceService,supplierCreditService,type PurchaseOrder} from '@/services/procurement.service';
+import {writeReturnCredit,type ReturnCreditAction} from '@/services/procurement-writes.service';
+import {ReturnForm,CreditForm,button,input,type Return,type Receipt,type Invoice,type Credit} from '../components/ReturnCreditForms';
+import {formatPence} from '@/lib/money';
+const returnLabels:Record<string,string>={authorised:'Pending return',in_progress:'In progress',collected:'Collected',returned:'Returned',credited:'Returned / credited',cancelled:'Cancelled'};
+export default function ProcurementReturns(){
+ const {organisation,role,isReadOnly}=useOrg();const orgId=organisation?.id;const [returns,setReturns]=useState<Return[]>([]);const [receipts,setReceipts]=useState<Receipt[]>([]);const [orders,setOrders]=useState<PurchaseOrder[]>([]);const [invoices,setInvoices]=useState<Invoice[]>([]);const [credits,setCredits]=useState<Credit[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [retry,setRetry]=useState(0);const [form,setForm]=useState<'return'|'credit'|null>(null);const [busyId,setBusyId]=useState('');const [confirmation,setConfirmation]=useState<{id:string;action:ReturnCreditAction}|null>(null);const [date,setDate]=useState(new Date().toLocaleDateString('en-CA'));const [reason,setReason]=useState('');const [message,setMessage]=useState('');const busy=useRef(false);const currentOrg=useRef(orgId);currentOrg.current=orgId;const request=useRef({payload:'',id:crypto.randomUUID()});
+ const canReturn=!isReadOnly&&['owner','admin','finance','project_manager','site_supervisor'].includes(role||'');const canCredit=!isReadOnly&&['owner','admin','finance'].includes(role||'');
+ useEffect(()=>{let active=true;setReturns([]);setReceipts([]);setOrders([]);setInvoices([]);setCredits([]);setError('');setMessage('');setForm(null);setConfirmation(null);if(!orgId){setLoading(false);return;}setLoading(true);Promise.all([deliveryService.getReturns(orgId),deliveryService.getGoodsReceipts(orgId),poService.getPurchaseOrders(orgId),supplierInvoiceService.getInvoices(orgId),supplierCreditService.getCredits(orgId)]).then(([r,d,p,i,c])=>{if(active){setReturns(r);setReceipts(d);setOrders(p);setInvoices(i);setCredits(c);}}).catch(reason=>{if(active)setError(reason instanceof Error?reason.message:'Could not load returns.');}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[orgId,retry]);
+ function saved(formOrg:string|undefined){if(currentOrg.current===formOrg){setForm(null);setRetry(value=>value+1);}}
+ function confirm(id:string,action:ReturnCreditAction){setConfirmation({id,action});setDate(new Date().toLocaleDateString('en-CA'));setReason('');}
+ async function perform(){if(!orgId||!confirmation||busy.current)return;const actionOrg=orgId;const ret=returns.find(row=>row.id===confirmation.id);const payload={return_id:ret?.id??null,revision:ret?.revision??null,credit_id:confirmation.action==='void_credit'?confirmation.id:null,date,reason:reason.trim()};const serialized=JSON.stringify({org:actionOrg,action:confirmation.action,payload});if(request.current.payload!==serialized)request.current={payload:serialized,id:crypto.randomUUID()};busy.current=true;setBusyId(confirmation.id);setError('');try{await writeReturnCredit(actionOrg,request.current.id,confirmation.action,payload);const [r,p,i,c]=await Promise.all([deliveryService.getReturns(actionOrg),poService.getPurchaseOrders(actionOrg),supplierInvoiceService.getInvoices(actionOrg),supplierCreditService.getCredits(actionOrg)]);if(currentOrg.current===actionOrg){setReturns(r);setOrders(p);setInvoices(i);setCredits(c);setConfirmation(null);setMessage('Record updated. No supplier notification or payment was sent.');}}catch(reason){if(currentOrg.current===actionOrg)setError(reason instanceof Error?reason.message:'Could not update this record.');}finally{busy.current=false;setBusyId('');}}
+ if(loading)return <p role="status" className="p-8">Loading returns and credit notes…</p>;
+ return <div className="space-y-5"><div className="flex flex-wrap justify-between gap-3"><div><h1 className="text-2xl font-semibold">Returns and credit notes</h1><p className="text-sm text-muted">Track physical goods separately from supplier financial documents.</p></div><div className="flex gap-2">{canReturn&&<button disabled={!!busyId||!!confirmation} className={button} onClick={()=>setForm('return')}>Create return</button>}{canCredit&&<button disabled={!!busyId||!!confirmation} className={button} onClick={()=>setForm('credit')}>Record credit note</button>}</div></div>
+ {isReadOnly&&<p className="text-sm">This workspace is read-only. Upgrade to make changes.</p>}{error&&<div role="alert" className="rounded-lg bg-red-50 p-4 text-red-700"><p>{error}</p><button disabled={!!busyId} className="underline" onClick={()=>setRetry(value=>value+1)}>Reload records</button></div>}{message&&<p role="status" className="rounded-lg bg-blue-50 p-3 text-sm">{message}</p>}
+ {form==='return'&&orgId&&<ReturnForm key={orgId} orders={orders} receipts={receipts} returns={returns} onSaved={()=>saved(orgId)} onCancel={()=>setForm(null)} />}{form==='credit'&&orgId&&<CreditForm key={orgId} invoices={invoices} returns={returns} credits={credits} onSaved={()=>saved(orgId)} onCancel={()=>setForm(null)} />}
+ {confirmation&&<form className="rounded-lg bg-amber-50 p-4 space-y-3" onSubmit={event=>{event.preventDefault();void perform();}}><p className="text-sm">{confirmation.action==='void_credit'?'Void this credit-note record? This retains the document history and does not reverse any bank refund.':confirmation.action==='cancel_return'?'Cancel this pending return and release its reserved quantities?':confirmation.action==='collect_return'?'Record that these goods were actually collected.':'Confirm the goods were physically returned. Accepted-goods returns reduce net accepted deliveries. Completed returns cannot be cancelled here.'}</p>{['collect_return','complete_return'].includes(confirmation.action)&&<label className="block text-sm">Actual date<input required disabled={!!busyId} type="date" max={new Date().toLocaleDateString('en-CA')} className={input} value={date} onChange={e=>setDate(e.target.value)} /></label>}{confirmation.action==='void_credit'&&<label className="block text-sm">Reason for voiding<textarea required disabled={!!busyId} maxLength={4000} className={input} value={reason} onChange={e=>setReason(e.target.value)} /></label>}<button disabled={!!busyId} type="submit" className={button}>{busyId?'Saving…':'Confirm'}</button> <button disabled={!!busyId} type="button" className={button} onClick={()=>setConfirmation(null)}>Keep unchanged</button></form>}
+ <h2 className="text-lg font-semibold">Physical returns</h2>{returns.map(ret=><article key={ret.id} className="rounded-xl border border-border bg-white p-5 space-y-3"><div className="flex flex-wrap justify-between gap-3"><h3 className="font-semibold">{ret.return_reference} — {ret.supplier?.trading_name}</h3><span className="text-sm capitalize">{returnLabels[ret.status]??ret.status}</span></div><p className="text-sm whitespace-pre-wrap">{ret.reason}</p><p className="text-sm">Order: {orders.find(order=>order.id===ret.purchase_order_id)?.po_number??'Earlier record'} · Method: {ret.return_method?.replaceAll('_',' ')??'Not recorded'} · Collection: {ret.collection_date??'Not recorded'} · Returned: {ret.returned_at??'Not recorded'}</p><ul className="list-disc pl-5 text-sm">{ret.lines.map(line=><li key={line.id}>{line.description}: {line.quantity} · {line.return_condition??'Earlier condition not recorded'}</li>)}</ul><p className="text-sm">{ret.credit_note_received?`Credit notes recorded: ${formatPence(ret.credit_note_amount_pence,ret.currency)}`:'No credit note recorded. Physical return does not prove credit or refund.'}</p><div className="flex flex-wrap gap-2">{canReturn&&!form&&!confirmation&&['authorised','in_progress'].includes(ret.status)&&<><button disabled={!!busyId} className={button} onClick={()=>confirm(ret.id,'collect_return')}>Record collection</button><button disabled={!!busyId} className={button} onClick={()=>confirm(ret.id,'cancel_return')}>Cancel pending return</button></>}{canReturn&&!form&&!confirmation&&['authorised','in_progress','collected'].includes(ret.status)&&<button disabled={!!busyId} className={button} onClick={()=>confirm(ret.id,'complete_return')}>Confirm returned</button>}</div></article>)}
+ {!error&&!returns.length&&<p className="rounded-lg border border-border p-6 text-sm">No return records yet.</p>}
+ <h2 className="text-lg font-semibold">Supplier credit notes</h2>{credits.map(credit=><article key={credit.id} className="rounded-xl border border-border bg-white p-5 space-y-2"><div className="flex flex-wrap justify-between gap-3"><h3 className="font-semibold">{credit.credit_note_number} — {credit.supplier?.trading_name}</h3><span className="text-sm">{credit.status==='void'?'Voided record':'Recorded credit'}</span></div><p className="text-sm">Invoice: {credit.invoice?.invoice_number??'Earlier unlinked record'} · Date: {credit.credit_note_date??'Not recorded'}{credit.supplier_return_id?` · Return: ${returns.find(ret=>ret.id===credit.supplier_return_id)?.return_reference??'Linked return'}`:''}</p><p className="font-semibold">{formatPence(credit.amount_pence,credit.currency)}</p><p className="text-sm whitespace-pre-wrap">{credit.reason}</p>{credit.void_reason&&<p className="text-sm text-red-700">Void reason: {credit.void_reason}</p>}{canCredit&&!form&&!confirmation&&credit.status!=='void'&&credit.supplier_invoice_id&&<button disabled={!!busyId} className={button} onClick={()=>confirm(credit.id,'void_credit')}>Void incorrect record</button>}</article>)}{!error&&!credits.length&&<p className="rounded-lg border border-border p-6 text-sm">No supplier credit notes recorded.</p>}
+ </div>;
 }

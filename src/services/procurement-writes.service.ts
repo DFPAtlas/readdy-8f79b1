@@ -49,3 +49,13 @@ export async function cancelPurchaseOrder(orgId: string, requestId: string, payl
   if (!data) throw new Error('The server did not confirm cancellation.');
   return data;
 }
+
+export type ReturnCreditAction = 'create_return' | 'collect_return' | 'complete_return' | 'cancel_return' | 'record_credit' | 'void_credit';
+export async function writeReturnCredit(orgId: string, requestId: string, action: ReturnCreditAction, payload: Json): Promise<string> {
+  const client = getSupabase();
+  if (!client) throw new Error('The backend is unavailable.');
+  const { data, error } = await client.rpc('procurement_return_credit_write', {p_org:orgId,p_request:requestId,p_action:action,p_data:payload});
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('The server did not confirm the save.');
+  return data;
+}

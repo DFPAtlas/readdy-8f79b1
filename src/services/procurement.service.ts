@@ -227,6 +227,7 @@ export interface SupplierQuoteLine {
 }
 
 export interface PurchaseOrder {
+  returns_recorded_at: string | null;
   cancelled_by: string | null;
   cancelled_at: string | null;
   cancellation_reason: string | null;
@@ -621,7 +622,7 @@ export const supplierInvoiceService = {
   async getInvoices(organisationId: string) {
     const { data, error } = await supabase()
       .from('supplier_invoices')
-      .select('*, supplier:suppliers(trading_name), purchase_order:purchase_orders(po_number), match:invoice_matches(*), lines:supplier_invoice_lines(*)')
+      .select('*, supplier:suppliers(trading_name), purchase_order:purchase_orders(po_number,returns_recorded_at), match:invoice_matches(*), lines:supplier_invoice_lines(*), credits:supplier_credit_notes(*)')
       .eq('organisation_id', organisationId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -678,5 +679,14 @@ export const procurementDashboardService = {
       requisitionCount: (reqRes.data || []).length,
       poCount: (poRes.data || []).length,
     };
+  },
+};
+export const supplierCreditService = {
+  async getCredits(organisationId: string) {
+    const { data,error } = await supabase().from('supplier_credit_notes')
+      .select('*, supplier:suppliers(trading_name), invoice:supplier_invoices(invoice_number,purchase_order_id)')
+      .eq('organisation_id',organisationId).order('created_at',{ascending:false});
+    if(error) throw error;
+    return data;
   },
 };
