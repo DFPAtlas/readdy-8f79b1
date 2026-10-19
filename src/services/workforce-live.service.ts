@@ -32,7 +32,7 @@ export const workforceLiveService = {
             client().from('workforce_assignments').select('*').eq('organisation_id', org).eq('person_id', personId).order('start_date', { ascending: false }),
             client().from('qualifications').select('*').eq('organisation_id', org).eq('person_id', personId).order('created_at', { ascending: false }),
             client().from('insurance_policies').select('*').eq('organisation_id', org).eq('person_id', personId).order('expiry_date'),
-            client().from('workforce_documents').select('id,name,category,original_filename,mime_type,size_bytes,visibility,review_status,version,uploaded_at,archived_at').eq('organisation_id', org).eq('person_id', personId).is('archived_at', null).order('uploaded_at', { ascending: false }),
+            client().from('workforce_documents').select('id,name,category,original_filename,mime_type,size_bytes,visibility,review_status,review_note,reviewed_at,version,uploaded_at,archived_at').eq('organisation_id', org).eq('person_id', personId).is('archived_at', null).order('uploaded_at', { ascending: false }),
             client().from('passport_checks').select('*').eq('organisation_id', org).eq('person_id', personId).order('check_category'),
             client().from('workforce_history').select('*').eq('organisation_id', org).eq('person_id', personId).order('created_at', { ascending: false }),
             client().from('jobs').select('id,reference,project_name').eq('organisation_id', org),
