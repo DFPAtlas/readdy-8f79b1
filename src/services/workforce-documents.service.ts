@@ -36,7 +36,10 @@ export const workforceDocumentsService = {
       contentType: file.type,
       upsert: false,
     });
-    if (uploadError) throw new Error(uploadError.message || 'The document could not be uploaded.');
+    if (uploadError) {
+      await client.storage.from('documents').remove([objectPath]);
+      throw new Error(uploadError.message || 'The document could not be uploaded.');
+    }
 
     const { error: registerError } = await client.rpc('workforce_document_register', {
       p_org: orgId,
