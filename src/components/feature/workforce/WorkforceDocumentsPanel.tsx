@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { workforceDocumentsService, type WorkforceDocumentCategory } from '@/services/workforce-documents.service';
 
 interface DocumentRow {
@@ -43,7 +44,7 @@ export default function WorkforceDocumentsPanel({ orgId, personId, role, isReadO
   const canUpload = !isReadOnly && ['owner', 'admin', 'project_manager', 'site_supervisor'].includes(role || '');
   const canReview = !isReadOnly && ['owner', 'admin', 'project_manager'].includes(role || '');
 
-  async function upload(event: React.FormEvent<HTMLFormElement>) {
+  async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!file || busy) return;
     setBusy(true); setError('');
