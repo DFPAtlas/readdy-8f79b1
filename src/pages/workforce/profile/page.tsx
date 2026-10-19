@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import WorkforceDocumentsPanel from '@/components/feature/workforce/WorkforceDocumentsPanel';
 import { useOrg } from '@/contexts/OrgContext';
 import { relationshipName, statusName, workforceLiveService } from '@/services/workforce-live.service';
 const panel = 'rounded-xl border border-border bg-white p-4';
@@ -7,18 +8,19 @@ export default function WorkforceProfile() {
     const { personId } = useParams<{
         personId: string;
     }>();
-    const { organisation, role } = useOrg();
+    const { organisation, role, isReadOnly } = useOrg();
     const org = organisation?.id;
     const [data, setData] = useState<Awaited<ReturnType<typeof workforceLiveService.loadProfile>>>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [refresh, setRefresh] = useState(0);
     useEffect(() => { let current = true; if (!org || !personId) {
         setLoading(false);
         return;
     } setLoading(true); setError(''); workforceLiveService.loadProfile(org, personId).then(value => { if (current)
         setData(value); }).catch(e => { if (current)
         setError(e instanceof Error ? e.message : 'Could not load this workforce record.'); }).finally(() => { if (current)
-        setLoading(false); }); return () => { current = false; }; }, [org, personId]);
+        setLoading(false); }); return () => { current = false; }; }, [org, personId, refresh]);
     if (loading)
         return <main className="p-6" role="status">Loading workforce record…</main>;
     if (error)
@@ -35,7 +37,7 @@ export default function WorkforceProfile() {
  <section className={panel}><h2 className="mb-3 text-lg font-semibold">Passport checks</h2>{checks.length ? <ul className="grid gap-2 sm:grid-cols-2">{checks.map(c => <li className="rounded-lg bg-background-50 p-3" key={c.id}><strong>{statusName(c.check_category)}</strong><p className="text-sm text-muted">{statusName(c.status)}{c.note ? ` · ${c.note}` : ''}</p></li>)}</ul> : <p className="text-sm text-muted">No passport checks recorded.</p>}</section>
  <section className={panel}><h2 className="mb-3 text-lg font-semibold">Qualifications</h2>{qualifications.length ? <ul className="space-y-2">{qualifications.map(q => <li className="border-t border-border pt-2" key={q.id}><strong>{q.qualification_name}</strong><p className="text-sm text-muted">{q.issuer || 'Issuer not recorded'} · {statusName(q.status)} · Expires {q.expiry_date || 'not recorded'}</p>{q.review_note && <p className="text-sm">Review: {q.review_note}</p>}</li>)}</ul> : <p className="text-sm text-muted">No qualifications recorded.</p>}</section>
  <section className={panel}><h2 className="mb-3 text-lg font-semibold">Insurance</h2>{insurance.length ? <ul className="space-y-2">{insurance.map(i => <li className="border-t border-border pt-2" key={i.id}><strong>{statusName(i.policy_type)}</strong><p className="text-sm text-muted">{i.provider} · Policy {i.reference || 'not recorded'} · {statusName(i.status)} · Expires {i.expiry_date}</p></li>)}</ul> : <p className="text-sm text-muted">No insurance records.</p>}</section>
- <section className={panel}><h2 className="mb-3 text-lg font-semibold">Documents</h2><p className="mb-2 text-xs text-muted">This page shows document metadata only; it does not expose storage paths.</p>{documents.length ? <ul className="space-y-2">{documents.map(d => <li className="border-t border-border pt-2" key={d.id}><strong>{d.name}</strong><p className="text-sm text-muted">{statusName(d.category)} · {statusName(d.review_status)} · Uploaded {new Date(d.uploaded_at).toLocaleDateString('en-GB')}</p></li>)}</ul> : <p className="text-sm text-muted">No documents recorded.</p>}</section>
+ <WorkforceDocumentsPanel orgId={org || ''} personId={person.id} role={role} isReadOnly={isReadOnly} documents={documents} onChanged={() => setRefresh(value => value + 1)} />
  <section className={panel}><h2 className="mb-3 text-lg font-semibold">Record history</h2>{history.length ? <ol className="space-y-2">{history.map(h => <li className="border-t border-border pt-2" key={h.id}><p>{new Date(h.created_at).toLocaleString('en-GB')} · {statusName(h.action)}</p><p className="text-sm text-muted">{h.reason} · Actor {h.actor_id}</p></li>)}</ol> : <p className="text-sm text-muted">No changes recorded yet.</p>}</section>
  </main>;
 }
