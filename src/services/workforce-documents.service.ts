@@ -49,7 +49,11 @@ export const workforceDocumentsService = {
       p_mime: file.type,
       p_size: file.size,
     });
-    if (registerError) throw new Error(`The file uploaded but its register entry could not be saved: ${registerError.message}`);
+    if (registerError) {
+      const { error: cleanupError } = await client.storage.from('documents').remove([objectPath]);
+      const cleanupNote = cleanupError ? ' The temporary file could not be removed automatically.' : '';
+      throw new Error(`The register entry could not be saved: ${registerError.message}.${cleanupNote}`);
+    }
     return documentId;
   },
 
