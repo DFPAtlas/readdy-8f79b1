@@ -41,6 +41,7 @@ export default function WorkforceDocumentsPanel({ orgId, personId, role, isReadO
   const [links, setLinks] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const canView = ['owner', 'admin', 'project_manager', 'site_supervisor'].includes(role || '');
   const canUpload = !isReadOnly && ['owner', 'admin', 'project_manager', 'site_supervisor'].includes(role || '');
   const canReview = !isReadOnly && ['owner', 'admin', 'project_manager'].includes(role || '');
 
@@ -90,7 +91,7 @@ export default function WorkforceDocumentsPanel({ orgId, personId, role, isReadO
       <div className="flex items-end"><button className="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50" disabled={busy || !file}>{busy ? 'Saving…' : 'Upload for review'}</button></div>
       <p className="text-xs text-muted md:col-span-2">PDF, image, Word or Excel · maximum 20 MB. New uploads are marked awaiting review.</p>
     </form>}
-    {documents.length === 0 ? <p className="py-5 text-sm text-muted">No documents recorded.</p> : <ul className="space-y-3">
+    {!canView ? <p className="py-5 text-sm text-muted">You do not have permission to view workforce documents.</p> : documents.length === 0 ? <p className="py-5 text-sm text-muted">No documents recorded.</p> : <ul className="space-y-3">
       {documents.map(document => <li className="rounded-lg border border-border p-3" key={document.id}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><strong>{document.name}</strong><p className="text-sm text-muted">{label(document.category)} · {label(document.review_status)} · {formatSize(document.size_bytes)} · Uploaded {new Date(document.uploaded_at).toLocaleDateString('en-GB')}</p><p className="text-xs text-muted">{document.original_filename}</p>{document.review_note && <p className="mt-1 text-sm">Review note: {document.review_note}</p>}</div>
