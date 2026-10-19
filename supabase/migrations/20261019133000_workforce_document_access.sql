@@ -23,7 +23,7 @@ CREATE POLICY "Workforce managers can upload worker documents"
   FOR INSERT TO authenticated
   WITH CHECK (
     bucket_id = 'documents'
-    AND name ~ '^[0-9a-f-]{36}/workforce/[0-9a-f-]{36}/[0-9a-f-]{36}/file$'
+    AND name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/workforce/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/file$'
     AND public.has_org_role(public.extract_org_from_path(name), ARRAY['owner','admin','project_manager','site_supervisor'])
     AND public.org_has_write_access(public.extract_org_from_path(name))
     AND EXISTS (
@@ -39,7 +39,7 @@ CREATE POLICY "Workforce office roles can read registered worker documents"
   FOR SELECT TO authenticated
   USING (
     bucket_id = 'documents'
-    AND name ~ '^[0-9a-f-]{36}/workforce/[0-9a-f-]{36}/[0-9a-f-]{36}/file$'
+    AND name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/workforce/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/file$'
     AND public.has_org_role(public.extract_org_from_path(name), ARRAY['owner','admin','project_manager','site_supervisor'])
     AND EXISTS (
       SELECT 1 FROM public.workforce_documents d
@@ -76,7 +76,7 @@ BEGIN
   END IF;
   IF length(btrim(COALESCE(p_name,''))) NOT BETWEEN 1 AND 160
      OR length(btrim(COALESCE(p_filename,''))) NOT BETWEEN 1 AND 255
-     OR p_category NOT IN ('identity','business','cis','insurance','qualification','training','right_to_work','site_induction','rams','contract','bank_change','other')
+     OR p_category IS NULL OR p_category NOT IN ('identity','business','cis','insurance','qualification','training','right_to_work','site_induction','rams','contract','bank_change','other')
      OR p_mime NOT IN ('application/pdf','image/png','image/jpeg','image/webp','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/msword','application/vnd.ms-excel')
      OR p_size IS NULL OR p_size < 1 OR p_size > 20971520 THEN
     RAISE EXCEPTION 'Use a supported document under 20 MB and provide a valid name and category';
@@ -143,7 +143,7 @@ BEGIN
      OR NOT public.org_has_write_access(p_org) THEN
     RAISE EXCEPTION 'Workforce document review permission required' USING ERRCODE='42501';
   END IF;
-  IF p_status NOT IN ('accepted','rejected') OR length(COALESCE(p_note,''))>2000
+  IF p_status IS NULL OR p_status NOT IN ('accepted','rejected') OR length(COALESCE(p_note,''))>2000
      OR (p_status='rejected' AND length(btrim(COALESCE(p_note,'')))=0) THEN
     RAISE EXCEPTION 'Choose accept or reject; a reason is required when rejecting';
   END IF;
