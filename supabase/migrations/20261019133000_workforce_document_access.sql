@@ -77,7 +77,7 @@ BEGIN
   IF length(btrim(COALESCE(p_name,''))) NOT BETWEEN 1 AND 160
      OR length(btrim(COALESCE(p_filename,''))) NOT BETWEEN 1 AND 255
      OR p_category IS NULL OR p_category NOT IN ('identity','business','cis','insurance','qualification','training','right_to_work','site_induction','rams','contract','bank_change','other')
-     OR p_mime NOT IN ('application/pdf','image/png','image/jpeg','image/webp','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/msword','application/vnd.ms-excel')
+     OR p_mime IS NULL OR p_mime NOT IN ('application/pdf','image/png','image/jpeg','image/webp','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/msword','application/vnd.ms-excel')
      OR p_size IS NULL OR p_size < 1 OR p_size > 20971520 THEN
     RAISE EXCEPTION 'Use a supported document under 20 MB and provide a valid name and category';
   END IF;
