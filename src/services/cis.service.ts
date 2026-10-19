@@ -86,13 +86,25 @@ export const cisService = {
     orgId: string,
     input: { first_name: string; last_name: string; relationship: 'subcontractor_individual' | 'subcontractor_company'; trading_name: string | null; primary_trade: string | null; business_type: 'sole_trader' | 'limited_company' },
   ): Promise<CisPersonSummary> {
-    const { data, error } = await client()
-      .from('workforce_people')
-      .insert({ ...input, organisation_id: orgId })
-      .select('id, first_name, last_name, trading_name, primary_trade, relationship')
-      .single();
-
+    const supabase: any = client();
+    const { data: personId, error } = await supabase.rpc('workforce_write', {
+      p_org: orgId,
+      p_request: crypto.randomUUID(),
+      p_action: 'create',
+      p_data: {
+        ...input,
+        current_job_id: null,
+        reason: 'Added from the CIS register',
+      },
+    });
     if (error) throw error;
+    const { data, error: readError } = await supabase
+      .from('workforce_people')
+      .select('id, first_name, last_name, trading_name, primary_trade, relationship')
+      .eq('organisation_id', orgId)
+      .eq('id', personId)
+      .single();
+    if (readError) throw readError;
     return data;
   },
 };
