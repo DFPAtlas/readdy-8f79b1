@@ -37,10 +37,12 @@ export const workforceLiveService = {
             client().from('workforce_history').select('*').eq('organisation_id', org).eq('person_id', personId).order('created_at', { ascending: false }),
             client().from('jobs').select('id,reference,project_name').eq('organisation_id', org),
         ]);
-        for (const result of results)
-            if (result.error)
+        for (let index = 0; index < results.length; index += 1) {
+            const result = results[index];
+            if (result.error && index !== 3)
                 throw new Error(result.error.message);
-        return { person: person.data, assignments: results[0].data || [], qualifications: results[1].data || [], insurance: results[2].data || [], documents: results[3].data || [], checks: results[4].data || [], history: results[5].data || [], jobs: (results[6].data || []) as WorkforceJob[] };
+        }
+        return { person: person.data, assignments: results[0].data || [], qualifications: results[1].data || [], insurance: results[2].data || [], documents: results[3].error ? [] : results[3].data || [], checks: results[4].data || [], history: results[5].data || [], jobs: (results[6].data || []) as WorkforceJob[] };
     },
     async write(org: string, action: string, data: Record<string, Json>, requestId: string = crypto.randomUUID()) {
         const { data: result, error } = await client().rpc('workforce_write', { p_org: org, p_request: requestId, p_action: action, p_data: data });
