@@ -186,3 +186,17 @@ REVOKE ALL ON FUNCTION procurement_private.workforce_document_review(uuid,uuid,u
 GRANT EXECUTE ON FUNCTION procurement_private.workforce_document_review(uuid,uuid,uuid,text,text) TO authenticated;
 REVOKE ALL ON FUNCTION public.workforce_document_review(uuid,uuid,uuid,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.workforce_document_review(uuid,uuid,uuid,text,text) TO authenticated;
+
+-- Permit an uploader to remove only their own unregistered object if metadata
+-- registration fails. Registered originals cannot be deleted through this path.
+CREATE POLICY "Uploader can clean up unregistered workforce documents"
+  ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'documents'
+    AND owner_id = (SELECT auth.uid())::text
+    AND name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/workforce/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/file$'
+    AND NOT EXISTS (
+      SELECT 1 FROM public.workforce_documents d WHERE d.object_path = name
+    )
+  );
