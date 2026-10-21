@@ -73,7 +73,7 @@ export default function ScheduledReports() {
     }
   }
 
-  const visible = state.orgId === orgId ? state : { rows: [], names: {}, loading: true, error: '' };
+  const visible: ScheduleState = state.orgId === orgId ? state : { rows: [], names: {}, loading: true, error: '' };
   return (
     <div className="flex flex-col h-full">
       <header className="px-4 md:px-6 py-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
