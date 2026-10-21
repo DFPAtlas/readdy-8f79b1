@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { portalAction, type PortalOverview, type PortalVariation } from '@/services/client-portal.service';
 import { formatPence } from '@/lib/money';
 const input = 'w-full rounded-lg border p-2 text-sm';
@@ -25,7 +25,7 @@ export function VariationResponseForm({ token, variation, currency, onSaved }: {
     const [type, setType] = useState('question');
     const { save, error, saving } = useAction(token, onSaved);
     async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); await save(type, { variation_id: variation.id, version: variation.current_version, updated_at: variation.updated_at, total_pence: variation.total_pence, currency: variation.currency, name: String(form.get('name') ?? '').trim(), message: String(form.get('message') ?? '').trim(), price_confirmed: form.has('price'), authority_confirmed: form.has('authority') }); }
-    return <form onSubmit={submit} className="border rounded-xl p-5 space-y-3"><h2 className="font-semibold">Respond to version {variation.current_version}</h2>{error && <p role="alert" className="text-red-700">{error}</p>}<fieldset disabled={saving} className="space-y-3"><label className="block text-sm">Response<select className={input} value={type} onChange={e => setType(e.target.value)}><option value="question">Ask a question</option><option value="approved" disabled={!!variation.approval_deadline && variation.approval_deadline < new Date().toLocaleDateString('en-CA')}>Approve this variation</option><option value="declined">Decline this variation</option></select></label><label className="block text-sm">Your full name<input name="name" autoComplete="name" required maxLength={200} className={input}/></label><label className="block text-sm">{type === 'approved' ? 'Comment (optional)' : 'Question / reason'}<textarea name="message" required={type !== 'approved'} maxLength={4000} className={input}/></label>{type === 'approved' && <><label className="flex gap-2 text-sm"><input required name="price" type="checkbox"/>I have reviewed version {variation.current_version}, including the scope, programme impact and total of {formatPence(variation.total_pence, currency)} including VAT.</label><label className="flex gap-2 text-sm"><input required name="authority" type="checkbox"/>I am authorised to approve this variation and accept the stated price and programme changes.</label></>}<button type="submit" className={button}>{saving ? 'Saving…' : type === 'approved' ? 'Confirm approval' : type === 'declined' ? 'Save decline' : 'Send question'}</button></fieldset></form>;
+    return <form onSubmit={submit} className="border rounded-xl p-5 space-y-3"><h2 className="font-semibold">Respond to version {variation.current_version}</h2>{error && <div role="alert" className="text-red-700"><p>{error}</p><button type="button" className={button} onClick={onSaved}>Refresh project details</button></div>}<fieldset disabled={saving} className="space-y-3"><label className="block text-sm">Response<select className={input} value={type} onChange={e => setType(e.target.value)}><option value="question">Ask a question</option><option value="approved" disabled={!!variation.approval_deadline && variation.approval_deadline < new Date().toLocaleDateString('en-CA')}>Approve this variation</option><option value="declined">Decline this variation</option></select></label><label className="block text-sm">Your full name<input name="name" autoComplete="name" required maxLength={200} className={input}/></label><label className="block text-sm">{type === 'approved' ? 'Comment (optional)' : 'Question / reason'}<textarea name="message" required={type !== 'approved'} maxLength={4000} className={input}/></label>{type === 'approved' && <><label className="flex gap-2 text-sm"><input required name="price" type="checkbox"/>I have reviewed version {variation.current_version}, including the scope, programme impact and total of {formatPence(variation.total_pence, currency)} including VAT.</label><label className="flex gap-2 text-sm"><input required name="authority" type="checkbox"/>I am authorised to approve this variation and accept the stated price and programme changes.</label></>}<button type="submit" className={button}>{saving ? 'Saving…' : type === 'approved' ? 'Confirm approval' : type === 'declined' ? 'Save decline' : 'Send question'}</button></fieldset></form>;
 }
 export function ClientMessages({ data, token, onSaved }: {
     data: PortalOverview;
@@ -34,7 +34,7 @@ export function ClientMessages({ data, token, onSaved }: {
 }) {
     const { save, error, saving } = useAction(token, onSaved);
     async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); await save('message', { job_id: String(form.get('job_id')), name: String(form.get('name') ?? '').trim(), message: String(form.get('message') ?? '').trim() }); }
-    return <section className="space-y-3"><h2 className="text-xl font-semibold">Project messages</h2><p className="text-sm">Messages are saved in this portal. This does not send an email or SMS.</p>{data.messages.map(m => <article key={m.id} className="border rounded-lg p-4 bg-white"><p className="text-xs text-slate-500">{data.projects.find(p => p.id === m.job_id)?.project_name} · {m.sender_type === 'client' ? 'Client' : 'Contractor'} · {new Date(m.created_at).toLocaleString('en-GB')}</p><p className="whitespace-pre-wrap text-sm mt-2">{m.body}</p></article>)}{!data.messages.length && <p className="text-sm">No shared messages yet.</p>}{data.can_message && data.projects.length > 0 && <form onSubmit={submit} className="border rounded-xl bg-white p-5 space-y-3">{error && <p role="alert" className="text-red-700">{error}</p>}<fieldset disabled={saving} className="space-y-3"><label className="block text-sm">Project<select name="job_id" required className={input}>{data.projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}</select></label><label className="block text-sm">Your name<input name="name" required maxLength={200} className={input}/></label><label className="block text-sm">Message<textarea name="message" required maxLength={4000} className={input}/></label><button type="submit" className={button}>{saving ? 'Saving…' : 'Send portal message'}</button></fieldset></form>}</section>;
+    return <section className="space-y-3"><h2 className="text-xl font-semibold">Project messages</h2><p className="text-sm">Messages are saved in this portal. This does not send an email or SMS.</p>{data.messages.map(m => <article key={m.id} className="border rounded-lg p-4 bg-white"><p className="text-xs text-slate-500">{data.projects.find(p => p.id === m.job_id)?.project_name} · {m.sender_type === 'client' ? 'Client' : 'Contractor'} · {new Date(m.created_at).toLocaleString('en-GB')}</p><p className="whitespace-pre-wrap text-sm mt-2">{m.body}</p></article>)}{!data.messages.length && <p className="text-sm">No shared messages yet.</p>}{data.can_message && data.projects.length > 0 && <form onSubmit={submit} className="border rounded-xl bg-white p-5 space-y-3">{error && <div role="alert" className="text-red-700"><p>{error}</p><button type="button" className={button} onClick={onSaved}>Refresh project details</button></div>}<fieldset disabled={saving} className="space-y-3"><label className="block text-sm">Project<select name="job_id" required className={input}>{data.projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}</select></label><label className="block text-sm">Your name<input name="name" required maxLength={200} className={input}/></label><label className="block text-sm">Message<textarea name="message" required maxLength={4000} className={input}/></label><button type="submit" className={button}>{saving ? 'Saving…' : 'Send portal message'}</button></fieldset></form>}</section>;
 }
 function AssetButton({ token, id, kind, label }: {
     token: string;
@@ -46,19 +46,35 @@ function AssetButton({ token, id, kind, label }: {
     const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
     const [expires, setExpires] = useState(0);
+    const generation = useRef(0);
+    useEffect(() => () => { generation.current += 1; }, [token, id, kind]);
+    useEffect(() => {
+        if (!url) return;
+        const expire = () => { if (Date.now() >= expires) setUrl(''); };
+        const timer = window.setTimeout(expire, Math.max(0, expires - Date.now()));
+        window.addEventListener('focus', expire);
+        document.addEventListener('visibilitychange', expire);
+        return () => {
+            window.clearTimeout(timer);
+            window.removeEventListener('focus', expire);
+            document.removeEventListener('visibilitychange', expire);
+        };
+    }, [url, expires]);
     async function prepare() { if (busy)
-        return; setBusy(true); setUrl(''); setError(''); try {
+        return; const current = ++generation.current; const requestedAt = Date.now(); setBusy(true); setUrl(''); setError(''); try {
         const data = await portalAction(token, { action: 'asset', kind, id });
         if (!data.url)
             throw new Error('File unavailable.');
-        setExpires(Date.now() + 55000);
+        if (current !== generation.current) return;
+        if (Date.now() >= requestedAt + 55000) throw new Error('Download link expired. Prepare a new download.');
+        setExpires(requestedAt + 55000);
         setUrl(data.url);
     }
     catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not open this file.');
+        if (current === generation.current) setError(e instanceof Error ? e.message : 'Could not open this file.');
     }
     finally {
-        setBusy(false);
+        if (current === generation.current) setBusy(false);
     } }
     return <div className="mt-2 space-y-2"><button disabled={busy} className={button} onClick={() => void prepare()}>{busy ? 'Preparing…' : 'Prepare download'}</button>{url && Date.now() < expires && <a href={url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="block text-sm underline">Download {label} (link lasts one minute)</a>}{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</div>;
 }
