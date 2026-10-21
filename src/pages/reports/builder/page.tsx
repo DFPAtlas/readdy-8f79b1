@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabase';
 import { reportCsv } from '@/lib/report-output';
+import { savedJobReportConfig } from '@/lib/saved-job-report';
 import type { Database } from '@/types/supabase';
 
 type Job = Pick<Database['public']['Tables']['jobs']['Row'], 'id' | 'reference' | 'project_name' | 'status' | 'progress' | 'target_completion_date'>;
@@ -11,26 +12,66 @@ type Result = { orgId: string; jobs: Job[]; generatedAt: string };
 
 export default function ReportBuilder() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const reportId = params.get('report');
   const { organisation, isReadOnly } = useOrg();
   const { user } = useAuth();
   const orgId = organisation?.id;
   // Remount on company change: discard prior-company inputs and output.
-  return <JobReportBuilder key={orgId ?? 'none'} orgId={orgId} company={organisation?.name ?? ''} userId={user?.id} readOnly={isReadOnly} back={() => navigate('/reports/saved')} />;
+  return <SavedReportLoader key={(orgId ?? 'none') + ':' + (reportId ?? 'new')} reportId={reportId} orgId={orgId} company={organisation?.name ?? ''} userId={user?.id} readOnly={isReadOnly} back={() => navigate('/reports/saved')} />;
 }
 
-function JobReportBuilder({ orgId, company, userId, readOnly, back }: { orgId?: string; company: string; userId?: string; readOnly: boolean; back: () => void }) {
-  const [title, setTitle] = useState('Job status report');
-  const [status, setStatus] = useState('all');
+type BuilderProps = { orgId?: string; company: string; userId?: string; readOnly: boolean; back: () => void };
+function SavedReportLoader({ reportId, ...props }: BuilderProps & { reportId: string | null }) {
+  const [config, setConfig] = useState<{ title: string; status: string } | null>(null);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!reportId) return;
+    const controller = new AbortController();
+    setConfig(null); setError('');
+    async function load() {
+      try {
+        const client = getSupabase();
+        if (!client || !props.orgId) throw new Error('Select a company to open this report.');
+        const { data, error } = await client.from('saved_reports').select('name,report_type,visibility,filter_config,selected_sections')
+          .eq('id', reportId).eq('organisation_id', props.orgId).is('archived_at', null).abortSignal(controller.signal).maybeSingle();
+        if (error || !data) throw new Error('This saved report is unavailable for the selected company.');
+        let restored: { title: string; status: string };
+        try { restored = savedJobReportConfig(data); }
+        catch { throw new Error('This configuration is not supported by the job status builder.'); }
+        if (!controller.signal.aborted) setConfig(restored);
+      } catch (cause) {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Could not load the report.');
+      }
+    }
+    void load();
+    return () => controller.abort();
+  }, [reportId, props.orgId, retry]);
+  if (!reportId) return <JobReportBuilder {...props} />;
+  if (error) return <div className="p-6 space-y-3"><p role="alert">{error}</p><button onClick={() => setRetry(value => value + 1)}>Retry</button><button onClick={props.back}>Back to saved reports</button></div>;
+  if (!config) return <p role="status" className="p-6">Loading saved report…</p>;
+  return <JobReportBuilder {...props} initialTitle={config.title} initialStatus={config.status} />;
+}
+
+function JobReportBuilder({ orgId, company, userId, readOnly, back, initialTitle = 'Job status report', initialStatus = 'all' }: BuilderProps & { initialTitle?: string; initialStatus?: string }) {
+  const [title, setTitle] = useState(initialTitle);
+  const [status, setStatus] = useState(initialStatus);
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [controller] = useState(() => new AbortController());
-  useEffect(() => () => controller.abort(), [controller]);
+  const lifetime = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    lifetime.current = controller;
+    return () => controller.abort();
+  }, []);
 
   async function generate() {
-    if (!orgId || busy) return;
+    const controller = lifetime.current;
+    if (!orgId || busy || !controller || controller.signal.aborted) return;
     setBusy(true); setError(''); setResult(null); setMessage('');
     try {
       const client = getSupabase();
@@ -53,7 +94,8 @@ function JobReportBuilder({ orgId, company, userId, readOnly, back }: { orgId?: 
   }
 
   async function save() {
-    if (!orgId || !userId || readOnly || saving || !title.trim()) return;
+    const controller = lifetime.current;
+    if (!orgId || !userId || readOnly || saving || !title.trim() || !controller || controller.signal.aborted) return;
     setSaving(true); setError(''); setMessage('');
     try {
       const client = getSupabase();
@@ -83,7 +125,7 @@ function JobReportBuilder({ orgId, company, userId, readOnly, back }: { orgId?: 
     <label className="block">Job status<select value={status} onChange={e => { setStatus(e.target.value); setResult(null); }} className="block border rounded p-2"><option value="all">All statuses</option>{['enquiry', 'quoting', 'quote_sent', 'accepted', 'in_progress', 'on_site', 'completed', 'on_hold', 'cancelled'].map(value => <option key={value} value={value}>{value.replace(/_/g, ' ')}</option>)}</select></label>
     <div className="flex flex-wrap gap-3">
       <button onClick={() => void generate()} disabled={!orgId || busy || !title.trim()} className="border rounded p-2 disabled:opacity-50">{busy ? 'Generating…' : 'Generate report'}</button>
-      <button onClick={() => void save()} disabled={!orgId || !userId || readOnly || saving || !title.trim()} className="border rounded p-2 disabled:opacity-50">{saving ? 'Saving…' : 'Save configuration'}</button>
+      <button onClick={() => void save()} disabled={!orgId || !userId || readOnly || saving || !title.trim()} className="border rounded p-2 disabled:opacity-50">{saving ? 'Saving…' : 'Save as new configuration'}</button>
       {result && <><button onClick={download} className="border rounded p-2">Download CSV</button><button onClick={() => window.print()} className="border rounded p-2">Print / save as PDF</button></>}
     </div>
     {readOnly && <p className="text-sm">Saving is unavailable while your company is read-only.</p>}
