@@ -15,6 +15,7 @@ import JobsWorkspace from "@/pages/jobs/page";
 import NewJobWizard from "@/pages/jobs/new/page";
 import JobDetail from "@/pages/jobs/detail/page";
 import WorkforceWorkspace from "@/pages/workforce/page";
+import DemoWorkspace from "@/pages/demo/page";
 import AcceptWorkforceInvitation from "@/pages/workforce/accept/page";
 import InviteSubcontractor from "@/pages/workforce/invite/page";
 import WorkforceProfile from "@/pages/workforce/profile/page";
@@ -196,6 +197,7 @@ const routes: RouteObject[] = [
   { path: "/auth/confirmed", element: <AuthConfirmedPage /> },
   { path: "/accept-invite", element: <AcceptInvitePage /> },
   { path: "/workforce/accept", element: <AcceptWorkforceInvitation /> },
+  { path: "/demo", element: <DemoWorkspace /> },
 
   // First-run company onboarding (authenticated, no dashboard chrome)
   { path: "/onboarding", element: <AuthGuard><OnboardingPage /></AuthGuard> },
