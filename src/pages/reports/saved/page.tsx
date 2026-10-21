@@ -50,8 +50,8 @@ export default function SavedReports() {
         <button onClick={() => setRetry(value => value + 1)} className="border rounded-lg px-4 py-2 text-sm">Refresh reports</button>
       </header>
       <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4">
-        <p className="rounded-xl border bg-amber-50 p-4 text-sm">Report generation, export and sharing are not available yet. Saved configurations are not generated reports.</p>
-        <button onClick={() => navigate('/reports/builder')} className="text-sm underline">Explore report builder demo</button>
+        <p className="rounded-xl border bg-amber-50 p-4 text-sm">Job status reports can be generated in the builder, downloaded as CSV or printed. Automated delivery and sharing are not available yet. Saved configurations are not generated reports.</p>
+        <button onClick={() => navigate('/reports/builder')} className="text-sm underline">Build job status report</button>
         {visible.loading ? <p role="status">Loading saved reports…</p> : visible.error ? (
           <p role="alert" className="text-red-700">{visible.error}</p>
         ) : visible.rows.length === 0 ? (
