@@ -1,17 +1,23 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-
+import { useOrg } from '@/contexts/OrgContext';
+import { workforceLiveService, type WorkforceRow } from '@/services/workforce-live.service';
+import { workforceInvitationRequest, type WorkforceInvitation } from '@/services/workforce-invitations.service';
+const button = 'rounded-lg border px-4 py-2 text-sm disabled:opacity-50';
 export default function InviteSubcontractor() {
-  return (
-    <main className="mx-auto max-w-2xl px-4 py-12">
-      <section className="space-y-4 rounded-xl border border-border bg-white p-8">
-        <h1 className="text-2xl font-bold">Invitations are not available yet</h1>
-        <p className="text-sm text-muted">
-          This workflow is not connected to saved invitations or email delivery, so no invitation has been sent. Add the person to the workforce register while invitation sending is being completed.
-        </p>
-        <Link className="inline-flex rounded-lg bg-primary-500 px-4 py-2.5 text-sm font-medium text-white" to="/workforce">
-          Return to workforce
-        </Link>
-      </section>
-    </main>
-  );
+ const { organisation, role, isReadOnly } = useOrg(); const org = organisation?.id;
+ const [people, setPeople] = useState<WorkforceRow[]>([]); const [rows, setRows] = useState<WorkforceInvitation[]>([]);
+ const [person, setPerson] = useState(''); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
+ const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [reload, setReload] = useState(0);
+ const request = useRef({ person: '', id: crypto.randomUUID() }); const locked = useRef(false); const current = useRef(org); current.current = org;
+ const allowed = ['owner', 'admin', 'project_manager'].includes(role ?? '');
+ useEffect(() => { let active = true; setPeople([]); setRows([]); setPerson(''); setError(''); setNotice(''); request.current = { person: '', id: crypto.randomUUID() }; if (!org || !allowed) { setLoading(false); return; } setLoading(true);
+ Promise.all([workforceLiveService.load(org), workforceInvitationRequest<WorkforceInvitation[]>('list', { organisation_id: org })]).then(([data, invites]) => { if (active) { setPeople(data.people); setRows(invites); } }).catch(e => { if (active) setError(e instanceof Error ? e.message : 'Could not load invitations.'); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [org, allowed, reload]);
+ async function send() { if (!org || !person || locked.current || isReadOnly) return; locked.current = true; setBusy(true); setError(''); setNotice(''); if (request.current.person !== person) request.current = { person, id: crypto.randomUUID() };
+ try { const result = await workforceInvitationRequest<{ delivery_status: string }>('create', { organisation_id: org, person_id: person, id: request.current.id }); if (current.current !== org) return;
+ setNotice(result.delivery_status === 'accepted_by_provider' ? 'Email provider accepted the invitation. Delivery to the inbox is not yet confirmed.' : result.delivery_status === 'failed' ? 'The invitation was saved but the email provider rejected sending. Retry after the email configuration is corrected.' : 'The invitation was saved, but email acceptance is uncertain. Retry this same request safely.');
+ const latest = await workforceInvitationRequest<WorkforceInvitation[]>('list', { organisation_id: org }); if (current.current === org) setRows(latest);
+ } catch (e) { if (current.current === org) setError(e instanceof Error ? e.message : 'Could not send invitation.'); } finally { locked.current = false; setBusy(false); } }
+ async function revoke(id: string) { if (!org || locked.current || isReadOnly || !window.confirm('Revoke this invitation? Its link will stop working.')) return; locked.current = true; setBusy(true); setError(''); try { await workforceInvitationRequest('revoke', { organisation_id: org, id }); if (current.current === org) { request.current = { person: '', id: crypto.randomUUID() }; setReload(v => v + 1); } } catch (e) { if (current.current === org) setError(e instanceof Error ? e.message : 'Could not revoke invitation.'); } finally { locked.current = false; setBusy(false); } }
+ return <main className="mx-auto max-w-3xl px-4 py-10 space-y-5"><h1 className="text-2xl font-bold">Workforce invitations</h1><p>Invite someone already saved in your workforce register to acknowledge their invitation. Acceptance starts their passport process; it does not grant company workspace access or mark them ready for site.</p><Link to="/workforce" className="underline">Return to workforce register</Link>{!allowed ? <p>Owner, admin or project manager permission is required.</p> : <>{isReadOnly && <p>This workspace is read-only.</p>}{error && <p role="alert">{error} <button className={button} onClick={() => setReload(v => v + 1)}>Reload</button></p>}{notice && <p role="status">{notice}</p>}{loading ? <p role="status">Loading invitations…</p> : <><label className="block">Worker<select value={person} disabled={busy || isReadOnly} onChange={e => { setPerson(e.target.value); request.current = { person: '', id: crypto.randomUUID() }; setNotice(''); }} className="block w-full rounded border p-3"><option value="">Choose a worker with a saved email</option>{people.filter(p => !p.archived_at && p.passport_status !== 'restricted' && p.email).map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} — {p.email}</option>)}</select></label><p className="text-sm">Links expire in seven days. A new invitation replaces previous pending links. Check the email in the workforce profile before sending.</p><button className={button} disabled={!person || busy || isReadOnly} onClick={send}>{busy ? 'Working…' : 'Send / retry invitation'}</button><h2 className="text-xl font-semibold">Recent invitations</h2>{!rows.length && <p>No invitations recorded.</p>}{rows.map(row => <article className="rounded border p-4 space-y-2" key={row.id}><p>{row.email}</p><p>Status: {row.status.replaceAll('_', ' ')} · Email: {row.delivery_status.replaceAll('_', ' ')}</p><p>Expires {new Date(row.expires_at).toLocaleString('en-GB')}</p>{row.status === 'pending' && <button className={button} disabled={busy || isReadOnly} onClick={() => revoke(row.id)}>Revoke invitation</button>}</article>)}</>}</>}</main>;
 }
