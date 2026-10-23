@@ -1,3 +1,4 @@
+import { BusinessVerificationQueue } from '@/components/feature/BusinessVerification';
 import { useState } from 'react';
 import { demoOrganisations, type OrganisationSummary } from '@/mocks/platform-admin';
 
@@ -14,6 +15,7 @@ export default function OrganisationsPage() {
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
+      <BusinessVerificationQueue />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white">Organisations</h1>

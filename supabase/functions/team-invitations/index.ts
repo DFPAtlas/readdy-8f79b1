@@ -237,7 +237,7 @@ async function handleCreate(
 
   if (insertError || !invitation) {
     console.error("team-invitations create failed:", insertError?.message);
-    return fail("Could not create the invitation", 500);
+    return fail(insertError?.code === "42501" ? insertError.message : "Could not create the invitation", insertError?.code === "42501" ? 403 : 500);
   }
 
   await writeAudit(admin, {
@@ -421,7 +421,7 @@ async function handleAccept(
     );
   if (upsertError) {
     console.error("team-invitations accept membership upsert failed:", upsertError.message);
-    return fail("Could not accept the invitation", 500);
+    return fail(upsertError?.code === "42501" ? upsertError.message : "Could not accept the invitation", upsertError?.code === "42501" ? 403 : 500);
   }
 
   const { error: updateError } = await admin
