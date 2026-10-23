@@ -1,3 +1,4 @@
+import BusinessVerification from '@/components/feature/BusinessVerification';
 import { useCallback, useEffect, useState } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/components/base/Toast';
@@ -121,6 +122,7 @@ export default function OrganisationSettingsPage() {
 
   return (
     <div className="px-4 md:px-6 py-6 max-w-3xl mx-auto space-y-6">
+      {orgId && canEdit && <BusinessVerification orgId={orgId} canEdit={canEdit} />}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-foreground-950">Company</h1>
