@@ -1,13 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 
-const DEMO_FORM_URL = 'https://readdy.ai/api/form/da7c0cmij9sffln41rqg';
+
 
 export default function CtaSection() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const request = useRef({ payload: '', id: crypto.randomUUID() });
+  const busy = useRef(false);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy.current) return;
     const form = e.currentTarget;
     const honeypot = (form.elements.namedItem('website_alt') as HTMLInputElement)?.value?.trim();
     if (honeypot) {
@@ -23,27 +26,11 @@ export default function CtaSection() {
     const email = (form.elements.namedItem('email') as HTMLInputElement)?.value?.trim() || '';
     const name = (form.elements.namedItem('name') as HTMLInputElement)?.value?.trim() || '';
 
-    const fd = new FormData(form);
-    const params = new URLSearchParams();
-    fd.forEach((value, key) => {
-      if (key === 'website_alt') return;
-      const str = String(value);
-      if (str.trim() !== '') params.append(key, str);
-    });
-
+    const company = (form.elements.namedItem('company') as HTMLInputElement)?.value?.trim() || '';
+    const payload = JSON.stringify({ email, name, company });
+    if (request.current.payload !== payload) request.current = { payload, id: crypto.randomUUID() };
+    busy.current = true;
     try {
-      // Capture the lead via the built-in form (best-effort).
-      await fetch(DEMO_FORM_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-      }).catch(() => null);
-
-      // Send the demo login email.
-      const basePath = __BASE_PATH__.split('/').filter(Boolean).join('/');
-      const pathPrefix = basePath ? `/${basePath}` : '';
-      const signInUrl = `${window.location.origin}${pathPrefix}/sign-in`;
-
       const res = await fetch(
         `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/send-demo-email`,
         {
@@ -52,7 +39,7 @@ export default function CtaSection() {
             'Content-Type': 'application/json',
             apikey: import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY,
           },
-          body: JSON.stringify({ email, name, signInUrl }),
+          body: JSON.stringify({ action: 'create', id: request.current.id, email, name, company }),
         }
       );
 
@@ -69,12 +56,19 @@ export default function CtaSection() {
         return;
       }
 
+      const result = await res.json();
+      if (result.delivery_status !== 'accepted_by_provider') {
+        setStatus('error');
+        setErrorMsg(result.delivery_status === 'failed' ? 'Your request was saved, but the email could not be sent. Please retry.' : 'Your request was saved, but email acceptance is uncertain. Retry this request safely.');
+        return;
+      }
       setStatus('success');
       form.reset();
+      request.current = { payload: '', id: crypto.randomUUID() };
     } catch {
       setStatus('error');
       setErrorMsg('Network error. Please try again.');
-    }
+    } finally { busy.current = false; }
   }
 
   return (
@@ -114,15 +108,16 @@ export default function CtaSection() {
         </div>
 
         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-2xl">
-          <h3 className="text-lg font-semibold text-main font-display">Book a personalised demo</h3>
-          <p className="mt-1 text-sm text-muted">Tell us a little about your business and we&apos;ll be in touch within one working day.</p>
+          <h3 className="text-lg font-semibold text-main font-display">Explore your sample workspace</h3>
+          <p className="mt-1 text-sm text-muted">We will email a private link to a read-only sample workspace. The link expires in 24 hours.</p>
 
-          <form data-readdy-form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
               <label htmlFor="demo-name" className="block text-xs font-medium text-main mb-1.5">Full name</label>
               <input
                 id="demo-name"
                 name="name"
+                maxLength={120}
                 type="text"
                 required
                 className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors"
@@ -134,6 +129,7 @@ export default function CtaSection() {
               <input
                 id="demo-email"
                 name="email"
+                maxLength={254}
                 type="email"
                 required
                 className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors"
@@ -146,35 +142,14 @@ export default function CtaSection() {
                 <input
                   id="demo-company"
                   name="company"
+                  maxLength={160}
                   type="text"
                   className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors"
                   placeholder="Your company"
                 />
               </div>
-              <div>
-                <label htmlFor="demo-phone" className="block text-xs font-medium text-main mb-1.5">Phone</label>
-                <input
-                  id="demo-phone"
-                  name="phone"
-                  type="tel"
-                  className="w-full h-11 px-3.5 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors"
-                  placeholder="Optional"
-                />
-              </div>
             </div>
-            <div>
-              <label htmlFor="demo-message" className="block text-xs font-medium text-main mb-1.5">
-                What would you like to see?
-              </label>
-              <textarea
-                id="demo-message"
-                name="message"
-                rows={3}
-                maxLength={500}
-                className="w-full px-3.5 py-3 rounded-lg border border-border bg-page text-sm text-main placeholder:text-muted focus:border-primary-300 focus:ring-2 focus:ring-primary-50 outline-none transition-colors resize-none"
-                placeholder="Tell us about your projects and what you'd like to improve."
-              ></textarea>
-            </div>
+            <p className="text-xs text-muted">We use your name, company and email to send your requested demo link. Request details are removed after seven days. <a className="underline" href="/legal/privacy">Privacy policy</a></p>
 
             {/* Anti-spam honeypot */}
             <input
@@ -183,7 +158,7 @@ export default function CtaSection() {
               tabIndex={-1}
               autoComplete="off"
               aria-hidden="true"
-              readOnly
+              className="hidden"
             />
 
             <button
@@ -196,7 +171,7 @@ export default function CtaSection() {
 
             {status === 'success' && (
               <p className="text-sm text-status-green font-medium flex items-center gap-2">
-                <i className="ri-checkbox-circle-line"></i> Thanks — check your inbox for your demo login details.
+                <i className="ri-checkbox-circle-line"></i> Email accepted for sending — check your inbox for your private demo link.
               </p>
             )}
             {status === 'error' && (
