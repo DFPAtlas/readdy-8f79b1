@@ -1,46 +1,41 @@
-// Mobile Jobs List — select a job to view in site mode
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import MobileBottomNav from '@/components/feature/MobileBottomNav';
-import { liveJobs } from '@/mocks/dashboard';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
+import { jobsService, type JobWithClient } from '@/services/jobs.service';
 
 export default function MobileJobsPage() {
-  const navigate = useNavigate();
-  const [jobs] = useState(liveJobs);
+  const { user } = useAuth();
+  const { organisation, loading } = useOrg();
+  return <MobileJobList key={`${user?.id ?? ''}:${organisation?.id ?? ''}:${loading}`} orgId={!loading && user ? organisation?.id : undefined} />;
+}
 
-  return (
-    <div className="min-h-screen bg-background-50 pb-20">
-      <header className="sticky top-0 z-20 bg-background-50 border-b border-background-200 px-4 py-3">
-        <h1 className="text-lg font-bold text-foreground-950">Jobs</h1>
-      </header>
-      <div className="px-4 py-4 space-y-2">
-        {jobs.map((job) => (
-          <button
-            key={job.id}
-            onClick={() => navigate(`/mobile/jobs/${job.id}`)}
-            className="w-full bg-background-50 border border-background-200 rounded-xl p-4 flex items-center gap-3 text-left hover:bg-background-100 transition-colors"
-          >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              job.statusColor === 'green' ? 'bg-emerald-100 text-emerald-700' :
-              job.statusColor === 'amber' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'
-            }`}>
-              <i className="ri-briefcase-line text-lg"></i>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground-950 truncate">{job.project}</p>
-              <p className="text-xs text-foreground-500">{job.reference} · {job.trade}</p>
-            </div>
-            <div className="text-right">
-              <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${
-                job.statusColor === 'green' ? 'bg-emerald-100 text-emerald-700' :
-                job.statusColor === 'amber' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'
-              }`}>{job.status}</span>
-              <p className="text-xs text-foreground-400 mt-1">{job.nextAction}</p>
-            </div>
-          </button>
-        ))}
-      </div>
-      <MobileBottomNav />
+function MobileJobList({ orgId }: { orgId?: string }) {
+  const [jobs, setJobs] = useState<JobWithClient[]>([]);
+  const [pending, setPending] = useState(Boolean(orgId));
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let active = true;
+    if (!orgId) return;
+    setPending(true);
+    setError(false);
+    jobsService.getJobsWithClients(orgId).then(rows => {
+      if (active) setJobs(rows);
+    }).catch(() => {
+      if (active) { setJobs([]); setError(true); }
+    }).finally(() => { if (active) setPending(false); });
+    return () => { active = false; };
+  }, [orgId, attempt]);
+  return <div className="min-h-screen bg-background-50 pb-20">
+    <header className="border-b px-4 py-3"><h1 className="text-lg font-bold">Jobs</h1></header>
+    <div className="px-4 py-4 space-y-3">
+      {!orgId ? <p>Select a company to view jobs.</p> : pending ? <p role="status">Loading jobs…</p> : error ? <div role="alert"><p>Jobs could not be loaded.</p><button onClick={() => setAttempt(value => value + 1)}>Try again</button></div> : jobs.length === 0 ? <p>No saved jobs for this company.</p> : jobs.map(job => <Link key={job.id} to={`/jobs/${job.id}`} className="block border rounded-xl p-4">
+        <p className="font-semibold">{job.project_name}</p>
+        <p className="text-sm">{job.reference} · {job.status}</p>
+      </Link>)}
     </div>
-  );
+    <MobileBottomNav />
+  </div>;
 }
