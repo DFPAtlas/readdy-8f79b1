@@ -32,17 +32,17 @@ export const workforceLiveService = {
             client().from('workforce_assignments').select('*').eq('organisation_id', org).eq('person_id', personId).order('start_date', { ascending: false }),
             client().from('qualifications').select('*').eq('organisation_id', org).eq('person_id', personId).order('created_at', { ascending: false }),
             client().from('insurance_policies').select('*').eq('organisation_id', org).eq('person_id', personId).order('expiry_date'),
-            client().from('workforce_documents').select('id,name,category,original_filename,mime_type,size_bytes,visibility,review_status,review_note,reviewed_at,version,uploaded_at,archived_at').eq('organisation_id', org).eq('person_id', personId).is('archived_at', null).order('uploaded_at', { ascending: false }),
+            client().from('workforce_documents').select('id,name,category,submission_source,original_filename,mime_type,size_bytes,visibility,review_status,review_note,reviewed_at,version,uploaded_at,archived_at').eq('organisation_id', org).eq('person_id', personId).is('archived_at', null).order('uploaded_at', { ascending: false }),
             client().from('passport_checks').select('*').eq('organisation_id', org).eq('person_id', personId).order('check_category'),
             client().from('workforce_history').select('*').eq('organisation_id', org).eq('person_id', personId).order('created_at', { ascending: false }),
             client().from('jobs').select('id,reference,project_name').eq('organisation_id', org),
         ]);
         for (let index = 0; index < results.length; index += 1) {
             const result = results[index];
-            if (result.error && index !== 3)
+            if (result.error)
                 throw new Error(result.error.message);
         }
-        return { person: person.data, assignments: results[0].data || [], qualifications: results[1].data || [], insurance: results[2].data || [], documents: results[3].error ? [] : results[3].data || [], checks: results[4].data || [], history: results[5].data || [], jobs: (results[6].data || []) as WorkforceJob[] };
+        return { person: person.data, assignments: results[0].data || [], qualifications: results[1].data || [], insurance: results[2].data || [], documents: results[3].data || [], checks: results[4].data || [], history: results[5].data || [], jobs: (results[6].data || []) as WorkforceJob[] };
     },
     async write(org: string, action: string, data: Record<string, Json>, requestId: string = crypto.randomUUID()) {
         const { data: result, error } = await client().rpc('workforce_write', { p_org: org, p_request: requestId, p_action: action, p_data: data });

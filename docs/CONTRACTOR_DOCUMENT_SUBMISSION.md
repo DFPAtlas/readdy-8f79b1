@@ -1,0 +1,19 @@
+# Contractor document submission
+
+Accepted workforce invitation links now offer private document submission. Each request is authorised against the stored token hash, invitation expiry/revocation, current worker email/status, the inviter's active company role and company write access. Company managers can revoke accepted links, and a new invitation supersedes previous pending and accepted links for that person.
+
+Recipients can submit PDF, PNG, JPEG or WebP files, up to 5 MB each and 20 reservations per invitation. The server checks file signatures against the declared MIME type, chooses the actual worker/company and private storage path, and never overwrites an existing object. Deterministic submission ids allow retries with the same file and metadata, including recovery after an uncertain storage response. A completed submission creates a restricted workforce-document record marked awaiting review and an audit event attributed to the invitation link, not falsely to the inviting staff member. Company reviewers use the existing workforce document panel and signed-file access. They can accept/reject the document separately; no upload approves a worker for site work or grants workspace access.
+
+The recipient list includes only records submitted through that invitation. It excludes storage paths, signed links, internal review notes and earlier office-held documents. Raw invitation tokens are not stored, logged or persisted in browser storage by this feature. Bank-detail documents are excluded. This is document collection for review, not full bank-data, insurance-record, qualification-record or payroll onboarding. File-signature checks are not malware scanning or validation of document contents.
+
+## Deployment
+
+Apply `20261025155351_contractor_document_submission.sql`, then deploy the `contractor-documents` Edge Function with entrypoint `index.ts` and relative dependency `handler.ts`. Its gateway JWT check is disabled because recipients need no staff account; the handler performs invitation-token authentication on each public action. The standard project-provided SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY stay server-only. No new email provider or sending secret is required by document submission.
+
+Publish the frontend from the same commit after deploying the backend. It reuses `/workforce/accept#token=...` and legacy contractor invitation routes. Staff changes are on the workforce invitation page and the existing workforce-profile document panel. Demo files and email sending are unchanged.
+
+The function also implements a service-role-only `cleanup` action. It removes unregistered staging objects only when their invitation has expired or been revoked and the reservation is older than a day, then removes the matching staging record. Registered documents are never selected. Failed cleanup remains retryable. Scheduling this maintenance action is not configured by this PR; the project currently has no HTTP scheduling extension or Vault credential for such a call. Until scheduled, an operator must invoke it with server-side credentials. Failed staging reservations count toward the invitation cap and can be resumed with the same file/metadata while the link is valid.
+
+## Validation
+
+34 Node tests pass, including new handler tests for token hashing, server-selected scopes, bounded inputs, file-type mismatches, private non-overwriting storage, uncertain responses and maintenance authentication. PostgreSQL tests cover accepted-only access, per-invitation isolation, review status/provenance, duplicate recovery, upload caps, restricted/email-changed workers, removed inviters, read-only companies, expiry, revocation and cleanup excluding registered documents. TypeScript, full lint and production build are checked in the PR. Real-recipient uploads, browser UAT and inbox delivery have not been tested.
