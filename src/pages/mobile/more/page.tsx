@@ -1,14 +1,11 @@
 // Mobile More menu — links to sync, devices, admin, offline jobs
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MobileBottomNav from '@/components/feature/MobileBottomNav';
 import { useConnectivity } from '@/contexts/ConnectivityContext';
-import { liveJobs } from '@/mocks/dashboard';
 
 export default function MobileMorePage() {
   const navigate = useNavigate();
   const { isOnline, syncCounts } = useConnectivity();
-  const [selectedJob] = useState(liveJobs[0]);
 
   const menuSections = [
     {
@@ -31,8 +28,8 @@ export default function MobileMorePage() {
     {
       title: 'Help',
       items: [
-        { icon: 'ri-question-line', label: 'Help & Support', path: '#' },
-        { icon: 'ri-file-text-line', label: 'Emergency Info', path: '#' },
+        { icon: 'ri-question-line', label: 'Help & Support', path: '/help' },
+        { icon: 'ri-file-text-line', label: 'Emergency Info', path: '/mobile/today' },
       ],
     },
   ];
@@ -52,7 +49,7 @@ export default function MobileMorePage() {
           <div className="flex-1">
             <p className="text-sm font-semibold text-foreground-950">{isOnline ? 'Online' : 'Offline'}</p>
             <p className="text-xs text-foreground-500">
-              {syncCounts.queued > 0 ? `${syncCounts.queued} items waiting` : 'All synced'}
+              {syncCounts.queued > 0 ? `${syncCounts.queued} items waiting` : 'No queued items recorded'}
             </p>
           </div>
           {syncCounts.queued > 0 && (
@@ -97,7 +94,7 @@ export default function MobileMorePage() {
         <p className="text-center text-xs text-foreground-400">BuildNerve v2.18.0</p>
       </div>
 
-      <MobileBottomNav jobId={selectedJob.id} />
+      <MobileBottomNav  />
     </div>
   );
 }

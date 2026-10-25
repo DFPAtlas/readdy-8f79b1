@@ -1,32 +1,21 @@
+import { Fragment, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import type { ReactNode } from 'react';
+import { useScopedResource } from '@/hooks/useScopedResource';
+import { loadPlatformAccess } from '@/services/platform-access.service';
+import { PlatformAccessContext } from '@/contexts/PlatformAccessContext';
+import LoadState from '@/components/live/LoadState';
 
-interface PlatformAdminGuardProps {
-  children: ReactNode;
-}
-
-export default function PlatformAdminGuard({ children }: PlatformAdminGuardProps) {
+export default function PlatformAdminGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const location = useLocation();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-            <i className="ri-admin-line text-2xl text-amber-400"></i>
-          </div>
-          <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm">Verifying platform access...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/platform-admin/login" state={{ from: location }} replace />;
-  }
-
-  return <>{children}</>;
+  // Recheck on navigation; individual data requests remain protected by database policies.
+  const scope = !loading && user ? `${user.id}:${location.pathname}` : null;
+  const state = useScopedResource(scope, () => loadPlatformAccess(user!.id));
+  if (loading) return <p role="status" className="p-6">Checking your session…</p>;
+  if (!user) return <Navigate to="/platform-admin/login" state={{ from: location }} replace/>;
+  if (state.loading || state.error) return <div className="p-6"><LoadState {...state}/></div>;
+  if (!state.data) return null;
+  if (state.data.assurance !== 'aal2') return <Navigate to="/platform-admin/mfa" state={{ from: location }} replace/>;
+  return <PlatformAccessContext.Provider value={{ role: state.data.role }}><Fragment key={user.id}>{children}</Fragment></PlatformAccessContext.Provider>;
 }

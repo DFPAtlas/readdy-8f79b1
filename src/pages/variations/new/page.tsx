@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { demoFullJobs } from '@/mocks/jobs';
+import { variationJobs, saveVariation } from '@/services/live-variations.service';
+import LiveClientScope from '@/pages/clients/LiveClientScope';
+import { useOrg } from '@/contexts/OrgContext';
 import { variationRequestedByOptions, variationSourceOptions } from '@/mocks/clients';
 import { useToast } from '@/components/base/Toast';
 
@@ -64,13 +66,28 @@ const INITIAL_DATA: WizardData = {
 const STEPS = 5;
 
 export default function NewVariationWizard() {
+  return <LiveClientScope>{({ userId, orgId }) => <CompanyVariationWizard key={userId + ':' + orgId} userId={userId} orgId={orgId} />}</LiveClientScope>;
+}
+function CompanyVariationWizard({ userId, orgId }: { userId: string; orgId: string }) {
+  const { role, isReadOnly } = useOrg();
+  const canWrite = !isReadOnly && ['owner', 'admin', 'project_manager'].includes(role ?? '');
+  const draftKey = 'buildnerve:variation-draft:' + userId + ':' + orgId;
+  const [jobs, setJobs] = useState<Awaited<ReturnType<typeof variationJobs>>>([]);
+  const [loadError, setLoadError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [recordId, setRecordId] = useState(() => crypto.randomUUID());
+  const [createdReference, setCreatedReference] = useState('');
+  useEffect(() => { const controller = new AbortController();
+    void variationJobs(orgId, controller.signal).then(rows => { if (!controller.signal.aborted) setJobs(rows); }).catch(() => { if (!controller.signal.aborted) setLoadError('Jobs could not be loaded. Refresh to retry.'); });
+    return () => controller.abort();
+  }, [orgId]);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>(() => {
     try {
-      const saved = localStorage.getItem('sl-variation-draft');
+      const saved = localStorage.getItem(draftKey);
       if (saved) return { ...INITIAL_DATA, ...JSON.parse(saved) };
     } catch { /* ignore */ }
     return { ...INITIAL_DATA };
@@ -80,29 +97,44 @@ export default function NewVariationWizard() {
   const updateField = <K extends keyof WizardData>(key: K, value: WizardData[K]) => {
     setData((prev) => {
       const next = { ...prev, [key]: value };
-      localStorage.setItem('sl-variation-draft', JSON.stringify(next));
+      try { localStorage.setItem(draftKey, JSON.stringify(next)); } catch { /* Saving to the server remains available. */ }
       return next;
     });
   };
 
   const internalCost = data.labour + data.materials + data.plant + data.subcontractors + data.otherCost;
   const clientPrice = internalCost * (1 + data.markUp / 100);
-  const vatAmount = data.vatTreatment === 'Zero rated' ? 0 : Math.round(clientPrice * 0.2);
+  const vatAmount = data.vatTreatment === 'Zero rated' ? 0 : Math.round(clientPrice * 20) / 100;
   const totalPrice = clientPrice + vatAmount;
 
   const formatMoney = (v: number) => '£' + Math.round(v).toLocaleString('en-GB');
 
-  const handleSaveDraft = () => {
-    showToast('Variation saved as draft (demo).', 'info');
-    navigate('/variations');
+  const persist = async (status: 'draft' | 'internal_review') => {
+    if (!canWrite || saving) return;
+    if (!data.title.trim() || !jobs.some(job => job.id === data.jobId)) { showToast('Enter a title and select one of your company jobs.', 'error'); return; }
+    const amounts = [internalCost, clientPrice, vatAmount, totalPrice];
+    if (amounts.some(value => !Number.isFinite(value) || value < 0 || Math.round(value * 100) > 2147483647)) { showToast('Enter valid non-negative amounts.', 'error'); return; }
+    setSaving(true);
+    try {
+      const saved = await saveVariation({ id: recordId, organisation_id: orgId, job_id: data.jobId, created_by: userId,
+        reference: 'VAR-' + recordId.slice(0, 8).toUpperCase(), title: data.title.trim(), status,
+        requested_by: data.requestedBy, source: data.source, reason: data.reason, description: data.detailedChange,
+        included_work: data.includedWork, excluded_work: data.excludedWork, assumptions: data.assumptions,
+        internal_cost_pence: Math.round(internalCost * 100), client_price_pence: Math.round(clientPrice * 100),
+        vat_pence: Math.round(vatAmount * 100), total_pence: Math.round(totalPrice * 100),
+        programme_days: Math.round(data.additionalDays), revised_completion: data.revisedCompletion || null,
+        work_before_approval: data.workBeforeApproval === 'yes', approval_deadline: data.approvalRequiredBy || null, delay_risk: data.delayRisk });
+      try { localStorage.removeItem(draftKey); } catch { /* The server record is saved. */ }
+      setCreatedReference(saved.reference);
+      if (status === 'draft') navigate('/variations/' + saved.id); else setShowSuccess(true);
+    } catch { showToast('The variation could not be saved. Your inputs have been kept; retry before leaving.', 'error'); }
+    finally { setSaving(false); }
   };
-
-  const handleCreate = () => {
-    setShowSuccess(true);
-    localStorage.removeItem('sl-variation-draft');
-  };
-
-  const selectedJob = demoFullJobs.find((j) => j.id === data.jobId);
+  const handleSaveDraft = () => { void persist('draft'); };
+  const handleCreate = () => { void persist('internal_review'); };
+  const selectedJob = jobs.find(job => job.id === data.jobId);
+  if (!canWrite) return <div className="p-6"><h1 className="text-xl font-semibold">New variation</h1><p>Creating variations requires an editable company and an owner, admin or project manager role.</p></div>;
+  if (loadError) return <p role="alert" className="p-6">{loadError}</p>;
 
   if (showSuccess) {
     return (
@@ -111,14 +143,14 @@ export default function NewVariationWizard() {
           <i className="ri-check-line text-3xl text-primary-500"></i>
         </div>
         <h2 className="text-2xl font-bold text-main mb-2">{t('dashboard.jobCreated')}</h2>
-        <p className="text-lg text-muted">VAR-007 is ready for review.</p>
+        <p className="text-lg text-muted">{createdReference} is saved for internal review.</p>
         <div className="flex items-center justify-center gap-3 mt-8">
           <button className="h-11 px-6 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl cursor-pointer" onClick={() => navigate('/variations')}>
             {t('dashboard.returnToJobs')}
           </button>
           <button
             className="h-11 px-6 border border-border text-main text-sm font-semibold rounded-xl hover:bg-page cursor-pointer"
-            onClick={() => { setStep(1); setData({ ...INITIAL_DATA }); setShowSuccess(false); }}
+            onClick={() => { setStep(1); setData({ ...INITIAL_DATA }); setShowSuccess(false); setRecordId(crypto.randomUUID()); }}
           >
             {t('dashboard.addAnotherJob')}
           </button>
@@ -133,7 +165,7 @@ export default function NewVariationWizard() {
   const selectClass = 'w-full h-10 px-3 border border-border rounded-xl text-sm text-main focus:outline-none focus:border-primary-300 bg-white cursor-pointer';
 
   return (
-    <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6 space-y-6">
+    <fieldset disabled={saving} className="max-w-[1440px] mx-auto px-4 md:px-6 py-6 space-y-6 disabled:opacity-60">
       {/* Stepper */}
       <div className="flex items-center gap-2 flex-wrap">
         {Array.from({ length: STEPS }).map((_, i) => (
@@ -162,8 +194,8 @@ export default function NewVariationWizard() {
                 <label className={labelClass}>{t('dashboard.variationWizard.job')}</label>
                 <select className={selectClass} value={data.jobId} onChange={(e) => updateField('jobId', e.target.value)}>
                   <option value="">Select job…</option>
-                  {demoFullJobs.filter((j) => j.statusStep === 'active').map((j) => (
-                    <option key={j.id} value={j.id}>{j.reference} — {j.project} ({j.client})</option>
+                  {jobs.map((j) => (
+                    <option key={j.id} value={j.id}>{j.reference} — {j.project}</option>
                   ))}
                 </select>
               </div>
@@ -371,7 +403,7 @@ export default function NewVariationWizard() {
                 </button>
                 <button
                   className="h-11 px-6 bg-status-blue hover:bg-blue-700 text-white text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap"
-                  onClick={() => showToast('Submitted for internal review (demo).', 'info')}
+                  onClick={handleCreate}
                 >
                   {t('dashboard.variationWizard.submitReview')}
                 </button>
@@ -441,6 +473,6 @@ export default function NewVariationWizard() {
           </div>
         </div>
       </div>
-    </div>
+    </fieldset>
   );
 }

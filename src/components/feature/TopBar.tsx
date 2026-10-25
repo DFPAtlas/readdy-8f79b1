@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLiveNotifications, safeNotificationRoute } from '@/hooks/useLiveNotifications';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { BNWordmarkDark } from '@/components/base/BuildNerveLogo';
@@ -6,9 +7,6 @@ import { useToast } from '@/components/base/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import {
-  getAllNotifications,
-  getUnreadCount,
-  getUrgentUnreadCount,
   getNotificationCategoryIcon,
   getNotificationCategoryColor,
   formatTimestamp,
@@ -32,6 +30,7 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { user, signOut } = useAuth();
+  const notices = useLiveNotifications();
   const { organisation, organisations, switchOrganisation } = useOrg();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -76,23 +75,7 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
 
         <div className="flex-1 lg:flex-none" />
 
-        {/* Org switcher (when multiple orgs) */}
-        {organisations.length > 1 && (
-          <div className="relative hidden sm:block">
-            <button
-              className="h-9 px-3 bg-page hover:bg-border/30 text-main text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              onClick={() => showToast('Organisation switcher is available.', 'info')}
-            >
-              <span className="w-5 h-5 rounded bg-primary-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-primary-700 text-[9px] font-bold">
-                  {organisation?.name?.charAt(0) || 'S'}
-                </span>
-              </span>
-              <span className="max-w-[100px] truncate">{organisation?.trading_name || organisation?.name || 'BuildNerve'}</span>
-              <i className="ri-arrow-down-s-line text-muted text-sm"></i>
-            </button>
-          </div>
-        )}
+        {organisations.length > 1 && <label className="hidden sm:block text-xs">Company<select aria-label="Selected company" value={organisation?.id ?? ''} onChange={event => { void switchOrganisation(event.target.value); }} className="block border rounded-lg p-2 max-w-48">{organisations.map(org => <option value={org.id} key={org.id}>{org.trading_name || org.name}</option>)}</select></label>}
 
         {/* Actions */}
         <div className="flex items-center gap-2">
@@ -117,23 +100,17 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
             <i className="ri-search-line text-lg text-muted"></i>
           </button>
 
-          {/* Offline sync indicator */}
-          <span className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 bg-status-green-pale text-status-green text-xs font-semibold rounded-full whitespace-nowrap">
-            <span className="w-2 h-2 rounded-full bg-status-green animate-pulse"></span>
-            Synced
-          </span>
-
           {/* Notifications */}
           <div className="relative">
             <button
               className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-page transition-colors relative cursor-pointer"
               aria-label={t('dashboard.notifications')}
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) notices.refresh(); }}
             >
               <i className="ri-notification-3-line text-lg text-muted"></i>
-              {getUnreadCount() > 0 && (
+              {notices.unread > 0 && (
                 <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] rounded-full bg-status-red text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none border-2 border-white">
-                  {getUnreadCount() > 9 ? '9+' : getUnreadCount()}
+                  {notices.unread > 9 ? '9+' : notices.unread}
                 </span>
               )}
             </button>
@@ -147,9 +124,9 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
                     <div className="flex items-center gap-2">
                       <span
                         className="text-[11px] text-primary-500 font-medium cursor-pointer hover:underline whitespace-nowrap"
-                        onClick={() => { setShowNotifications(false); }}
+                        onClick={() => { setShowNotifications(false); navigate('/notifications'); }}
                       >
-                        Mark all read
+                        View notifications
                       </span>
                       <button
                         onClick={() => { setShowNotifications(false); navigate('/notifications'); }}
@@ -160,29 +137,31 @@ export default function TopBar({ onMenuToggle, onAssistToggle }: TopBarProps) {
                     </div>
                   </div>
                   <div className="overflow-y-auto flex-1">
-                    {getAllNotifications().slice(0, 6).map((notif) => (
+                    {notices.loading ? <p className="p-4 text-sm" role="status">Loading notifications…</p> : notices.error ? <p className="p-4 text-sm" role="alert">{notices.error}</p> : !notices.items.length ? <p className="p-4 text-sm">No notifications.</p> : null}
+                    {notices.items.slice(0, 6).map((notif) => (
                       <button
                         key={notif.id}
                         onClick={() => {
                           setShowNotifications(false);
-                          if (notif.actionRoute) navigate(notif.actionRoute);
+                          const route = safeNotificationRoute(notif.action_route);
+                          if (route) navigate(route);
                         }}
-                        className={`w-full text-left flex gap-3 px-4 py-3 hover:bg-background-50 transition-colors border-b border-background-50 cursor-pointer ${!notif.readAt ? 'bg-background-50/60' : ''}`}
+                        className={`w-full text-left flex gap-3 px-4 py-3 hover:bg-background-50 transition-colors border-b border-background-50 cursor-pointer ${!notif.read_at ? 'bg-background-50/60' : ''}`}
                       >
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${getNotificationCategoryColor(notif.category)}`}>
                           <i className={`${getNotificationCategoryIcon(notif.category)} text-base`}></i>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className={`text-sm truncate ${!notif.readAt ? 'font-semibold text-foreground-950' : 'font-medium text-foreground-700'}`}>
+                            <p className={`text-sm truncate ${!notif.read_at ? 'font-semibold text-foreground-950' : 'font-medium text-foreground-700'}`}>
                               {notif.title}
                             </p>
-                            {!notif.readAt && (
+                            {!notif.read_at && (
                               <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-1.5"></span>
                             )}
                           </div>
                           <p className="text-xs text-foreground-500 mt-0.5 line-clamp-2">{notif.body}</p>
-                          <span className="text-[10px] text-foreground-400 mt-1 block">{formatTimestamp(notif.createdAt)}</span>
+                          <span className="text-[10px] text-foreground-400 mt-1 block">{formatTimestamp(notif.created_at)}</span>
                         </div>
                       </button>
                     ))}

@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { jobsService } from '@/services/jobs.service';
 import { timelineService, type TimelineJobItem } from '@/services/timeline.service';
-import { buildDemoJobDetail } from '@/pages/jobs/detail/job-detail.demo';
 import { eventCategoryColor, eventCategoryLabel } from '@/pages/jobs/detail/job-detail.labels';
 
 type TimeScale = 'day' | 'week' | 'month' | 'all';
@@ -46,14 +45,6 @@ export default function JobTimeline() {
 
     if (!jobId) {
       setStatus('notfound');
-      return undefined;
-    }
-
-    const demo = buildDemoJobDetail(jobId);
-    if (demo) {
-      setJobName(demo.job.project);
-      setEvents(demo.data.timeline);
-      setStatus('ready');
       return undefined;
     }
 

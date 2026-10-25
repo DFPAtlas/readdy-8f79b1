@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { sidebarNavItems, businessPulse } from '@/mocks/dashboard';
+import { sidebarNavItems } from '@/mocks/dashboard';
 import { BNWordmarkLight, BNIcon } from '@/components/base/BuildNerveLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/base/Toast';
@@ -278,34 +278,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* Business Pulse */}
-        <div className={`overflow-hidden transition-all duration-300 ${expanded ? 'opacity-100 max-h-[300px] px-4 pb-3' : 'opacity-0 max-h-0 px-0 pb-0'}`}>
-          <div className="bg-sidebar-light rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[#9DB5AE] text-xs font-medium uppercase tracking-wider">
-                {t('dashboard.businessPulse')}
-              </span>
-              <span className="flex items-center gap-1.5 text-[#6ABF8A] text-[11px] font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#6ABF8A]"></span>
-                {t('dashboard.healthy')}
-              </span>
-            </div>
-            <div>
-              <span className="text-[#9DB5AE] text-[11px] uppercase tracking-wider">{t('dashboard.forecastRevenue')}</span>
-              <p className="text-white text-xl font-bold mt-0.5">{businessPulse.forecastRevenue}</p>
-              <p className="text-muted text-[11px] mt-1">{businessPulse.caption}</p>
-            </div>
-            <div className="flex items-end gap-[3px] h-10 mt-3">
-              {[35, 55, 42, 70, 48, 65, 80, 58, 72, 60, 85, 68].map((h, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-[2px] bg-primary-500/50"
-                  style={{ height: `${h}%` }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        <div className={`overflow-hidden transition-all ${expanded ? 'px-4 pb-3' : 'h-0'}`}><button onClick={() => navigate('/reports')} className="text-sm text-white underline">Open company reports</button></div>
 
         {/* User Profile */}
         <div ref={accountRef} className={`relative pb-4 pt-1 transition-all duration-300 ${expanded ? 'border-t border-white/[0.06] mx-4 px-4' : 'border-t border-white/[0.06] mx-2.5 px-2.5'}`}>
@@ -377,3 +350,4 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     </>
   );
 }
+
