@@ -10668,6 +10668,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      replace_job_team: {
+        Args: { p_org: string; p_job: string; p_expected: Json; p_members: Json }
+        Returns: Json
+      }
+
       client_portal_manage: { Args: { p_org: string; p_request: string; p_action: string; p_data: Json }; Returns: string }
       client_portal_inbox: { Args: { p_org: string }; Returns: Json }
       client_portal_write: { Args: { p_hash: string; p_request: string; p_action: string; p_data: Json }; Returns: string }

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useJobDetail } from './useJobDetail';
+import JobTeamPanel from './components/JobTeamPanel';
 import OverviewTab from './components/OverviewTab';
 import EvidenceTab from './components/EvidenceTab';
 import TimelineTab from './components/TimelineTab';
@@ -31,7 +32,7 @@ const statusDotMap: Record<string, string> = {
   neutral: 'bg-muted',
 };
 
-const workerColors = ['bg-primary-500', 'bg-status-amber', 'bg-status-blue', 'bg-status-purple', 'bg-status-red'];
+
 
 export default function JobDetail() {
   const { t } = useTranslation();
@@ -115,32 +116,6 @@ export default function JobDetail() {
     );
   }
 
-  const renderTeam = () => {
-    if (data.panelErrors.team) {
-      return <PanelEmpty icon="ri-team-line" title={t('dashboard.detail.panelLoadError')} description={t('dashboard.detail.tryAgain')} />;
-    }
-    if (job.teamMembers.length === 0) {
-      return (
-        <PanelEmpty icon="ri-team-line" title={t('dashboard.detail.noTeamTitle')} description={t('dashboard.detail.noTeamDesc')} />
-      );
-    }
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {job.teamMembers.map((m, i) => (
-          <div key={m.id} className="flex items-center gap-3 p-4 border border-border rounded-2xl bg-white">
-            <div className={`w-10 h-10 rounded-full ${workerColors[i % workerColors.length]} flex items-center justify-center flex-shrink-0`}>
-              <span className="text-sm font-semibold text-white">{m.initials}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-main truncate">{m.name}</p>
-              <p className="text-xs text-muted truncate">{m.role}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   const renderFinancials = () => {
     if (data.panelErrors.financials) {
       return <PanelEmpty icon="ri-money-pound-circle-line" title={t('dashboard.detail.panelLoadError')} description={t('dashboard.detail.tryAgain')} />;
@@ -222,7 +197,7 @@ export default function JobDetail() {
       case 'snagging':
         return <SnaggingTab jobId={jobId || ''} job={job} />;
       case 'team':
-        return renderTeam();
+        return <JobTeamPanel key={jobId} jobId={jobId!} onSaved={reload} />;
       case 'financials':
         return renderFinancials();
       case 'schedule':

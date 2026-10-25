@@ -957,7 +957,7 @@ export default function NewJobWizard() {
           </div>
         </div>
 
-        <div className="border rounded-xl p-4 text-sm">Team assignments are not saved by this wizard. No staff assignments or availability checks will be recorded when this job is created.</div>
+        <div className="border rounded-xl p-4 text-sm">After creating this job, open its Team tab to assign active company accounts. Availability and compliance approval are not inferred from assignment.</div>
 
         {/* Subcontractors & trades */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
