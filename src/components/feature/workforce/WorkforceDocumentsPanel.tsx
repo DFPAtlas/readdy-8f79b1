@@ -10,6 +10,7 @@ interface DocumentRow {
   mime_type: string;
   size_bytes: number;
   review_status: string;
+  submission_source?: string;
   review_note?: string | null;
   reviewed_at?: string | null;
   uploaded_at: string;
@@ -94,7 +95,7 @@ export default function WorkforceDocumentsPanel({ orgId, personId, role, isReadO
     {!canView ? <p className="py-5 text-sm text-muted">You do not have permission to view workforce documents.</p> : documents.length === 0 ? <p className="py-5 text-sm text-muted">No documents recorded.</p> : <ul className="space-y-3">
       {documents.map(document => <li className="rounded-lg border border-border p-3" key={document.id}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><strong>{document.name}</strong><p className="text-sm text-muted">{label(document.category)} · {label(document.review_status)} · {formatSize(document.size_bytes)} · Uploaded {new Date(document.uploaded_at).toLocaleDateString('en-GB')}</p><p className="text-xs text-muted">{document.original_filename}</p>{document.review_note && <p className="mt-1 text-sm">Review note: {document.review_note}</p>}</div>
+          <div><strong>{document.name}</strong>{document.submission_source==='contractor_invitation' && <p className="text-xs text-muted">Submitted through the contractor invitation link; identity not independently verified.</p>}<p className="text-sm text-muted">{label(document.category)} · {label(document.review_status)} · {formatSize(document.size_bytes)} · Uploaded {new Date(document.uploaded_at).toLocaleDateString('en-GB')}</p><p className="text-xs text-muted">{document.original_filename}</p>{document.review_note && <p className="mt-1 text-sm">Review note: {document.review_note}</p>}</div>
           <div className="flex flex-wrap items-center gap-2"><button type="button" className={buttonClass} onClick={() => void openDocument(document.id)}>Prepare secure view</button>{links[document.id] && <a className="rounded-lg bg-primary-500 px-3 py-2 text-sm font-medium text-white" href={links[document.id]} target="_blank" rel="noreferrer">Open file</a>}</div>
         </div>
         {canReview && ['submitted', 'awaiting_review', 'rejected'].includes(document.review_status) && <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]"><label className="text-sm">Review note<textarea className={inputClass} value={notes[document.id] || ''} onChange={event => setNotes(value => ({ ...value, [document.id]: event.target.value }))} maxLength={2000} placeholder="A reason is required when rejecting" /></label><button type="button" className={buttonClass} disabled={busy} onClick={() => void review(document.id, 'accepted')}>Accept</button><button type="button" className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 disabled:opacity-50" disabled={busy || !(notes[document.id] || '').trim()} onClick={() => void review(document.id, 'rejected')}>Reject</button></div>}
