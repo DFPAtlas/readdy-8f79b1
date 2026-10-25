@@ -9,7 +9,6 @@ import { variationsService } from '@/services/variations.service';
 import { documentsService } from '@/services/documents.service';
 import { paymentApplicationsService } from '@/services/payment-applications.service';
 import { mapJobRowToFullJob } from './job-detail.adapter';
-import { buildDemoJobDetail } from './job-detail.demo';
 import {
   emptyJobDetailData,
   type DocumentView,
@@ -67,13 +66,6 @@ export function useJobDetail(jobId: string | undefined): UseJobDetailResult {
 
     if (!jobId) {
       setState({ status: 'notfound', job: null, data: null, isDemo: false, error: null });
-      return undefined;
-    }
-
-    // Built-in demo jobs use their own scoped demonstration data.
-    const demo = buildDemoJobDetail(jobId);
-    if (demo) {
-      setState({ status: 'ready', job: demo.job, data: demo.data, isDemo: true, error: null });
       return undefined;
     }
 

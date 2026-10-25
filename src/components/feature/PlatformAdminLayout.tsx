@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { usePlatformAccess } from '@/contexts/PlatformAccessContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPlatformNavItems, getRoleLabel } from '@/mocks/platform-admin';
+import { getPlatformNavItems, getRoleLabel } from '@/lib/platform-navigation';
 import { BNWordmarkLight } from '@/components/base/BuildNerveLogo';
 
 export default function PlatformAdminLayout() {
@@ -13,8 +14,7 @@ export default function PlatformAdminLayout() {
   const currentPath = location.pathname;
   const activeId = currentPath === '/platform-admin' ? 'dashboard' : currentPath.split('/').pop() || 'dashboard';
 
-  // In production, fetch the actual role from the platform_staff table
-  const platformRole = 'platform_owner';
+  const { role: platformRole } = usePlatformAccess();
   const navItems = getPlatformNavItems(platformRole);
 
   const handleNav = (path: string) => {

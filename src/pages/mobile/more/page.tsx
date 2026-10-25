@@ -29,7 +29,7 @@ export default function MobileMorePage() {
       title: 'Help',
       items: [
         { icon: 'ri-question-line', label: 'Help & Support', path: '/help' },
-        { icon: 'ri-file-text-line', label: 'Emergency Info', path: '#' },
+        { icon: 'ri-file-text-line', label: 'Emergency Info', path: '/mobile/today' },
       ],
     },
   ];

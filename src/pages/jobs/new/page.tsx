@@ -20,7 +20,6 @@ import {
 import type { Database } from '@/types/supabase';
 import ContractStep from './components/ContractStep';
 import {
-  demoTeamMembers,
   jobCategories, primaryTrades, pricingTypes, vatTreatments, paymentSchedules,
   priorityOptions, workingDaysOptions, defaultComplianceChecklist,
 } from '@/mocks/jobs';
@@ -744,20 +743,8 @@ export default function NewJobWizard() {
             {priorityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <div>
-          <label className="block text-xs font-semibold text-main mb-1.5">{t('dashboard.projectManager')}</label>
-          <select value={s2.projectManager || ''} onChange={(e) => updateDraft('step2', { projectManager: e.target.value })} className="w-full h-10 px-3.5 bg-page rounded-xl text-sm text-main border border-transparent focus:border-primary-200 focus:ring-2 focus:ring-primary-50 outline-none cursor-pointer">
-            <option value="">Select…</option>
-            {demoTeamMembers.filter((m) => m.role === 'Project Manager').map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-main mb-1.5">{t('dashboard.leadWorker')}</label>
-          <select value={s2.leadWorker || ''} onChange={(e) => updateDraft('step2', { leadWorker: e.target.value })} className="w-full h-10 px-3.5 bg-page rounded-xl text-sm text-main border border-transparent focus:border-primary-200 focus:ring-2 focus:ring-primary-50 outline-none cursor-pointer">
-            <option value="">Select…</option>
-            {demoTeamMembers.map((m) => <option key={m.id} value={m.name}>{m.name} ({m.trade})</option>)}
-          </select>
-        </div>
+
+
         <div className="sm:col-span-2">
           <label className="block text-xs font-semibold text-main mb-1.5">{t('dashboard.shortDescription')}</label>
           <textarea value={s2.description || ''} onChange={(e) => updateDraft('step2', { description: e.target.value })} rows={3} className="w-full px-3.5 py-2.5 bg-page rounded-xl text-sm text-main border border-transparent focus:border-primary-200 focus:ring-2 focus:ring-primary-50 outline-none resize-none" />
@@ -916,21 +903,6 @@ export default function NewJobWizard() {
 
   const renderStep4 = () => {
     const s4 = draft.step4 || {};
-    const selectedEmployees = s4.assignedEmployees || [];
-
-    const toggleEmployee = (id: string) => {
-      const next = selectedEmployees.includes(id)
-        ? selectedEmployees.filter((e) => e !== id)
-        : [...selectedEmployees, id];
-      updateDraft('step4', { assignedEmployees: next });
-    };
-
-    // Check for warnings
-    const hasWarnings = selectedEmployees.some((id) => {
-      const member = demoTeamMembers.find((m) => m.id === id);
-      return member && (member.complianceState !== 'compliant' || !member.available);
-    });
-
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -985,86 +957,7 @@ export default function NewJobWizard() {
           </div>
         </div>
 
-        {/* Team assignment */}
-        <div>
-          <label className="block text-xs font-semibold text-main mb-3">{t('dashboard.assignedEmployees')}</label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {demoTeamMembers.map((m) => {
-              const selected = selectedEmployees.includes(m.id);
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => toggleEmployee(m.id)}
-                  className={`text-left p-4 rounded-xl border transition-colors cursor-pointer ${
-                    selected ? 'border-primary-500 bg-primary-50' : 'border-border hover:border-primary-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-full ${selected ? 'bg-primary-500' : 'bg-page'} flex items-center justify-center flex-shrink-0`}>
-                      <span className={`text-xs font-semibold ${selected ? 'text-white' : 'text-muted'}`}>{m.initials}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-main truncate">{m.name}</p>
-                      <p className="text-[11px] text-muted truncate">{m.trade}</p>
-                    </div>
-                    {m.complianceState !== 'compliant' && (
-                      <span className="w-2 h-2 rounded-full bg-status-amber flex-shrink-0" title="Needs attention" />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-2 text-[10px]">
-                    <span className={m.available ? 'text-primary-500' : 'text-status-red'}>
-                      {m.available ? `✓ ${t('dashboard.available')}` : '✕ Unavailable'}
-                    </span>
-                    <span className={
-                      m.complianceState === 'compliant' ? 'text-primary-500' :
-                      m.complianceState === 'attention' ? 'text-status-amber' : 'text-status-red'
-                    }>
-                      {m.complianceState === 'compliant' ? `✓ ${t('dashboard.compliant')}` : `! ${t('dashboard.needsAttention')}`}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Warnings */}
-        {hasWarnings && (
-          <div className="p-4 bg-status-amber-pale border border-[#F5E0C0] rounded-2xl">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-status-amber/20 flex items-center justify-center flex-shrink-0">
-                <i className="ri-error-warning-line text-status-amber"></i>
-              </div>
-              <div>
-                <h5 className="text-sm font-semibold text-status-amber">{t('dashboard.warningTitle')}</h5>
-                <ul className="mt-2 space-y-1 text-xs text-main">
-                  {selectedEmployees.map((id) => {
-                    const m = demoTeamMembers.find((x) => x.id === id);
-                    if (!m) return null;
-                    return (
-                      <li key={id}>
-                        {!m.available && <span>{m.name} {t('dashboard.warningUnavailable')}</span>}
-                        {m.insuranceExpiry && <span>{m.name} {t('dashboard.warningInsurance')} ({m.insuranceExpiry})</span>}
-                        {m.missingCertificates?.map((cert) => (
-                          <span key={cert}>{m.name} {t('dashboard.warningCertificate')}: {cert}</span>
-                        ))}
-                      </li>
-                    );
-                  })}
-                </ul>
-                <label className="flex items-center gap-3 mt-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!!s4.warningsAcknowledged}
-                    onChange={(e) => updateDraft('step4', { warningsAcknowledged: e.target.checked })}
-                    className="w-4 h-4 rounded accent-status-amber"
-                  />
-                  <span className="text-xs font-medium text-main">{t('dashboard.acknowledgeWarnings')}</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="border rounded-xl p-4 text-sm">Team assignments are not saved by this wizard. No staff assignments or availability checks will be recorded when this job is created.</div>
 
         {/* Subcontractors & trades */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1208,22 +1101,7 @@ export default function NewJobWizard() {
         key: 'programme', label: t('dashboard.programmeSection'), step: 4,
         content: <p className="text-sm text-main">{s4.startDate || '—'} → {s4.targetCompletion || '—'} ({s4.estimatedDuration || 0} {s4.durationUnit || 'days'})</p>,
       },
-      {
-        key: 'team', label: t('dashboard.teamSection'), step: 4,
-        content: (
-          <div className="flex -space-x-1">
-            {(s4.assignedEmployees || []).map((id) => {
-              const m = demoTeamMembers.find((x) => x.id === id);
-              return m ? (
-                <div key={id} className="w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center border-2 border-white" title={m.name}>
-                  <span className="text-[8px] font-semibold text-white">{m.initials}</span>
-                </div>
-              ) : null;
-            })}
-            {(!s4.assignedEmployees || s4.assignedEmployees.length === 0) && <span className="text-xs text-muted">—</span>}
-          </div>
-        ),
-      },
+
     ];
 
     return (

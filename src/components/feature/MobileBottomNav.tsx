@@ -31,13 +31,8 @@ export default function MobileBottomNav({ jobId }: MobileBottomNavProps) {
   ];
 
   const captureActions = [
-    { icon: 'ri-camera-line', label: 'Photo / Video', path: '/mobile/capture/photo' },
-    { icon: 'ri-mic-line', label: 'Voice Log', path: '/mobile/field?tab=voice' },
-    { icon: 'ri-time-line', label: 'Timesheet', path: '/mobile/timesheet' },
-    { icon: 'ri-truck-line', label: 'Delivery', path: jobId ? `/mobile/jobs/${jobId}/delivery` : '/mobile/today' },
-    { icon: 'ri-shield-line', label: 'Safety Obs.', path: '/mobile/safety/observation' },
-    { icon: 'ri-alert-line', label: 'Incident', path: '/mobile/safety/incident' },
-    { icon: 'ri-scan-line', label: 'Scan Doc', path: '/mobile/field?tab=scan' },
+    { icon: 'ri-mic-line', label: 'Site Log', path: '/mobile/field?tab=voice' },
+    { icon: 'ri-scan-line', label: 'Document', path: '/mobile/field?tab=scan' },
   ];
 
   // Close capture sheet on outside click

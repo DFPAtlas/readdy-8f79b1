@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { workforceInvitationRequest } from '@/services/workforce-invitations.service';
 export default function AcceptWorkforceInvitation() {
- const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token') ?? '');
+ const { token: pathToken } = useParams();
+ const hashToken = new URLSearchParams(window.location.hash.slice(1)).get('token');
+ const token = hashToken || pathToken || '';
+ return <InvitationAcceptance key={token} token={token}/>;
+}
+function InvitationAcceptance({ token }: { token: string }) {
  const [preview, setPreview] = useState<{ company: string; status: string } | null>(null); const [error, setError] = useState(''); const [confirmed, setConfirmed] = useState(false); const [busy, setBusy] = useState(false);
  useEffect(() => { let active = true; if (!token) { setError('This invitation link is incomplete. Ask the company for a new invitation.'); return; }
  workforceInvitationRequest<{ company: string; status: string }>('preview', { token }).then(data => { if (active) setPreview(data); }).catch(e => { if (active) setError(e instanceof Error ? e.message : 'Invitation unavailable.'); }); return () => { active = false; }; }, [token]);

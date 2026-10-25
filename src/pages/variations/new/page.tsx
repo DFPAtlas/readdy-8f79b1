@@ -403,7 +403,7 @@ function CompanyVariationWizard({ userId, orgId }: { userId: string; orgId: stri
                 </button>
                 <button
                   className="h-11 px-6 bg-status-blue hover:bg-blue-700 text-white text-sm font-semibold rounded-xl cursor-pointer whitespace-nowrap"
-                  onClick={() => showToast('Submitted for internal review (demo).', 'info')}
+                  onClick={handleCreate}
                 >
                   {t('dashboard.variationWizard.submitReview')}
                 </button>
