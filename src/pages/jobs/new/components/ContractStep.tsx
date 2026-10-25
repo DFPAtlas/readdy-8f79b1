@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { contractsService } from '@/services/contracts.service';
-import { demoContractTerms, confidenceLabel, type DemoContractTerm } from '@/mocks/contracts';
+import { confidenceLabel } from '@/mocks/contracts';
 import { useToast } from '@/components/base/Toast';
 import type { ContractDraftSummary } from '@/mocks/jobs';
 
@@ -26,15 +26,6 @@ interface ContractStepProps {
 
 type Status = 'idle' | 'extracting' | 'ready' | 'error';
 
-function mapDemoTerms(): EditableTerm[] {
-  return demoContractTerms.map((t: DemoContractTerm) => ({
-    field_name: t.field_name,
-    field_label: t.field_label,
-    value: t.extracted_value,
-    confidence: t.confidence_score,
-  }));
-}
-
 function confidenceBadge(score: number | null): { label: string; cls: string } {
   const label = confidenceLabel(score);
   if (label === 'High') return { label, cls: 'bg-primary-50 text-primary-700' };
@@ -49,7 +40,8 @@ export default function ContractStep({ orgId, onApply }: ContractStepProps) {
   const [status, setStatus] = useState<Status>('idle');
   const [terms, setTerms] = useState<EditableTerm[]>([]);
   const [documentId, setDocumentId] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
+  const requestSequence = useRef(0);
+  useEffect(() => () => { requestSequence.current += 1; }, []);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +49,7 @@ export default function ContractStep({ orgId, onApply }: ContractStepProps) {
   const reset = () => {
     setTerms([]);
     setDocumentId(null);
-    setDemoMode(false);
+    requestSequence.current += 1;
     setError(null);
     setStatus('idle');
   };
@@ -84,41 +76,22 @@ export default function ContractStep({ orgId, onApply }: ContractStepProps) {
     setStatus('extracting');
     setError(null);
 
-    // No backend / org — fall back to demo terms so the wizard stays usable
-    if (!orgId) {
-      setTerms(mapDemoTerms());
-      setDemoMode(true);
-      setStatus('ready');
-      showToast('AI extraction not connected — showing sample terms.', 'info');
-      return;
-    }
-
+    const request = ++requestSequence.current;
+    setTerms([]); setDocumentId(null);
+    if (!orgId) { setStatus('error'); setError('Select your company before uploading a contract.'); return; }
     try {
       const uploadRes = await contractsService.uploadContract(file, orgId);
+      if (request !== requestSequence.current) return;
+      const extracted = await contractsService.extractContract(uploadRes.documentId);
+      if (request !== requestSequence.current) return;
       setDocumentId(uploadRes.documentId);
-      try {
-        const extractRes = await contractsService.extractContract(uploadRes.documentId);
-        setTerms(
-          extractRes.terms.map((t) => ({
-            field_name: t.field_name,
-            field_label: t.field_label,
-            value: t.extracted_value ?? '',
-            confidence: t.confidence_score ?? null,
-          })),
-        );
-        setDemoMode(false);
-        setStatus('ready');
-      } catch {
-        setTerms(mapDemoTerms());
-        setDemoMode(true);
-        setStatus('ready');
-        showToast('AI extraction unavailable — showing sample terms.', 'info');
-      }
-    } catch {
-      setTerms(mapDemoTerms());
-      setDemoMode(true);
+      setTerms(extracted.terms.map(term => ({ field_name: term.field_name, field_label: term.field_label,
+        value: term.extracted_value ?? '', confidence: term.confidence_score ?? null })));
       setStatus('ready');
-      showToast('Could not reach the backend — showing sample terms.', 'info');
+    } catch {
+      if (request !== requestSequence.current) return;
+      setTerms([]); setDocumentId(null); setStatus('error');
+      setError('Contract extraction could not be completed. Remove the file to retry, or enter commercial details manually. No sample terms have been applied.');
     }
   };
 
@@ -160,7 +133,7 @@ export default function ContractStep({ orgId, onApply }: ContractStepProps) {
       }
     }
 
-    showToast('Contract terms applied to commercial details.', 'success');
+    showToast('Contract terms applied to this job draft.', 'success');
   };
 
   const confidentCount = terms.filter((t) => confidenceLabel(t.confidence) === 'High').length;
@@ -212,7 +185,7 @@ export default function ContractStep({ orgId, onApply }: ContractStepProps) {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-main truncate">{fileName}</p>
             <p className="text-[11px] text-muted">
-              {status === 'ready' ? `${terms.length} terms extracted${demoMode ? ' · sample terms' : ''}` : status === 'extracting' ? 'Reading the contract…' : 'Ready to extract'}
+              {status === 'ready' ? `${terms.length} terms extracted` : status === 'extracting' ? 'Reading the contract…' : 'Ready to extract'}
             </p>
           </div>
           {status === 'idle' ? (
@@ -265,15 +238,6 @@ export default function ContractStep({ orgId, onApply }: ContractStepProps) {
               {confidentCount} of {terms.length} high confidence
             </span>
           </div>
-
-          {demoMode && (
-            <div className="flex items-start gap-2.5 p-3 bg-status-amber-pale border border-[#F5E0C0] rounded-xl">
-              <i className="ri-information-line text-status-amber mt-0.5"></i>
-              <p className="text-xs text-main">
-                <strong className="font-semibold">Sample terms.</strong> AI extraction isn&apos;t connected yet, so these are example values to show how pre-fill works. Connect Nerve to use real contract parsing.
-              </p>
-            </div>
-          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {terms.map((t) => {

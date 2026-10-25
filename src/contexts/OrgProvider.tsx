@@ -1,5 +1,5 @@
 import { OrgContext, type Organisation, type OrganisationMember, type OrgState, type OrgContextValue } from './OrgContext';
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabase';
 import { organisationsService } from '@/services/organisations.service';
@@ -25,6 +25,7 @@ type MembershipWithOrg = OrganisationMember & { organisations: Organisation | nu
 
 export function OrgProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const requestSequence = useRef(0);
   const [state, setState] = useState<OrgState>({
     organisation: null,
     membership: null,
@@ -38,6 +39,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<OrganisationSubscription | null>(null);
 
   const loadOrganisations = useCallback(async () => {
+    const request = ++requestSequence.current;
     const supabase = getSupabase();
 
     if (!user || !supabase) {
@@ -61,10 +63,11 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id)
         .eq('status', 'active');
 
+      if (request !== requestSequence.current) return;
       if (error) throw error;
 
       const rows = (data || []) as unknown as MembershipWithOrg[];
-      const valid = rows.filter((row) => row.organisations);
+      const valid = rows.filter((row) => row.organisations && row.organisations.archived_at === null);
       const orgs = valid.map((row) => row.organisations as Organisation);
 
       if (orgs.length === 0) {
@@ -97,6 +100,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         status: 'ready',
       });
     } catch (err) {
+      if (request !== requestSequence.current) return;
       setState((prev) => ({
         ...prev,
         organisation: null,
@@ -110,7 +114,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    loadOrganisations();
+    void loadOrganisations();
+    return () => { requestSequence.current += 1; };
   }, [loadOrganisations]);
 
   const switchOrganisation = useCallback(
@@ -122,21 +127,18 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       if (!org) return;
 
       persistOrgId(orgId);
-      // Optimistically switch, then confirm the membership row.
-      setState((prev) => ({ ...prev, organisation: org }));
-
+      const request = ++requestSequence.current;
+      setState(prev => ({ ...prev, organisation: null, membership: null, loading: true, status: 'loading', error: null }));
+      setAccessState(null); setTrialEnd(null); setSubscription(null);
       try {
-        const { data } = await supabase
-          .from('organisation_members')
-          .select('*')
-          .eq('organisation_id', orgId)
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .maybeSingle();
-
-        setState((prev) => ({ ...prev, organisation: org, membership: data as OrganisationMember | null }));
+        const { data, error } = await supabase.from('organisation_members').select('*')
+          .eq('organisation_id', orgId).eq('user_id', user.id).eq('status', 'active').maybeSingle();
+        if (request !== requestSequence.current) return;
+        if (error || !data) throw new Error('Your company membership could not be confirmed.');
+        setState(prev => ({ ...prev, organisation: org, membership: data as OrganisationMember, loading: false, status: 'ready' }));
       } catch {
-        setState((prev) => ({ ...prev, organisation: org, membership: null }));
+        if (request !== requestSequence.current) return;
+        setState(prev => ({ ...prev, organisation: null, membership: null, loading: false, status: 'error', error: 'Company access could not be confirmed.' }));
       }
     },
     [state.organisations, user],
@@ -157,9 +159,11 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       setSubscription(null);
       return;
     }
+    const request = requestSequence.current;
     try {
       const next = await billingService.expireOrgTrial(orgId);
       const sub = await billingService.getOrganisationSubscription(orgId);
+      if (request !== requestSequence.current) return;
       setSubscription(sub);
       setAccessState(sub?.access_state ?? next ?? null);
       setTrialEnd(sub?.trial_end ?? null);
@@ -219,3 +223,4 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
 }
+

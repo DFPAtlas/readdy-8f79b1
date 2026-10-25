@@ -20,7 +20,7 @@ function formatRole(role?: string | null): string {
 }
 
 export default function Home() {
-  const { organisation, membership, refreshBillingAccess } = useOrg();
+  const { organisation, membership, refreshBillingAccess, subscriptionStatus, isReadOnly } = useOrg();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSubscribed, setShowSubscribed] = useState(false);
 
@@ -48,7 +48,7 @@ export default function Home() {
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-6 space-y-6">
-      {showSubscribed && (
+      {showSubscribed && subscriptionStatus === 'active' && !isReadOnly && (
         <div className="flex items-start gap-3 rounded-xl border border-status-green/20 bg-status-green-pale px-4 py-3">
           <span className="w-9 h-9 flex items-center justify-center rounded-full bg-status-green/15 text-status-green flex-shrink-0">
             <i className="ri-checkbox-circle-line" aria-hidden="true"></i>

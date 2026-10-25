@@ -16,7 +16,8 @@ export default function SessionsCard() {
     try {
       const supabase = getSupabase();
       if (!supabase) throw new Error('Backend is not available');
-      await supabase.auth.signOut({ scope: 'global' });
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      if (error) throw error;
       navigate('/sign-in');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not sign out of all devices', 'warning');
@@ -28,7 +29,7 @@ export default function SessionsCard() {
     <section className="bg-white rounded-2xl border border-background-200 p-5">
       <h2 className="text-sm font-semibold text-foreground-950 mb-1">Active sessions</h2>
       <p className="text-xs text-foreground-500 mb-4">
-        Signing out of all devices ends every session, including this one. You will need to sign in again.
+        Signing out revokes refresh sessions, including this one. Other devices may remain signed in until their current access token expires.
       </p>
       <button
         onClick={() => setConfirmOpen(true)}
@@ -42,7 +43,7 @@ export default function SessionsCard() {
       <ConfirmDialog
         open={confirmOpen}
         title="Sign out of all devices?"
-        description="Every device signed in to your account will be signed out immediately. You will need to sign in again on this device."
+        description="Revoke refresh sessions on all devices and sign out here? Other devices may retain access until their current access token expires."
         confirmText="Sign out everywhere"
         variant="danger"
         onConfirm={handleSignOutAll}

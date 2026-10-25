@@ -1,0 +1,38 @@
+import { PGlite } from '@electric-sql/pglite';
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import test from 'node:test';
+test('messaging policies isolate company, conversation, sender and participant access', async () => {
+const db = new PGlite();
+await db.exec(`CREATE ROLE authenticated; CREATE SCHEMA auth;
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+CREATE TABLE public.organisation_members(organisation_id uuid,user_id uuid,status text,role text);
+CREATE TABLE public.conversations(id uuid primary key,organisation_id uuid,conversation_type text,archived_at timestamptz);
+CREATE TABLE public.conversation_participants(id uuid primary key,conversation_id uuid,user_id uuid,removed_at timestamptz);
+CREATE TABLE public.messages(id uuid primary key,organisation_id uuid,conversation_id uuid,sender_id text,sender_type text,client_visible boolean,body text);
+CREATE FUNCTION public.is_org_member(org_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$ SELECT EXISTS(SELECT 1 FROM public.organisation_members WHERE organisation_id=org_id AND user_id=auth.uid() AND status='active') $$;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY; ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY; ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view conversations they participate in" ON public.conversations FOR SELECT USING(public.is_org_member(organisation_id) AND EXISTS(SELECT 1 FROM public.conversation_participants cp WHERE cp.conversation_id=conversations.id AND cp.user_id=auth.uid() AND cp.removed_at IS NULL));
+GRANT USAGE ON SCHEMA public,auth TO authenticated; GRANT SELECT ON public.conversations, public.conversation_participants,public.messages TO authenticated; GRANT INSERT ON public.messages TO authenticated;`);
+const migration = await fs.readFile(new URL('../supabase/migrations/20261025115905_live_message_session_boundaries.sql', import.meta.url),'utf8'); await db.exec(migration);
+const ids = [1,2,3,4,5,6,7,8].map(n => '00000000-0000-0000-0000-'+String(n).padStart(12,'0'));
+const [user,other,orgA,orgB,convA,convB,convOther,part] = ids;
+await db.query('insert into organisation_members values($1,$2,$3,$4),($5,$2,$3,$4)',[orgA,user,'active','owner',orgB]);
+await db.query('insert into conversations values($1,$2,$3,null),($4,$5,$3,null),($6,$2,$3,null)',[convA,orgA,'internal_job',convB,orgB,convOther]);
+await db.query('insert into conversation_participants values($1,$2,$3,null)',[part,convA,user]);
+await db.exec('SET ROLE authenticated'); await db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]);
+assert.equal((await db.query('select * from conversation_participants')).rows.length,1,'no recursive policy');
+let n=20;
+async function send(org,conversation,sender=user,visible=false,type='user') { return db.query('insert into messages values($1,$2,$3,$4,$5,$6,$7)',['00000000-0000-0000-0000-'+String(n++).padStart(12,'0'),org,conversation,sender,type,visible,'fixture']); }
+await send(orgA,convA); assert.equal((await db.query('select * from messages')).rows.length,1);
+await assert.rejects(send(orgA,convOther),/row-level security/);
+await assert.rejects(send(orgB,convB),/row-level security/);
+await assert.rejects(send(orgB,convA),/row-level security/);
+await assert.rejects(send(orgA,convA,other),/row-level security/);
+await assert.rejects(send(orgA,convA,user,true),/row-level security/);
+await assert.rejects(send(orgA,convA,user,false,'client'),/row-level security/);
+await db.exec('RESET ROLE'); await db.query("update organisation_members set status='removed' where organisation_id=$1 and user_id=$2",[orgA,user]); await db.exec('SET ROLE authenticated');
+assert.equal((await db.query('select * from messages')).rows.length,0,'removed company membership loses read access'); await assert.rejects(send(orgA,convA),/row-level security/);
+await db.exec('RESET ROLE'); await db.query("update organisation_members set status='active' where organisation_id=$1 and user_id=$2",[orgA,user]); await db.query('update conversation_participants set removed_at=now()'); await db.exec('SET ROLE authenticated');
+assert.equal((await db.query('select * from messages')).rows.length,0,'removed participant loses read access'); await assert.rejects(send(orgA,convA),/row-level security/);
+await db.close(); });
