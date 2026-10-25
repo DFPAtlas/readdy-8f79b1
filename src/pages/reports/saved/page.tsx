@@ -62,6 +62,7 @@ export default function SavedReports() {
         ) : visible.rows.map(report => (
           <article key={report.id} className="bg-white border border-border rounded-xl p-5 space-y-2">
             <h2 className="font-semibold">{report.name}</h2>
+            {report.report_type === 'jobs' && report.visibility === 'internal_management' && <button className="text-sm underline" onClick={() => navigate('/reports/builder?report=' + encodeURIComponent(report.id))}>Open configuration</button>}
             {report.description && <p className="text-sm text-foreground-500">{report.description}</p>}
             <p className="text-sm capitalize">{report.report_type.replace(/_/g, ' ')} · {report.visibility.replace(/_/g, ' ')}</p>
             <p className="text-xs text-foreground-500">Updated {report.updated_at && Number.isFinite(Date.parse(report.updated_at)) ? new Date(report.updated_at).toLocaleDateString('en-GB') : 'Not recorded'}</p>
