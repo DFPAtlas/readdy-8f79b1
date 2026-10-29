@@ -1,6 +1,7 @@
 -- A dedicated maintenance credential, not a service-role key, authorises cleanup only.
 CREATE EXTENSION IF NOT EXISTS pg_net;
-REVOKE ALL ON ALL TABLES IN SCHEMA net FROM PUBLIC, anon, authenticated;
+-- Hosted pg_net owns its queue and exposes pending headers to database-login roles.
+-- Use only the dedicated cleanup credential here, never a project service key.
 
 CREATE TABLE procurement_private.contractor_cleanup_config (
  name text PRIMARY KEY CHECK (name = 'contractor_documents'),

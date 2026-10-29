@@ -19,7 +19,7 @@ test('cleanup schedule keeps credentials private and restricts authorisation and
    CREATE FUNCTION extensions.digest(value text,algorithm text) RETURNS bytea LANGUAGE sql AS $$SELECT decode(md5(value)||md5(value),'hex')$$;
    CREATE SCHEMA cron;CREATE TABLE cron.job(jobname text UNIQUE,schedule text,command text);
    CREATE FUNCTION cron.schedule(name text,schedule text,command text) RETURNS bigint LANGUAGE sql AS $$INSERT INTO cron.job VALUES(name,schedule,command);SELECT 1::bigint$$;`);
-  const migration=await fs.readFile(new URL('../supabase/migrations/20261029090015_contractor_cleanup_schedule.sql',import.meta.url),'utf8');
+  const migration=await fs.readFile(new URL('../supabase/migrations/20261029090325_contractor_cleanup_schedule.sql',import.meta.url),'utf8');
   await db.exec(migration.replace('CREATE EXTENSION IF NOT EXISTS pg_net;',''));
   const job=(await db.query('SELECT * FROM cron.job')).rows[0];
   assert.equal(job.schedule,'23 * * * *');assert.equal(job.command,'SELECT procurement_private.enqueue_contractor_document_cleanup();');
