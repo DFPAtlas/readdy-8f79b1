@@ -12,7 +12,17 @@ Apply `20261025155351_contractor_document_submission.sql`, then deploy the `cont
 
 Publish the frontend from the same commit after deploying the backend. It reuses `/workforce/accept#token=...` and legacy contractor invitation routes. Staff changes are on the workforce invitation page and the existing workforce-profile document panel. Demo files and email sending are unchanged.
 
-The function also implements a service-role-only `cleanup` action. It removes unregistered staging objects only when their invitation has expired or been revoked and the reservation is older than a day, then removes the matching staging record. Registered documents are never selected. Failed cleanup remains retryable. Scheduling this maintenance action is not configured by this PR; the project currently has no HTTP scheduling extension or Vault credential for such a call. Until scheduled, an operator must invoke it with server-side credentials. Failed staging reservations count toward the invitation cap and can be resumed with the same file/metadata while the link is valid.
+The function also implements a server-authorised `cleanup` action. It removes unregistered staging objects only when their invitation has expired or been revoked and the reservation is older than a day, then removes the matching staging record. Registered documents are never selected. Failed cleanup remains retryable. Failed staging reservations count toward the invitation cap and can be resumed with the same file/metadata while the link is valid.
+
+### Scheduled staging cleanup
+
+Deploy the updated `contractor-documents` handler before applying `20261029090015_contractor_cleanup_schedule.sql`. This adds `pg_net` and an hourly database cron job, `contractor-document-staging-cleanup`, at minute 23 UTC. Each invocation handles at most 100 staging reservations using the existing cleanup rules. A storage or registration-deletion failure returns HTTP 503 and leaves the failed reservation retryable on a later run.
+
+The migration generates a dedicated random 256-bit maintenance credential inside Postgres and stores it in Vault as `contractor_cleanup_token`. Only its hash is stored in the private RLS-protected configuration table. The handler validates the hash through a service-role-only SECURITY INVOKER RPC; the maintenance token cannot authorise uploads or other database operations. Existing service-key maintenance calls remain supported. No secret is committed or returned by setup. The scheduler command contains only a private, owner-only enqueue function, and API roles cannot read the pg_net request tables.
+
+The Vault entry `contractor_cleanup_project_url` is specific to the BuildNerve deployment. Set it to the correct project URL when deploying another environment. To rotate the token, update its Vault value and `procurement_private.contractor_cleanup_config.token_hash` together in one transaction. Never print either token or decrypted request headers.
+
+For a manual operational check, run `SELECT procurement_private.enqueue_contractor_document_cleanup();` as the database owner, note the request ID, then inspect only `id,status_code,content,timed_out,error_msg` from `net._http_response` for that ID. HTTP 200 with `{"removed":0}` confirms authentication and an empty cleanup run; it does not prove deletion of a real stored file. Cron success alone confirms enqueueing, not the HTTP result. Responses are retained by pg_net for about six hours. Inspect HTTP failures separately from `cron.job_run_details`. Disable the schedule with `SELECT cron.unschedule('contractor-document-staging-cleanup');` to stop future automatic invocations; existing customer upload flows are unaffected.
 
 ## Validation
 

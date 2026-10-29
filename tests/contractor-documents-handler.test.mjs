@@ -48,3 +48,38 @@ test('public list exposes no storage URLs; maintenance requires the server crede
  const count=f.calls.length;assert.equal((await f.handler(json({action:'cleanup'}))).status,401);assert.equal(f.calls.length,count);
  const response=await f.handler(json({action:'cleanup'},{authorization:'Bearer maintenance-secret'}));assert.equal(response.status,200);assert.deepEqual(await response.json(),{removed:1});assert.equal(f.removals.length,1);
 });
+
+test('scheduled cleanup hashes its dedicated credential and fails closed before storage access',async()=>{
+ const credential='e'.repeat(64);
+ for(const result of [{data:false,error:null},{data:null,error:new Error('private auth failure')},{data:true,error:null}]) {
+  const calls=[],removed=[];
+  const handler=createHandler({serviceKey:'server-key',admin:{
+   async rpc(name,args){calls.push({name,args});
+    if(name==='authorize_contractor_cleanup')return result;
+    if(args.p_action==='cleanup_list')return {data:[{id:'abandoned',path:'staging/file'}],error:null};
+    return {data:{removed:true},error:null};
+   },storage:{from(){return {async remove(paths){removed.push(paths);return {error:null};}};}}
+  }});
+  const response=await handler(json({action:'cleanup'},{authorization:`Bearer ${credential}`}));
+  assert.deepEqual(calls[0],{name:'authorize_contractor_cleanup',args:{p_token_hash:await sha256(credential)}});
+  assert.ok(!JSON.stringify(calls).includes(credential));
+  assert.equal(response.status,result.error?503:result.data?200:401);
+  assert.equal(removed.length,result.data?1:0);
+ }
+});
+
+test('cleanup reports storage and completion failures and leaves failed reservations retryable',async()=>{
+ for(const failure of ['storage','completion']) {
+  const actions=[];
+  const handler=createHandler({serviceKey:'server-key',admin:{
+   async rpc(name,args){actions.push(args.p_action);
+    if(args.p_action==='cleanup_list')return {data:[{id:'abandoned',path:'staging/file'}],error:null};
+    return {data:null,error:new Error('private completion failure')};
+   },storage:{from(){return {async remove(){return {error:failure==='storage'?new Error('private storage failure'):null};}};}}
+  }});
+  const response=await handler(json({action:'cleanup'},{authorization:'Bearer server-key'}));
+  assert.equal(response.status,503);const body=await response.json();assert.equal(body.failed,1);assert.equal(body.removed,0);
+  assert.ok(!JSON.stringify(body).includes('private'));
+  assert.equal(actions.includes('cleanup_complete'),failure==='completion');
+ }
+});
