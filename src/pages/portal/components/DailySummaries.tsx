@@ -1,0 +1,5 @@
+import type { PortalOverview } from '@/services/client-portal.service';
+export default function DailySummaries({data}:{data:PortalOverview}) {
+ if(!data.permissions.progress)return null;
+ return <section className="space-y-3"><h2 className="text-xl font-semibold">Published daily summaries</h2><p className="text-sm">Latest {data.daily_summaries.length} of {data.daily_summary_total} shared summaries. Refresh project records for changes.</p>{data.daily_summaries.map(summary=><article className="bg-white border rounded-xl p-4 space-y-2" key={summary.id}><h3 className="font-semibold">{summary.log_date} · {data.projects.find(project=>project.id===summary.job_id)?.project_name ?? 'Project update'}</h3><p className="whitespace-pre-wrap">{summary.summary}</p><p className="text-xs text-slate-600">Published {new Date(summary.published_at).toLocaleString('en-GB')} · Version {summary.revision}</p></article>)}{!data.daily_summaries.length&&<p className="text-sm">No daily summaries have been shared through this link.</p>}</section>;
+}
