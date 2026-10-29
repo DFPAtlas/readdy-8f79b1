@@ -3,7 +3,7 @@ const MAX_BODY=MAX_FILE+65536;
 const categories=new Set(['identity','business','cis','insurance','qualification','training','right_to_work','site_induction','rams','contract','other']);
 export async function sha256(bytes: Uint8Array | string) {
  const buffer=typeof bytes==='string' ? new TextEncoder().encode(bytes) : bytes;
- return [...new Uint8Array(await crypto.subtle.digest('SHA-256',buffer))].map(n=>n.toString(16).padStart(2,'0')).join('');
+ return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(buffer).buffer))].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 export function sniffMime(bytes: Uint8Array): string | null {
  if(bytes.length>=5 && String.fromCharCode(...bytes.slice(0,5))==='%PDF-')return 'application/pdf';
@@ -32,7 +32,7 @@ export function createHandler(deps: {admin:any;serviceKey:string}) {
    const contentType=req.headers.get('content-type') || '';
    let fields:Record<string,unknown>;let file:File | null=null;
    if(contentType.startsWith('multipart/form-data')) {
-    const form=await new Request('https://upload.invalid',{method:'POST',headers:{'content-type':contentType},body:bytes}).formData();
+    const form=await new Request('https://upload.invalid',{method:'POST',headers:{'content-type':contentType},body:new Uint8Array(bytes).buffer}).formData();
     fields={action:form.get('action'),token:form.get('token'),name:form.get('name'),category:form.get('category')};
     const part=form.get('file');if(part && typeof part!=='string')file=part;
    } else {
@@ -40,13 +40,25 @@ export function createHandler(deps: {admin:any;serviceKey:string}) {
     fields=JSON.parse(new TextDecoder().decode(bytes));
    }
    if(fields.action==='cleanup') {
-    if(!deps.serviceKey || req.headers.get('authorization')!==`Bearer ${deps.serviceKey}`)return reply({error:'Maintenance access required'},401);
+    const authorization=req.headers.get('authorization') ?? '';
+    let authorised=Boolean(deps.serviceKey && authorization===`Bearer ${deps.serviceKey}`);
+    if(!authorised) {
+     const credential=/^Bearer ([a-f0-9]{64})$/.exec(authorization)?.[1];
+     if(!credential)return reply({error:'Maintenance access required'},401);
+     const access=await deps.admin.rpc('authorize_contractor_cleanup',{p_token_hash:await sha256(credential)});
+     if(access.error)return reply({error:'Maintenance authorisation unavailable'},503);
+     authorised=access.data===true;
+    }
+    if(!authorised)return reply({error:'Maintenance access required'},401);
     const records=await deps.admin.rpc('contractor_document_operation',{p_action:'cleanup_list',p_data:{}});
     if(records.error)return reply({error:'Cleanup could not be loaded'},503);
-    let removed=0;for(const record of records.data ?? []) {
+    let removed=0,failed=0;for(const record of records.data ?? []) {
      const removal=await deps.admin.storage.from('documents').remove([record.path]);
-     if(!removal.error){const saved=await deps.admin.rpc('contractor_document_operation',{p_action:'cleanup_complete',p_data:{id:record.id}});if(!saved.error && saved.data?.removed)removed++;}
+     if(removal.error){failed++;continue;}
+     const saved=await deps.admin.rpc('contractor_document_operation',{p_action:'cleanup_complete',p_data:{id:record.id}});
+     if(saved.error)failed++;else if(saved.data?.removed)removed++;
     }
+    if(failed)return reply({error:'Some abandoned uploads could not be removed; retry required',removed,failed},503);
     return reply({removed});
    }
    if(typeof fields.token!=='string' || !/^[a-f0-9]{64}$/.test(fields.token))return reply({error:'Invitation is unavailable or expired'},403);

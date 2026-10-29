@@ -53,6 +53,8 @@ test('contractor submissions bind accepted links to private unapproved records, 
  await admin();await db.query("UPDATE workforce_people SET email='worker@example.invalid' WHERE id=$1",[person]);await db.query('UPDATE workspace_access SET writable=false WHERE organisation_id=$1',[org]);await service();await assert.rejects(call('list',{token_hash:token}),/unavailable/);
  await admin();await db.query('UPDATE workspace_access SET writable=true WHERE organisation_id=$1',[org]);await db.query("UPDATE organisation_members SET status='removed' WHERE user_id=$1",[actor]);await service();await assert.rejects(call('list',{token_hash:token}),/unavailable/);
  await admin();await db.query("UPDATE organisation_members SET status='active' WHERE user_id=$1",[actor]);await service();
+ await admin();await db.query("UPDATE procurement_private.contractor_document_submissions SET created_at=now()-interval '2 days' WHERE invitation_id=$1",[invite]);await service();
+ assert.deepEqual(await call('cleanup_list',{}),[],'old reservations on valid invitations remain resumable');
  // Accepted links can be revoked by the company; registered documents are retained.
  await db.query('SELECT public.workforce_invitation_operation($1,$2::jsonb)',['revoke',JSON.stringify({organisation_id:org,actor_id:actor,id:invite})]);
  await assert.rejects(call('list',{token_hash:token}),/unavailable/);
