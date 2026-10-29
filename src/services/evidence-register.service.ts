@@ -2,7 +2,7 @@ import { getSupabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
 export const EVIDENCE_REGISTER_PAGE_SIZE = 50;
-const columns = 'id, organisation_id, job_id, evidence_type, caption, project_stage, captured_at, captured_by, visibility, review_status, location_label, internal_note';
+export const EVIDENCE_REGISTER_COLUMNS = 'id, organisation_id, job_id, evidence_type, caption, project_stage, captured_at, captured_by, visibility, review_status, location_label, internal_note';
 type RecordRow = Database['public']['Tables']['evidence_records']['Row'];
 export type EvidenceRegisterRecord = Pick<RecordRow, 'id' | 'organisation_id' | 'job_id' | 'evidence_type' | 'caption' | 'project_stage' | 'captured_at' | 'captured_by' | 'visibility' | 'review_status' | 'location_label' | 'internal_note'>;
 export interface EvidenceRegisterPage { rows: EvidenceRegisterRecord[]; total: number; offset: number }
@@ -12,7 +12,7 @@ export async function loadEvidenceRegisterPage(orgId: string, jobId: string, off
   const client = getSupabase();
   if (!client) throw new Error('Backend not connected');
   const { data, error, count } = await client.from('evidence_records')
-    .select(columns, { count: 'exact' })
+    .select(EVIDENCE_REGISTER_COLUMNS, { count: 'exact' })
     .eq('organisation_id', orgId).eq('job_id', jobId).is('archived_at', null)
     .order('captured_at', { ascending: false, nullsFirst: false }).order('id', { ascending: true })
     .range(offset, offset + EVIDENCE_REGISTER_PAGE_SIZE - 1);
