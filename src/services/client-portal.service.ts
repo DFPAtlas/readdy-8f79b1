@@ -83,7 +83,10 @@ export interface PortalResponse {
     message: string | null;
     created_at: string;
 }
+export interface PortalDailySummary { id: string; job_id: string; log_date: string; summary: string; revision: number; published_at: string }
 export interface PortalOverview {
+    daily_summaries: PortalDailySummary[];
+    daily_summary_total: number;
     can_respond: boolean;
     can_message: boolean;
     documents: PortalDocument[];
@@ -113,7 +116,7 @@ export async function getClientPortal(token: string, signal?: AbortSignal): Prom
     if (!response.ok)
         throw new Error(response.status === 400 || response.status === 403 ? 'This link is invalid, expired, revoked or has no viewing permissions. Contact your contractor.' : 'Could not load your project. Please try again.');
     const data = await response.json();
-    if (!data || !Array.isArray(data.projects) || !Array.isArray(data.events) || !Array.isArray(data.variations) || !Array.isArray(data.payments) || !Array.isArray(data.documents) || !Array.isArray(data.photos) || !Array.isArray(data.messages) || !Array.isArray(data.responses) || typeof data.can_respond !== 'boolean' || typeof data.can_message !== 'boolean' || !data.permissions)
+    if (!data || !Array.isArray(data.daily_summaries) || !Number.isSafeInteger(data.daily_summary_total) || data.daily_summary_total < 0 || !Array.isArray(data.projects) || !Array.isArray(data.events) || !Array.isArray(data.variations) || !Array.isArray(data.payments) || !Array.isArray(data.documents) || !Array.isArray(data.photos) || !Array.isArray(data.messages) || !Array.isArray(data.responses) || typeof data.can_respond !== 'boolean' || typeof data.can_message !== 'boolean' || !data.permissions)
         throw new Error('Could not load your project. Please try again.');
     return data;
 }
