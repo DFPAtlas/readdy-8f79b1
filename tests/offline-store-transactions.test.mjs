@@ -74,3 +74,13 @@ test('scope cancellation aborts a pending snapshot save and cleanup cannot delet
   IDBObjectStore.prototype.put=put;const old={...pack(),localRevision:'old'},fresh={...pack(),localRevision:'new'};await api.saveJobPack(fresh);assert.equal(await api.deleteJobPackVersion(old),false);assert.equal((await api.getJobPack('pack')).localRevision,'new');assert.equal(await api.deleteJobPackVersion(fresh),true);assert.equal(await api.getJobPack('pack'),undefined);
  }finally{IDBObjectStore.prototype.put=put;api.closeTestDatabase();}
 });
+test('snapshot refresh uses compare-and-swap and cannot overwrite a later download or resurrect a removed pack',async()=>{
+ const {api}=await fixture();try{
+  const old={...pack(),localRevision:'old'},next={...pack(),localRevision:'next'},latest={...pack(),localRevision:'latest'};
+  await api.saveJobPack(old);await api.saveJobPack(latest);
+  assert.equal(await api.replaceJobPackVersion(old,next),false);assert.equal((await api.getJobPack('pack')).localRevision,'latest');
+  assert.equal(await api.replaceJobPackVersion(latest,next),true);assert.equal((await api.getJobPack('pack')).localRevision,'next');
+  await api.deleteJobPack('pack');assert.equal(await api.replaceJobPackVersion(next,latest),false);assert.equal(await api.getJobPack('pack'),undefined);
+  await assert.rejects(api.replaceJobPackVersion(next,{...latest,userId:'other'}),/identity/);
+ }finally{api.closeTestDatabase();}
+});

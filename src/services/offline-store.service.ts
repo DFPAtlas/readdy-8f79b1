@@ -250,6 +250,23 @@ export async function deleteJobPackVersion(expected: JobPack): Promise<boolean> 
   });
 }
 
+/** Refresh replaces only the exact version read before the network request. */
+export async function replaceJobPackVersion(expected: JobPack, replacement: JobPack, signal?: AbortSignal): Promise<boolean> {
+  if (replacement.id !== expected.id || replacement.userId !== expected.userId || replacement.organisationId !== expected.organisationId || replacement.jobId !== expected.jobId) throw new Error('Snapshot identity cannot change');
+  return writeTransaction<boolean>('jobPacks', (tx, result, fail) => {
+    const store = tx.objectStore('jobPacks');
+    const req = store.get(expected.id);
+    req.onsuccess = () => {
+      try {
+        const current = req.result as JobPack | undefined;
+        const matches = current && current.userId === expected.userId && current.organisationId === expected.organisationId && current.jobId === expected.jobId && current.localRevision === expected.localRevision;
+        if (matches) store.put(replacement);
+        result(Boolean(matches));
+      } catch (error) { fail(error); }
+    };
+  }, signal);
+}
+
 export async function getJobPacksByJob(jobId: string, orgId?: string): Promise<JobPack[]> {
   const store = await getStore('jobPacks');
   return new Promise((resolve, reject) => {
