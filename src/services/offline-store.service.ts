@@ -3,7 +3,7 @@
 // Never stores secrets, tokens, or cross-tenant data
 
 const DB_NAME = 'site-ledger-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 interface StoreSchema {
   keyPath: string;
@@ -22,6 +22,7 @@ const STORES: Record<string, StoreSchema> = {
   mutations: {
     keyPath: 'id',
     indexes: [
+      { name: 'byOrg', keyPath: 'organisationId' },
       { name: 'byIdempotency', keyPath: 'idempotencyKey', unique: true },
       { name: 'byStatus', keyPath: 'status' },
       { name: 'byEntity', keyPath: 'entityKey' },
@@ -38,6 +39,7 @@ const STORES: Record<string, StoreSchema> = {
   uploadSessions: {
     keyPath: 'id',
     indexes: [
+      { name: 'byOrg', keyPath: 'organisationId' },
       { name: 'byStatus', keyPath: 'status' },
       { name: 'byJob', keyPath: 'jobId' },
     ],
@@ -122,35 +124,58 @@ export interface DeviceMeta {
 let dbInstance: IDBDatabase | null = null;
 let currentOrgId: string | null = null;
 
+let openingDB: Promise<IDBDatabase> | null = null;
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (dbInstance) {
-      resolve(dbInstance);
-      return;
-    }
-
+  if (dbInstance) return Promise.resolve(dbInstance);
+  if (openingDB) return openingDB;
+  openingDB = new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
+    let blocked = false;
+    request.onupgradeneeded = () => {
+      const db = request.result;
       for (const [storeName, schema] of Object.entries(STORES)) {
-        if (!db.objectStoreNames.contains(storeName)) {
-          const store = db.createObjectStore(storeName, { keyPath: schema.keyPath });
-          for (const idx of schema.indexes) {
-            store.createIndex(idx.name, idx.keyPath, { unique: idx.unique || false });
-          }
+        const store = db.objectStoreNames.contains(storeName)
+          ? request.transaction!.objectStore(storeName)
+          : db.createObjectStore(storeName, { keyPath: schema.keyPath });
+        for (const idx of schema.indexes) {
+          if (!store.indexNames.contains(idx.name)) store.createIndex(idx.name, idx.keyPath, { unique: idx.unique || false });
         }
       }
     };
-
-    request.onsuccess = (event) => {
-      dbInstance = (event.target as IDBOpenDBRequest).result;
-      resolve(dbInstance);
+    request.onblocked = () => {
+      blocked = true;
+      reject(new Error('Close other BuildNerve tabs and retry the local storage upgrade.'));
     };
-
-    request.onerror = () => {
-      reject(new Error('Failed to open IndexedDB'));
+    request.onsuccess = () => {
+      const db = request.result;
+      if (blocked) { db.close(); return; }
+      db.onversionchange = () => { db.close(); if (dbInstance === db) dbInstance = null; };
+      dbInstance = db;
+      resolve(db);
     };
+    request.onerror = () => reject(request.error ?? new Error('Failed to open IndexedDB'));
+  }).finally(() => { openingDB = null; });
+  return openingDB;
+}
+
+/** Request success can still be rolled back. Confirm only transaction completion. */
+async function writeTransaction<T = void>(
+  stores: string | string[],
+  enqueue: (tx: IDBTransaction, result: (value: T) => void, fail: (error: unknown) => void) => void,
+): Promise<T> {
+  const db = await openDB();
+  return new Promise<T>((resolve, reject) => {
+    const tx = db.transaction(stores, 'readwrite');
+    let value: T;
+    let failure: unknown;
+    const fail = (error: unknown) => {
+      failure = error;
+      try { tx.abort(); } catch { reject(error); }
+    };
+    tx.oncomplete = () => { if (failure) reject(failure); else resolve(value); };
+    tx.onabort = () => reject(failure ?? tx.error ?? new Error('Local storage transaction aborted'));
+    tx.onerror = () => { failure ??= tx.error; };
+    try { enqueue(tx, result => { value = result; }, fail); } catch (error) { fail(error); }
   });
 }
 
@@ -174,12 +199,7 @@ export function getCurrentOrganisation(): string | null {
 // === Job Packs ===
 
 export async function saveJobPack(pack: JobPack): Promise<void> {
-  const store = await getStore('jobPacks', 'readwrite');
-  return new Promise((resolve, reject) => {
-    const req = store.put(pack);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  await writeTransaction('jobPacks', tx => { tx.objectStore('jobPacks').put(pack); });
 }
 
 export async function getJobPack(id: string): Promise<JobPack | undefined> {
@@ -204,12 +224,7 @@ export async function getAllJobPacks(orgId?: string): Promise<JobPack[]> {
 }
 
 export async function deleteJobPack(id: string): Promise<void> {
-  const store = await getStore('jobPacks', 'readwrite');
-  return new Promise((resolve, reject) => {
-    const req = store.delete(id);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  await writeTransaction('jobPacks', tx => { tx.objectStore('jobPacks').delete(id); });
 }
 
 export async function getJobPacksByJob(jobId: string, orgId?: string): Promise<JobPack[]> {
@@ -228,12 +243,7 @@ export async function getJobPacksByJob(jobId: string, orgId?: string): Promise<J
 // === Mutations (Sync Queue) ===
 
 export async function saveMutation(mutation: OfflineMutation): Promise<void> {
-  const store = await getStore('mutations', 'readwrite');
-  return new Promise((resolve, reject) => {
-    const req = store.put(mutation);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  await writeTransaction('mutations', tx => { tx.objectStore('mutations').put(mutation); });
 }
 
 export async function getMutation(id: string): Promise<OfflineMutation | undefined> {
@@ -271,12 +281,7 @@ export async function getAllMutations(orgId?: string): Promise<OfflineMutation[]
 }
 
 export async function deleteMutation(id: string): Promise<void> {
-  const store = await getStore('mutations', 'readwrite');
-  return new Promise((resolve, reject) => {
-    const req = store.delete(id);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  await writeTransaction('mutations', tx => { tx.objectStore('mutations').delete(id); });
 }
 
 export async function updateMutationStatus(
@@ -284,21 +289,19 @@ export async function updateMutationStatus(
   status: OfflineMutation['status'],
   extra?: Partial<OfflineMutation>,
 ): Promise<void> {
-  const store = await getStore('mutations', 'readwrite');
-  return new Promise((resolve, reject) => {
-    const getReq = store.get(id);
-    getReq.onsuccess = () => {
-      const existing = getReq.result as OfflineMutation | undefined;
-      if (!existing) {
-        resolve();
-        return;
-      }
-      const updated = { ...existing, status, ...extra, updatedAt: new Date().toISOString() };
-      const putReq = store.put(updated);
-      putReq.onsuccess = () => resolve();
-      putReq.onerror = () => reject(putReq.error);
+  await writeTransaction('mutations', (tx, _result, fail) => {
+    const store = tx.objectStore('mutations');
+    const req = store.get(id);
+    req.onsuccess = () => {
+      const existing = req.result as OfflineMutation | undefined;
+      if (!existing) { fail(new Error('Local mutation no longer exists')); return; }
+      try {
+        const updated = { ...existing, ...extra, status, updatedAt: new Date().toISOString() };
+        const identity = ['id','idempotencyKey','organisationId','userId','deviceId','jobId','entityType','entityId','action','entityKey','createdAt','clientCreatedAt'] as const;
+        if (identity.some(key => updated[key] !== existing[key])) throw new Error('Local mutation identity cannot change');
+        store.put(updated);
+      } catch (error) { fail(error); }
     };
-    getReq.onerror = () => reject(getReq.error);
   });
 }
 
@@ -322,7 +325,6 @@ export async function getMutationCounts(orgId?: string): Promise<{
 // === Cached Data ===
 
 export async function cacheData(cacheKey: string, organisationId: string, data: unknown, ttlMinutes: number = 5): Promise<void> {
-  const store = await getStore('cachedData', 'readwrite');
   const record: CachedRecord = {
     cacheKey,
     organisationId,
@@ -330,65 +332,42 @@ export async function cacheData(cacheKey: string, organisationId: string, data: 
     expiresAt: new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString(),
     createdAt: new Date().toISOString(),
   };
-  return new Promise((resolve, reject) => {
-    const req = store.put(record);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  await writeTransaction('cachedData', tx => { tx.objectStore('cachedData').put(record); });
 }
 
 export async function getCachedData<T = unknown>(cacheKey: string): Promise<T | null> {
-  const store = await getStore('cachedData');
-  return new Promise((resolve, reject) => {
+  return writeTransaction<T | null>('cachedData', (tx, result, fail) => {
+    const store = tx.objectStore('cachedData');
     const req = store.get(cacheKey);
     req.onsuccess = () => {
-      const record = req.result as CachedRecord | undefined;
-      if (!record) {
-        resolve(null);
-        return;
-      }
-      if (record.expiresAt && new Date(record.expiresAt) < new Date()) {
-        // Expired — clean up
-        const delStore = store as IDBObjectStore;
-        delStore.delete(cacheKey);
-        resolve(null);
-        return;
-      }
-      resolve(record.data as T);
+      try {
+        const record = req.result as CachedRecord | undefined;
+        if (!record) { result(null); return; }
+        if (record.expiresAt && Date.parse(record.expiresAt) <= Date.now()) {
+          store.delete(cacheKey);
+          result(null);
+        } else result(record.data as T);
+      } catch (error) { fail(error); }
     };
-    req.onerror = () => reject(req.error);
   });
 }
 
 export async function clearExpiredCache(): Promise<void> {
-  const store = await getStore('cachedData', 'readwrite');
-  const now = new Date();
-  return new Promise((resolve, reject) => {
-    const idx = store.index('byExpiry');
-    const range = IDBKeyRange.upperBound(now.toISOString());
-    const req = idx.openCursor(range);
-    req.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest).result as IDBCursorWithValue | null;
-      if (cursor) {
-        cursor.delete();
-        cursor.continue();
-      } else {
-        resolve();
-      }
+  await writeTransaction('cachedData', (tx, _result, fail) => {
+    const req = tx.objectStore('cachedData').index('byExpiry').openCursor(IDBKeyRange.upperBound(new Date().toISOString()));
+    req.onsuccess = () => {
+      try {
+        const cursor = req.result;
+        if (cursor) { cursor.delete(); cursor.continue(); }
+      } catch (error) { fail(error); }
     };
-    req.onerror = () => reject(req.error);
   });
 }
 
 // === Upload Sessions ===
 
 export async function saveUploadSession(session: UploadSession): Promise<void> {
-  const store = await getStore('uploadSessions', 'readwrite');
-  return new Promise((resolve, reject) => {
-    const req = store.put(session);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  await writeTransaction('uploadSessions', tx => { tx.objectStore('uploadSessions').put(session); });
 }
 
 export async function getUploadSession(id: string): Promise<UploadSession | undefined> {
@@ -410,23 +389,13 @@ export async function getAllUploadSessions(): Promise<UploadSession[]> {
 }
 
 export async function deleteUploadSession(id: string): Promise<void> {
-  const store = await getStore('uploadSessions', 'readwrite');
-  return new Promise((resolve, reject) => {
-    const req = store.delete(id);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  await writeTransaction('uploadSessions', tx => { tx.objectStore('uploadSessions').delete(id); });
 }
 
 // === Device Meta ===
 
 export async function setDeviceMeta(key: string, value: string): Promise<void> {
-  const store = await getStore('deviceMeta', 'readwrite');
-  return new Promise((resolve, reject) => {
-    const req = store.put({ key, value });
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  await writeTransaction('deviceMeta', tx => { tx.objectStore('deviceMeta').put({ key, value }); });
 }
 
 export async function getDeviceMeta(key: string): Promise<string | null> {
@@ -444,32 +413,18 @@ export async function getDeviceMeta(key: string): Promise<string | null> {
 // === Bulk operations ===
 
 export async function clearOrganisationData(orgId: string): Promise<void> {
-  const db = await openDB();
-
-  const clearStore = (name: string, indexName: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(name, 'readwrite');
-      const store = tx.objectStore(name);
-      const idx = store.index(indexName);
-      const req = idx.openCursor(IDBKeyRange.only(orgId));
-      req.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest).result as IDBCursorWithValue | null;
-        if (cursor) {
-          cursor.delete();
-          cursor.continue();
-        } else {
-          resolve();
-        }
+  const names = ['jobPacks','mutations','cachedData','uploadSessions'];
+  await writeTransaction(names, (tx, _result, fail) => {
+    for (const name of names) {
+      const req = tx.objectStore(name).index('byOrg').openCursor(IDBKeyRange.only(orgId));
+      req.onsuccess = () => {
+        try {
+          const cursor = req.result;
+          if (cursor) { cursor.delete(); cursor.continue(); }
+        } catch (error) { fail(error); }
       };
-      req.onerror = () => reject(req.error);
-    });
-  };
-
-  await Promise.all([
-    clearStore('jobPacks', 'byOrg'),
-    clearStore('mutations', 'byOrg'),
-    clearStore('cachedData', 'byOrg'),
-  ]);
+    }
+  });
 }
 
 export async function getStorageEstimate(): Promise<{ usage: number; quota: number } | null> {
