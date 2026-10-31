@@ -1,3 +1,4 @@
+import { dailyLogPrimaryAction, dailyLogSecondaryAction, dailyLogCautionAction } from '@/lib/action-styles';
 import { useEffect, useRef, useState } from 'react';
 import { transcribeDailyLog } from '@/services/voice-transcription.service';
 
@@ -101,14 +102,14 @@ export default function VoiceDraftRecorder({ orgId, jobId, disabled, onUse, onAc
     {mode === 'starting' && <p role="status">Waiting for microphone permission…</p>}
     {mode === 'transcribing' && <p role="status">Transcribing with HAL…</p>}
     <div className="flex flex-wrap gap-3">
-      {!busy && <button type="button" className="border rounded px-3 py-2" disabled={disabled} onClick={start}>{clip ? 'Record replacement' : 'Start recording'}</button>}
-      {mode === 'recording' && <button type="button" className="border rounded px-3 py-2" onClick={stop}>Stop recording</button>}
-      {busy && <button type="button" className="border rounded px-3 py-2" onClick={cancel}>Cancel</button>}
+      {!busy && <button type="button" className={clip ? dailyLogSecondaryAction : dailyLogPrimaryAction} disabled={disabled} onClick={start}>{clip ? 'Record replacement' : 'Start recording'}</button>}
+      {mode === 'recording' && <button type="button" className={dailyLogCautionAction} onClick={stop}>Stop recording</button>}
+      {busy && <button type="button" className={dailyLogSecondaryAction} onClick={cancel}>Cancel</button>}
     </div>
     {clip && <><p className="text-sm">Recording held in this page only. A failed transcription can be retried.</p>{preview && <audio className="w-full" controls src={preview}/>}
-      <button type="button" className="border rounded px-3 py-2" disabled={busy || disabled} onClick={transcribe}>Transcribe recording</button>{' '}
-      <button type="button" className="border rounded px-3 py-2" disabled={busy || disabled} onClick={() => { setClip(null); setText(''); setHasTranscript(false); setError(''); }}>Discard recording and transcript</button></>}
+      <button type="button" className={dailyLogPrimaryAction} disabled={busy || disabled} onClick={transcribe}>Transcribe recording</button>{' '}
+      <button type="button" className={dailyLogSecondaryAction} disabled={busy || disabled} onClick={() => { setClip(null); setText(''); setHasTranscript(false); setError(''); }}>Discard recording and transcript</button></>}
     {hasTranscript && <><label className="block">Review transcript<textarea className="block w-full border rounded p-2" value={text} onChange={event => setText(event.target.value)} maxLength={10000} disabled={busy || disabled}/></label>
-      <button type="button" className="border rounded px-3 py-2" disabled={busy || disabled || !text.trim()} onClick={() => { if (onUse(text.trim())) { setText(''); setHasTranscript(false); setClip(null); } else setError('The combined work description exceeds 10,000 characters. Shorten the transcript first.'); }}>Add reviewed text to Work completed</button></>}
+      <button type="button" className={dailyLogPrimaryAction} disabled={busy || disabled || !text.trim()} onClick={() => { if (onUse(text.trim())) { setText(''); setHasTranscript(false); setClip(null); } else setError('The combined work description exceeds 10,000 characters. Shorten the transcript first.'); }}>Add reviewed text to Work completed</button></>}
   </section>;
 }
