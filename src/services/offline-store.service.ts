@@ -52,6 +52,7 @@ const STORES: Record<string, StoreSchema> = {
 
 export interface JobPack {
   id: string;
+  localRevision?: string;
   jobId: string;
   organisationId: string;
   userId: string;
@@ -162,8 +163,11 @@ function openDB(): Promise<IDBDatabase> {
 async function writeTransaction<T = void>(
   stores: string | string[],
   enqueue: (tx: IDBTransaction, result: (value: T) => void, fail: (error: unknown) => void) => void,
+  signal?: AbortSignal,
 ): Promise<T> {
+  signal?.throwIfAborted();
   const db = await openDB();
+  signal?.throwIfAborted();
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(stores, 'readwrite');
     let value: T;
@@ -172,8 +176,11 @@ async function writeTransaction<T = void>(
       failure = error;
       try { tx.abort(); } catch { reject(error); }
     };
-    tx.oncomplete = () => { if (failure) reject(failure); else resolve(value); };
-    tx.onabort = () => reject(failure ?? tx.error ?? new Error('Local storage transaction aborted'));
+    const onAbort = () => fail(signal?.reason ?? new DOMException('Cancelled','AbortError'));
+    const cleanup = () => signal?.removeEventListener('abort', onAbort);
+    tx.oncomplete = () => { cleanup(); if (failure) reject(failure); else resolve(value); };
+    tx.onabort = () => { cleanup(); reject(failure ?? tx.error ?? new Error('Local storage transaction aborted')); };
+    signal?.addEventListener('abort', onAbort, { once: true });
     tx.onerror = () => { failure ??= tx.error; };
     try { enqueue(tx, result => { value = result; }, fail); } catch (error) { fail(error); }
   });
@@ -198,8 +205,8 @@ export function getCurrentOrganisation(): string | null {
 
 // === Job Packs ===
 
-export async function saveJobPack(pack: JobPack): Promise<void> {
-  await writeTransaction('jobPacks', tx => { tx.objectStore('jobPacks').put(pack); });
+export async function saveJobPack(pack: JobPack, signal?: AbortSignal): Promise<void> {
+  await writeTransaction('jobPacks', tx => { tx.objectStore('jobPacks').put(pack); }, signal);
 }
 
 export async function getJobPack(id: string): Promise<JobPack | undefined> {
@@ -225,6 +232,22 @@ export async function getAllJobPacks(orgId?: string): Promise<JobPack[]> {
 
 export async function deleteJobPack(id: string): Promise<void> {
   await writeTransaction('jobPacks', tx => { tx.objectStore('jobPacks').delete(id); });
+}
+
+/** Cleanup must not delete a newer download that replaced the same local key. */
+export async function deleteJobPackVersion(expected: JobPack): Promise<boolean> {
+  return writeTransaction<boolean>('jobPacks', (tx, result, fail) => {
+    const store = tx.objectStore('jobPacks');
+    const req = store.get(expected.id);
+    req.onsuccess = () => {
+      try {
+        const current = req.result as JobPack | undefined;
+        const matches = current && current.userId === expected.userId && current.organisationId === expected.organisationId && current.jobId === expected.jobId && current.localRevision === expected.localRevision;
+        if (matches) store.delete(expected.id);
+        result(Boolean(matches));
+      } catch (error) { fail(error); }
+    };
+  });
 }
 
 export async function getJobPacksByJob(jobId: string, orgId?: string): Promise<JobPack[]> {

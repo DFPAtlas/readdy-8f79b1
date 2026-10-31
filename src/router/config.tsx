@@ -260,6 +260,9 @@ const routes: RouteObject[] = [
   { path: "/client/:accessToken/variations/:variationId", element: <ClientVariationDetail /> },
   { path: "/client/:accessToken/valuations-ledger", element: <ValuationsLedger /> },
 
+  // Local saved-copy reader retains auth but does not require a network company load.
+  { path: "/mobile/offline-jobs", element: <AuthGuard><OfflineJobsPage /></AuthGuard> },
+
   // Mobile site capture (protected)
   {
     path: "/site/:jobId/capture",
@@ -281,7 +284,6 @@ const routes: RouteObject[] = [
       { path: "sync", element: <MobileSyncPage /> },
       { path: "devices", element: <MobileDevicePage /> },
       { path: "admin", element: <MobileAdminPage /> },
-      { path: "offline-jobs", element: <OfflineJobsPage /> },
     ],
   },
 

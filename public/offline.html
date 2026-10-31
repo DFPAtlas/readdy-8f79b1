@@ -80,16 +80,16 @@
   <div class="offline-card">
     <div class="offline-icon">&#9889;</div>
     <h1>You're offline</h1>
-    <p>BuildNerve works best with an internet connection. Downloaded jobs and saved drafts are still available.</p>
+    <p>Reconnect for live work. Saved read-only job copies can be opened while your remembered sign-in remains available.</p>
     <div class="status-bar">
       <span class="status-dot"></span>
       <span>No internet connection detected</span>
     </div>
     <div class="actions">
       <button class="btn-primary" onclick="location.reload()">Try again</button>
-      <button class="btn-secondary" onclick="history.back()">Go back</button>
+      <a class="btn-secondary" href="/mobile/offline-jobs">Saved offline jobs</a>
     </div>
-    <p class="hint">Any unsaved work stored on this device will sync when you reconnect.</p>
+    <p class="hint">Offline editing and automatic sync are not available.</p>
   </div>
   <script>
     // Listen for online event to auto-refresh
