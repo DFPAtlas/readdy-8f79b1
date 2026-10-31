@@ -120,7 +120,7 @@ function JobReportBuilder({ orgId, company, userId, readOnly, back, initialTitle
     <style>{'@media print { body * { visibility: hidden; } #job-report-print, #job-report-print * { visibility: visible; } #job-report-print { position: absolute; left: 0; top: 0; width: 100%; } }'}</style>
     <button onClick={back} className="underline text-sm">Saved reports</button>
     <h1 className="text-xl font-semibold">Job status report builder</h1>
-    <p className="text-sm">Generate an internal report from your company’s current, non-archived jobs. Other report types and email delivery are not available yet.</p>
+    <p className="text-sm">Generate an internal report from your company’s current, non-archived jobs. Save a configuration to schedule a personal CSV email under Scheduled reports. Other report types are not available yet.</p>
     <label className="block">Report title<input maxLength={160} value={title} onChange={e => setTitle(e.target.value)} className="block border rounded p-2 w-full" /></label>
     <label className="block">Job status<select value={status} onChange={e => { setStatus(e.target.value); setResult(null); }} className="block border rounded p-2"><option value="all">All statuses</option>{['enquiry', 'quoting', 'quote_sent', 'accepted', 'in_progress', 'on_site', 'completed', 'on_hold', 'cancelled'].map(value => <option key={value} value={value}>{value.replace(/_/g, ' ')}</option>)}</select></label>
     <div className="flex flex-wrap gap-3">

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrg } from '@/contexts/OrgContext';
 import { getSupabase } from '@/lib/supabase';
+import PersonalSchedules from './PersonalSchedules';
 import type { Database } from '@/types/supabase';
 
 type Schedule = Database['public']['Tables']['report_schedules']['Row'];
@@ -85,7 +86,9 @@ export default function ScheduledReports() {
         <button onClick={() => setRetry(value => value + 1)} className="border rounded-lg px-4 py-2 text-sm">Refresh schedules</button>
       </header>
       <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4">
-        <p className="rounded-xl border bg-amber-50 p-4 text-sm">Automatic report generation and email delivery are not available yet. New schedules and resuming schedules will be enabled when delivery is connected.</p>
+        {orgId && isOwnerOrAdmin && <PersonalSchedules orgId={orgId} readOnly={isReadOnly} />}
+        <h2 className="font-semibold">Legacy schedule configurations</h2>
+        <p className="rounded-xl border bg-amber-50 p-4 text-sm">Legacy configurations below do not send reports. Personal job-status CSV schedules above are opt-in; other report types, PDFs and external recipients remain unavailable.</p>
         {actionError?.orgId === orgId && <p role="alert" className="text-red-700">{actionError?.message}</p>}
         {visible.loading ? <p role="status">Loading report schedules…</p> : visible.error ? <p role="alert" className="text-red-700">{visible.error}</p> : visible.rows.length === 0 ? (
           <div className="border rounded-xl p-8 text-center">
