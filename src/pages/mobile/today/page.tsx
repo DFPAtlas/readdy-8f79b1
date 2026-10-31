@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import AttendancePanel from '@/components/tasks/AttendancePanel';
 import MobileBottomNav from '@/components/feature/MobileBottomNav';
 import { useConnectivity } from '@/contexts/ConnectivityContext';
 
@@ -9,8 +10,8 @@ export default function MobileTodayPage() {
     <main className="p-4 space-y-4">
       <Link to="/mobile/jobs" className="block border rounded-xl p-4 font-semibold">View company jobs</Link>
       <Link to="/messages" className="block border rounded-xl p-4 font-semibold">Open messages</Link>
-      <section className="border rounded-xl p-4"><h2 className="font-semibold">Attendance</h2><p>Clock-in and clock-out are not available on this screen.</p></section>
-      <section className="border rounded-xl p-4"><h2 className="font-semibold">Daily overview</h2><p>Tasks, visits and safety actions are not connected to this overview yet. Open a job to review its saved records.</p></section>
+      <AttendancePanel />
+      <section className="border rounded-xl p-4"><h2 className="font-semibold">Daily overview</h2><Link className="underline" to="/mobile/tasks">View your assigned tasks</Link><p>Visits and safety actions are not connected to this overview yet. Open a job to review its saved records.</p></section>
       <section className="border border-red-200 rounded-xl p-4"><h2 className="font-semibold">Emergency</h2><p>For serious incidents, call 999 immediately. The app is not for emergency reporting.</p><p>Use your site's approved emergency plan for local contacts.</p></section>
     </main>
     <MobileBottomNav />

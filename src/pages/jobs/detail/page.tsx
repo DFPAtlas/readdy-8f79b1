@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useJobDetail } from './useJobDetail';
+import AttendancePanel from '@/components/tasks/AttendancePanel';
 import TaskBoard from '@/components/tasks/TaskBoard';
 import JobTeamPanel from './components/JobTeamPanel';
 import OverviewTab from './components/OverviewTab';
@@ -198,7 +199,7 @@ export default function JobDetail() {
       case 'snagging':
         return <SnaggingTab jobId={jobId || ''} job={job} />;
       case 'team':
-        return <div className="space-y-8"><JobTeamPanel key={jobId} jobId={jobId!} onSaved={reload} /><TaskBoard jobId={jobId!} /></div>;
+        return <div className="space-y-8"><JobTeamPanel key={jobId} jobId={jobId!} onSaved={reload} /><TaskBoard jobId={jobId!} /><AttendancePanel jobId={jobId!} /></div>;
       case 'financials':
         return renderFinancials();
       case 'schedule':
