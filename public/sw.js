@@ -2,7 +2,7 @@
 // Caches app shell and selected static resources only.
 // Never caches: auth, API, secrets, tokens, signed URLs.
 
-const CACHE_VERSION = 'v2.18.1';
+const CACHE_VERSION = 'v2.18.2';
 const STATIC_CACHE = `site-ledger-static-${CACHE_VERSION}`;
 const OFFLINE_PAGE = '/offline.html';
 
@@ -105,6 +105,12 @@ self.addEventListener('fetch', (event) => {
           const cachedResponse = await caches.match(event.request);
           if (cachedResponse) return cachedResponse;
 
+          // The signed-in local reader can reuse the public app shell. No API data is cached.
+          if (url.pathname === '/mobile/offline-jobs') {
+            const shell = await caches.match('/');
+            if (shell) return shell;
+          }
+
           // For document navigation requests, show offline fallback
           if (event.request.destination === 'document' || event.request.mode === 'navigate') {
             const offlineFallback = await caches.match(OFFLINE_PAGE);
@@ -134,4 +140,29 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+// Explicit opt-in preparation caches only public same-origin build assets.
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'CACHE_OFFLINE_READER') return;
+  const port = event.ports?.[0];
+  if (!port) return;
+  event.waitUntil((async () => {
+    try {
+      const response = await fetch('/', { cache: 'reload', credentials: 'omit' });
+      if (!response.ok || response.redirected || !response.headers.get('content-type')?.includes('text/html')) throw new Error('Invalid app shell');
+      const html = await response.clone().text();
+      const assets = [...new Set([...html.matchAll(/\b(?:src|href)=["']([^"']+)["']/g)].map(match => new URL(match[1], self.location.origin)).filter(url => url.origin === self.location.origin && url.pathname.startsWith('/assets/') && /\.(js|css)$/.test(url.pathname) && !url.search && !url.hash).map(url => url.href))];
+      if (!assets.some(url => url.endsWith('.js')) || assets.length > 20) throw new Error('Missing app assets');
+      const cache = await caches.open(STATIC_CACHE);
+      await Promise.all(assets.map(async url => {
+        const asset = await fetch(url, { cache: 'reload', credentials: 'omit' });
+        if (!asset.ok || asset.redirected) throw new Error('Asset unavailable');
+        await cache.put(url, asset);
+      }));
+      await cache.put('/', response);
+      port.postMessage({ ready: true });
+    } catch {
+      port.postMessage({ ready: false });
+    }
+  })());
 });

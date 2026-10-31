@@ -66,3 +66,11 @@ test('blocked version upgrades fail clearly and can be retried after the old tab
   assert.deepEqual(await api.getAllJobPacks(),[]);
  }finally{old.close();api.closeTestDatabase();}
 });
+test('scope cancellation aborts a pending snapshot save and cleanup cannot delete a newer local revision',async()=>{
+ const {api}=await fixture();const put=IDBObjectStore.prototype.put;const controller=new AbortController();
+ try{
+  IDBObjectStore.prototype.put=function(...args){const req=put.apply(this,args);if(this.name==='jobPacks')req.addEventListener('success',()=>controller.abort());return req;};
+  await assert.rejects(api.saveJobPack({...pack(),localRevision:'old'},controller.signal),/abort/i);assert.equal(await api.getJobPack('pack'),undefined);
+  IDBObjectStore.prototype.put=put;const old={...pack(),localRevision:'old'},fresh={...pack(),localRevision:'new'};await api.saveJobPack(fresh);assert.equal(await api.deleteJobPackVersion(old),false);assert.equal((await api.getJobPack('pack')).localRevision,'new');assert.equal(await api.deleteJobPackVersion(fresh),true);assert.equal(await api.getJobPack('pack'),undefined);
+ }finally{IDBObjectStore.prototype.put=put;api.closeTestDatabase();}
+});
