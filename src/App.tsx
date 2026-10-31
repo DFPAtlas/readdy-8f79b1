@@ -5,6 +5,7 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrgProvider } from "@/contexts/OrgContext";
+import { OfflineSnapshotSyncProvider } from "@/contexts/OfflineSnapshotSyncProvider";
 import { ConnectivityProvider } from "@/contexts/ConnectivityContext";
 
 
@@ -16,7 +17,7 @@ function App() {
         <AuthProvider>
           <OrgProvider>
             <ConnectivityProvider>
-              <AppRoutes />
+              <OfflineSnapshotSyncProvider><AppRoutes /></OfflineSnapshotSyncProvider>
             </ConnectivityProvider>
           </OrgProvider>
         </AuthProvider>
