@@ -14,7 +14,7 @@ test('personal report schedules enforce admin, tenant, billing, verified recipie
  CREATE TABLE audit_events(organisation_id uuid,actor_id uuid,action text,entity_type text,entity_id uuid,change_summary jsonb,source text);
  CREATE TABLE jobs(id uuid PRIMARY KEY,organisation_id uuid,archived_at timestamptz,reference text,project_name text,status text,progress integer,target_completion_date date);
  GRANT USAGE ON SCHEMA public,auth TO authenticated,anon,service_role;`);
- await db.exec(await fs.readFile(new URL('../supabase/migrations/20261031085919_scheduled_job_reports.sql',import.meta.url),'utf8'));
+ await db.exec(await fs.readFile(new URL('../supabase/migrations/20261031090947_scheduled_job_reports.sql',import.meta.url),'utf8'));
  const ids=Array.from({length:10},(_,i)=>`00000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`);const [org,other,owner,worker,outsider,report,foreign,schedule,job]=ids;
  await db.query('INSERT INTO organisations(id) VALUES($1),($2)',[org,other]);await db.query('INSERT INTO workspace_access VALUES($1,true),($2,true)',[org,other]);
  await db.query("INSERT INTO auth.users VALUES($1,'owner@example.invalid',now(),null),($2,'worker@example.invalid',now(),null),($3,'outside@example.invalid',now(),null)",[owner,worker,outsider]);
