@@ -12,7 +12,7 @@ test('job tasks enforce active company/job assignment, manager actions, revision
  CREATE TABLE job_members(job_id uuid,organisation_id uuid,user_id uuid,role text);
  CREATE TABLE audit_events(organisation_id uuid,actor_id uuid,action text,entity_type text,entity_id uuid,change_summary jsonb,source text);
  GRANT USAGE ON SCHEMA public,auth TO authenticated,anon,service_role;`);
- await db.exec(await fs.readFile(new URL('../supabase/migrations/20261031091251_mobile_job_tasks.sql',import.meta.url),'utf8'));
+ await db.exec(await fs.readFile(new URL('../supabase/migrations/20261031092003_mobile_job_tasks.sql',import.meta.url),'utf8'));
  const ids=Array.from({length:15},(_,i)=>`00000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`);
  const [org,other,manager,worker,worker2,outsider,removed,job,otherJob,task,request,request2]=ids;
  await db.query('INSERT INTO auth.users SELECT unnest($1::uuid[])',[[manager,worker,worker2,outsider,removed]]);

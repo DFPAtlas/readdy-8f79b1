@@ -16,7 +16,7 @@ Every claim rechecks active admin membership, verified/current email, ban status
 
 ## Rollout
 
-1. Merge the reviewed source and apply `20261031085919_scheduled_job_reports.sql`.
+1. Merge the reviewed source and apply `20261031090947_scheduled_job_reports.sql`.
 2. Deploy `scheduled-job-reports/index.ts` and `handler.ts` with `verify_jwt=false`. The handler authenticates its own dedicated worker credential. Reuse the existing project `RESEND_API_KEY`; sender is fixed to `BuildNerve <noreply@buildnerve.co.uk>` so retry payloads remain stable.
 3. Review and execute `supabase/ops/enable_scheduled_job_reports.sql`. Change its project URL for another environment. This creates only a dedicated Vault credential/hash and a minutely cron job; it creates no customer schedule. Requires existing pg_cron, pg_net, Vault and pgcrypto from earlier migrations.
 4. Pull main into Readdy and publish. Create a supported saved report and opt in to one personal schedule. Check actual provider delivery, the CSV and the recorded outcome; no real report email has been sent during implementation.
@@ -27,3 +27,7 @@ Disable processing with `SELECT cron.unschedule('scheduled-job-report-delivery')
 ## Validation
 
 Node handler tests cover credential rejection, hash-only RPC inputs, stable retry payloads, UTF-8 CSV and formula neutralisation, transient/permanent provider responses, unconfirmed receipts, empty queues and malformed claims. PGlite executes the actual migration and tests staff/tenant/write boundaries, request replay, private-table and worker-RPC denial, lease exclusivity, retry recovery, pause/resume revision checks, revoked membership cancellation and UK daylight-saving/frequency calculations. Hosted Vault/pg_net invocation and inbox delivery require rollout verification.
+
+## Confirmed deployment status — 31 October 2026
+
+PR 41 is merged. The migration is applied to BuildNerve with ledger version `20261031090947`, and `scheduled-job-reports` is ACTIVE version 1. The repository migration filename matches that deployed version; do not reapply it on this environment. Private table RLS and API grants were verified without adding security WARN findings. The user confirmed frontend publication after PR 42. Scheduler setup was declined, its cron job is inactive/absent, and there are zero personal schedules. Activation and the real scheduled-email test remain deferred to full UAT. No real report emails were sent.

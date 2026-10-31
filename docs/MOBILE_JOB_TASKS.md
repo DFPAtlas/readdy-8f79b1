@@ -10,7 +10,7 @@ Task status is not a percentage of overall job progress. No attendance, timeshee
 
 ## Rollout
 
-After review and merge, apply `20261031091251_mobile_job_tasks.sql` before pulling/publishing the frontend in Readdy. No Edge Function, secret, cron or report scheduler activation is needed. This migration has not been applied during implementation. Full customer/browser UAT remains deferred. Test with a real manager and two distinct worker accounts during full UAT: create, worker visibility, status save/retry, reassignment, removed membership, archived job and read-only billing.
+After review and merge, apply `20261031092003_mobile_job_tasks.sql` before pulling/publishing the frontend in Readdy. No Edge Function, secret, cron or report scheduler activation is needed. Production deployment on 31 October 2026 is confirmed in the migration ledger as version `20261031092003`; the private task table has RLS, authenticated raw reads/writes are denied, and the staff RPC is granted only to authenticated callers. No test tasks were created. The user confirmed Readdy publication. Do not reapply the migration on this environment. Full customer/browser UAT remains deferred. Test with a real manager and two distinct worker accounts during full UAT: create, worker visibility, status save/retry, reassignment, removed membership, archived job and read-only billing.
 
 Rollback the frontend independently if required; retain the private task and audit records. Do not drop permission checks or enable blanket table access to work around errors.
 
