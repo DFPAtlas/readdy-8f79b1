@@ -25,7 +25,7 @@ export default function Hero() {
           </h1>
 
           <p className="mt-6 text-base md:text-lg text-white/80 leading-relaxed max-w-2xl mx-auto">
-            BuildNerve brings your projects, procurement, valuations, variations, retention, CIS compliance, workforce
+            BuildNerve brings your projects, procurement, valuations, variations, retention, CIS recordkeeping, workforce
             and field operations into one real-time workspace — so every job stays connected, controlled and fully
             accounted for.
           </p>

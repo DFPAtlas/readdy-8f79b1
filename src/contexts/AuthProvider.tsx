@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, fullName: string, nextPath?: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string, nextPath?: string, termsAcceptance?: { termsVersion: string; acceptedAt: string }) => {
     const supabase = getSupabase();
     if (!supabase) {
       setState((prev) => ({ ...prev, error: 'Supabase is not configured.' }));
@@ -98,7 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
-        data: { full_name: fullName },
+        data: {
+          full_name: fullName,
+          ...(termsAcceptance ? { terms_accepted_at: termsAcceptance.acceptedAt, terms_version: termsAcceptance.termsVersion } : {}),
+        },
         emailRedirectTo,
       },
     });

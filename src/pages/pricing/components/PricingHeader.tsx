@@ -27,7 +27,7 @@ export default function PricingHeader({ interval, onIntervalChange }: PricingHea
           Transparent Construction Management Pricing
         </h1>
         <p className="mt-5 text-base md:text-lg text-white/80 leading-relaxed max-w-2xl mx-auto">
-          Choose the right plan to manage jobs, automate HMRC CIS compliance, and streamline client payments.
+          Choose the right plan to manage jobs, keep internal CIS records, and streamline client payment workflows.
         </p>
 
         <div className="mt-9 flex flex-col items-center gap-3">
