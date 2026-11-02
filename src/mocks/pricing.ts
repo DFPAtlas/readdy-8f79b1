@@ -40,7 +40,7 @@ export const plans: PlanTier[] = [
     name: 'General Contractor',
     shortName: 'General Contractor',
     audience: 'Growing residential builders & main contractors',
-    description: 'Operational tools for projects, internal CIS recordkeeping, payment applications, and retention tracking.'
+    description: 'Operational tools for projects, internal CIS recordkeeping, payment applications, and retention tracking.',
     monthlyPrice: 111,
     annualPrice: 89,
     includesLabel: 'Everything in Trades, plus:',
