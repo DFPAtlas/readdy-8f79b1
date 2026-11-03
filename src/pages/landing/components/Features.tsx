@@ -16,8 +16,8 @@ const features = [
   },
   {
     icon: 'ri-shield-check-line',
-    title: 'CIS & HMRC compliance',
-    desc: 'Verify subcontractor UTRs, track CIS300 filings and stay ahead of every statutory deadline before it bites.',
+    title: 'CIS recordkeeping',
+    desc: 'Record subcontractor details and deduction rates in your organisation’s internal CIS register. BuildNerve does not currently connect to HMRC.'
   },
   {
     icon: 'ri-camera-line',

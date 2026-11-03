@@ -18,7 +18,8 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [formErrors, setFormErrors] = useState<{ fullName?: string; email?: string; password?: string }>({});
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ fullName?: string; email?: string; password?: string; terms?: string }>({});
 
   // Already signed in (e.g. an invited user with an active session) → send them
   // on to the invitation target, otherwise into the app. Never to marketing "/".
@@ -38,7 +39,7 @@ export default function SignUpPage() {
   }
 
   function validate(): boolean {
-    const errors: { fullName?: string; email?: string; password?: string } = {};
+    const errors: { fullName?: string; email?: string; password?: string; terms?: string } = {};
     if (!fullName.trim()) {
       errors.fullName = 'Full name is required.';
     }
@@ -52,6 +53,9 @@ export default function SignUpPage() {
     } else if (password.length < 8) {
       errors.password = 'Password must be at least 8 characters.';
     }
+    if (!acceptedTerms) {
+      errors.terms = 'Please agree to the Terms of Service and acknowledge the Privacy Notice.';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -62,7 +66,10 @@ export default function SignUpPage() {
     if (!validate()) return;
 
     setSubmitting(true);
-    const { error: signUpError } = await signUp(email.trim(), password, fullName.trim(), nextPath || undefined);
+    const { error: signUpError } = await signUp(email.trim(), password, fullName.trim(), nextPath || undefined, {
+      termsVersion: '1.1',
+      acceptedAt: new Date().toISOString(),
+    });
     setSubmitting(false);
 
     if (!signUpError) {
@@ -166,6 +173,21 @@ export default function SignUpPage() {
           </div>
           {formErrors.password && <p className="text-status-red text-xs mt-1">{formErrors.password}</p>}
           <p className="text-xs text-muted mt-1.5">Must be at least 8 characters.</p>
+        </div>
+
+        <div>
+          <label className="flex items-start gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => { setAcceptedTerms(e.target.checked); setFormErrors((p) => ({ ...p, terms: undefined })); }}
+              className="mt-1"
+            />
+            <span>
+              I agree to the <Link to="/legal/terms" className="text-primary-500 hover:underline">Terms of Service</Link> and acknowledge the <Link to="/legal/privacy" className="text-primary-500 hover:underline">Privacy Notice</Link>.
+            </span>
+          </label>
+          {formErrors.terms && <p className="text-status-red text-xs mt-1">{formErrors.terms}</p>}
         </div>
 
         <button

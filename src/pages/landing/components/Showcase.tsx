@@ -67,21 +67,21 @@ function ValuationMock() {
 function ComplianceMock() {
   return (
     <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
-      <p className="text-sm font-semibold text-main">HMRC CIS status</p>
+      <p className="text-sm font-semibold text-main">Internal CIS register</p>
       <div className="mt-4 rounded-lg bg-page p-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted">Next CIS300 filing</span>
-          <span className="text-xs font-semibold text-status-amber">19 Sept · 24 days</span>
+          <span className="text-xs text-muted">Recorded subcontractor details</span>
+          <span className="text-xs font-semibold text-status-amber">Manual recordkeeping</span>
         </div>
         <div className="mt-2 h-1.5 bg-white rounded-full overflow-hidden">
           <div className="h-full w-[72%] bg-primary-500 rounded-full"></div>
         </div>
       </div>
       <div className="mt-3 flex items-center gap-2 text-xs text-muted">
-        <span className="w-5 h-5 rounded-full bg-status-green-pale text-status-green flex items-center justify-center">
-          <i className="ri-check-line text-sm"></i>
+        <span className="w-5 h-5 rounded-full bg-status-amber-pale text-status-amber flex items-center justify-center">
+          <i className="ri-information-line text-sm"></i>
         </span>
-        42 subcontractors verified · 0 overdue filings
+        No HMRC checks or CIS300 submissions
       </div>
     </div>
   );
@@ -104,9 +104,9 @@ const rows = [
   },
   {
     eyebrow: 'Compliance',
-    title: 'Compliance without the scramble',
-    desc: 'CIS subcontractor verification, HMRC filings and statutory deadlines all live on one dashboard — so nothing slips through and you never miss a cutoff.',
-    bullets: ['CIS300 filing countdown', 'Subcontractor UTR verification', 'Deadline alerts'],
+    title: 'CIS records in one place',
+    desc: 'Record subcontractor details and deduction rates in your internal CIS register. BuildNerve does not connect to HMRC, verify UTRs or submit CIS300 returns.',
+    bullets: ['Internal CIS register', 'Recorded deduction rates', 'No HMRC connection'],
     mock: <ComplianceMock />,
   },
 ];

@@ -89,11 +89,11 @@ export default function CtaSection() {
           </h2>
           <p className="mt-4 text-base text-white/70 leading-relaxed max-w-lg">
             See how BuildNerve can tighten your commercial control, speed up your valuations and keep you
-            compliant — in a free 14-day trial with no credit card required.
+            compliant — in a free 5-day trial with no credit card required.
           </p>
           <ul className="mt-6 space-y-3">
             {[
-              '14-day free trial, full feature access',
+              '5-day free trial, full feature access',
               'Onboarding with a UK construction specialist',
               'Cancel anytime — keep your data',
             ].map((b) => (

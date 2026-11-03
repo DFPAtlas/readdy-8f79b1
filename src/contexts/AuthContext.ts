@@ -10,7 +10,7 @@ export interface AuthState {
 
 export interface AuthContextValue extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string, fullName: string, nextPath?: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, fullName: string, nextPath?: string, termsAcceptance?: { termsVersion: string; acceptedAt: string }) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;

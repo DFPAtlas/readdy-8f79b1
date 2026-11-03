@@ -7,9 +7,7 @@ const sections: LegalSection[] = [
     title: '1. Agreement to terms',
     content: (
       <p>
-        These Terms of Service (&quot;Terms&quot;) are a legal agreement between you and BuildNerve Ltd.
-        (&quot;BuildNerve&quot;, &quot;we&quot;, &quot;us&quot; or &quot;our&quot;). By accessing or using the BuildNerve
-        platform, you agree to be bound by these Terms. If you do not agree, you must not use the platform.
+        These Terms of Service (&quot;Terms&quot;) are a legal agreement between you and Martin Hewett, a sole trader trading as Digital Footprint. In these Terms, &quot;BuildNerve&quot;, &quot;we&quot;, &quot;us&quot; and &quot;our&quot; refer to Martin Hewett trading as Digital Footprint. By accessing or using the BuildNerve platform, you agree to be bound by these Terms. If you do not agree, you must not use the platform.
       </p>
     ),
   },
@@ -19,7 +17,7 @@ const sections: LegalSection[] = [
     content: (
       <p>
         BuildNerve is the operating system for UK contractors. It provides tools to manage procurement, commercial,
-        compliance, workforce and field operations, including HMRC CIS compliance, valuations, variations, retention and
+        compliance, workforce and field operations, including internal CIS recordkeeping, valuations, variations, retention and
         payment applications.
       </p>
     ),
@@ -177,9 +175,9 @@ export default function TermsOfServicePage() {
     <LegalPageLayout
       title="Terms of Service"
       description="Terms governing use of the BuildNerve platform and subscriptions."
-      effectiveDate="27 August 2026"
-      lastUpdated="27 August 2026"
-      version="1.0"
+      effectiveDate="2 November 2026"
+      lastUpdated="2 November 2026"
+      version="1.1"
       sections={sections}
     />
   );

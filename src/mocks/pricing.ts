@@ -32,7 +32,7 @@ export const plans: PlanTier[] = [
       'Client Photo Sharing Feed',
       'Unlimited Subcontractor Invites',
     ],
-    cta: 'Start 14-Day Free Trial',
+    cta: 'Start 5-Day Free Trial',
     ctaHref: '/sign-up',
   },
   {
@@ -40,13 +40,13 @@ export const plans: PlanTier[] = [
     name: 'General Contractor',
     shortName: 'General Contractor',
     audience: 'Growing residential builders & main contractors',
-    description: 'Complete operational engine including CIS verification, payment applications, and retainage tracking.',
+    description: 'Operational tools for projects, internal CIS recordkeeping, payment applications, and retention tracking.',
     monthlyPrice: 111,
     annualPrice: 89,
     includesLabel: 'Everything in Trades, plus:',
     features: [
       'Unlimited Active Jobs',
-      'Automated HMRC CIS Verification & Monthly CIS300 Returns',
+      'Internal CIS register for subcontractor details and deduction rates',
       'Domestic Reverse Charge (DRC) VAT Calculations',
       'Client & Tenant Portal with Variation E-Signatures',
       'Certified Payment Applications & Statutory Pay-Less Engine',
@@ -95,13 +95,13 @@ export interface ComparisonCategory {
 
 export const comparisonCategories: ComparisonCategory[] = [
   {
-    title: 'HMRC CIS & Tax Compliance',
+    title: 'CIS recordkeeping',
     icon: 'ri-file-shield-2-line',
     rows: [
-      { label: 'Subcontractor UTR lookup', cells: [false, true, true] },
-      { label: 'CIS300 XML export', cells: [false, true, true] },
+      { label: 'Internal CIS register', cells: [false, true, true] },
+      { label: 'CIS300 XML export', cells: [false, false, false] },
       { label: 'Domestic Reverse Charge (DRC) VAT', cells: [false, true, true] },
-      { label: 'Monthly CIS statement', cells: [false, true, true] },
+      { label: 'Monthly CIS statement', cells: [false, false, false] },
     ],
   },
   {
@@ -143,8 +143,8 @@ export interface Faq {
 
 export const faqs: Faq[] = [
   {
-    q: 'How does the HMRC CIS verification integration work?',
-    a: 'When you invite a subcontractor, we run a real-time verification against HMRC using their UTR number and verify their employment status. Their verification status is stored against every payment application, and our monthly CIS300 return is generated automatically from your certified payments — ready to review and submit in XML format.',
+    q: 'Does BuildNerve verify subcontractors with HMRC or submit CIS300 returns?',
+    a: 'No. The current CIS workspace is an internal register for recording subcontractor details and deduction rates. It does not connect to HMRC, verify UTRs, generate CIS300 returns or submit filings. You must verify subcontractors and file returns through your own HMRC service.'
   },
   {
     q: 'Can I invite external clients and property owners for free?',

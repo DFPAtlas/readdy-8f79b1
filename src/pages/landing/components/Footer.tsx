@@ -8,31 +8,28 @@ const columns = [
   {
     title: 'Product',
     links: [
-      { label: 'Features', href: '#' },
-      { label: 'Procurement', href: '#' },
-      { label: 'Valuations', href: '#' },
-      { label: 'CIS Compliance', href: '#' },
-      { label: 'Client Portal', href: '#' },
+      { label: 'Features', href: '/#features' },
+      { label: 'Procurement', href: '/#features' },
+      { label: 'Valuations', href: '/#product' },
+      { label: 'CIS recordkeeping', href: '/#features' },
+      { label: 'Client Portal', href: '/#features' },
       { label: 'Pricing', href: '/pricing' },
     ],
   },
   {
     title: 'Company',
     links: [
-      { label: 'About us', href: '#' },
-      { label: 'Customers', href: '#' },
-      { label: 'Careers', href: '#' },
-      { label: 'Partners', href: '#' },
-      { label: 'Contact', href: '#' },
+      { label: 'How it works', href: '/#workflow' },
+      { label: 'Product previews', href: '/#product' },
+      { label: 'Contact', href: 'mailto:Martin.hewett@digital-footprint.uk' },
+      
     ],
   },
   {
     title: 'Resources',
     links: [
       { label: 'Help centre', href: '/help' },
-      { label: 'API documentation', href: '#' },
-      { label: 'Status', href: '#' },
-      { label: 'Changelog', href: '#' },
+      
     ],
   },
   {
@@ -159,7 +156,9 @@ export default function Footer() {
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    {link.href === '#' ? (
+                    {link.href.startsWith('mailto:') ? (
+                      <a href={link.href} className="text-sm text-white/60 hover:text-white transition-colors whitespace-nowrap">{link.label}</a>
+                    ) : link.href === '#' ? (
                       <a
                         href="#"
                         className="text-sm text-white/60 hover:text-white transition-colors whitespace-nowrap"
@@ -182,19 +181,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-white/50">© 2026 BuildNerve Ltd. All rights reserved.</p>
-          <div className="flex items-center gap-3">
-            {['ri-linkedin-fill', 'ri-twitter-x-line', 'ri-youtube-line'].map((icon) => (
-              <a
-                key={icon}
-                href="#"
-                aria-label="Social link"
-                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
-              >
-                <i className={`${icon} text-sm`}></i>
-              </a>
-            ))}
-          </div>
+          <p className="text-xs text-white/50">© 2026 BuildNerve. Operated by Martin Hewett trading as Digital Footprint.</p>
         </div>
       </div>
     </footer>
