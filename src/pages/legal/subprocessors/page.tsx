@@ -43,7 +43,7 @@ const sections: LegalSection[] = [
               <td className="border-b border-border px-3 py-2">Resend</td>
               <td className="border-b border-border px-3 py-2">Email functions are deployed for invitations, notifications, demo requests, and reports.</td>
               <td className="border-b border-border px-3 py-2">Recipient addresses and the content needed to deliver those emails.</td>
-              <td className="border-b border-border px-3 py-2">Contracting entity and applicable processing locations need confirmation.</td>
+              <td className="border-b border-border px-3 py-2">BuildNerve sending domain is verified in region `eu-west-1`; outbound sending is enabled. Contracting entity and full processing locations still need confirmation.</td>
             </tr>
           </tbody>
         </table>
