@@ -81,10 +81,12 @@ const sections: LegalSection[] = [
     title: 'End of service, return, and deletion',
     content: (
       <p>
-        The proposed default is a seven-day export period starting when paid access ends. After the period, customer
-        workspace records and stored files are to be deleted, except BuildNerve billing/accounting records and data
-        that must be retained by law. The deletion job and the provider-backup deletion cycle are not yet implemented
-        or verified; this draft does not represent that they are already operating.
+        At the end of the service, the customer may give a documented instruction to return or delete workspace
+        personal data. The proposed default is a seven-day export period starting when paid access ends; if no
+        different return instruction is given, workspace records and stored files are then to be deleted, except
+        BuildNerve billing/accounting records and data that must be retained by law. The deletion job and provider
+        backup deletion cycle are not yet implemented or verified; this draft does not represent that they are
+        already operating.
       </p>
     ),
   },
