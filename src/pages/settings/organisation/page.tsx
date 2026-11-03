@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/components/base/Toast';
 import { organisationsService } from '@/services/organisations.service';
+import { accountClosureService } from '@/services/account-closure.service';
+import { getSupabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import OrganisationDetailsForm from '@/pages/settings/organisation/components/OrganisationDetailsForm';
 import LogoUploader from '@/pages/settings/organisation/components/LogoUploader';
@@ -26,10 +28,34 @@ export default function OrganisationSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [closureExportAvailable, setClosureExportAvailable] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     if (organisation) setForm(organisationToForm(organisation));
   }, [organisation]);
+
+  useEffect(() => {
+    const client = getSupabase();
+    if (!orgId || !canEdit || !client) {
+      setClosureExportAvailable(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await (client as any)
+        .from('organisation_deletion_requests')
+        .select('status,purge_after')
+        .eq('organisation_id', orgId)
+        .maybeSingle();
+      const available = data
+        && ['scheduled', 'blocked'].includes(data.status)
+        && new Date(data.purge_after).getTime() >= Date.now();
+      if (!cancelled) setClosureExportAvailable(Boolean(available));
+    })();
+    return () => { cancelled = true; };
+  }, [orgId, canEdit]);
 
   useEffect(() => {
     const path = organisation?.logo_path;
@@ -112,6 +138,22 @@ export default function OrganisationSettingsPage() {
     }
   };
 
+  const handleClosureExport = async () => {
+    if (!orgId || !canEdit || exporting) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const filename = await accountClosureService.downloadOrganisationExport(orgId);
+      showToast(`Export downloaded: ${filename}`, 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'The organisation export could not be prepared.';
+      setExportError(message);
+      showToast(message, 'warning');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!organisation) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -150,6 +192,27 @@ export default function OrganisationSettingsPage() {
       <LogoUploader canEdit={canEdit} previewUrl={logoPreview} uploading={uploading} onSelectFile={handleLogoSelect} />
 
       <OrganisationDetailsForm values={form} canEdit={canEdit} onChange={handleChange} />
+
+      {canEdit && closureExportAvailable && (
+        <section className="space-y-3 rounded-xl border border-background-200 p-4">
+          <div>
+            <h2 className="font-semibold text-foreground-900">Account closure export</h2>
+            <p className="mt-1 text-sm text-foreground-600">
+              Download a ZIP of your organisation records and stored files during the closure window. Credential-like fields are redacted; BuildNerve billing and legally retained records are handled separately.
+            </p>
+          </div>
+          {exportError && <p role="alert" className="text-sm text-red-700">{exportError}</p>}
+          <button
+            type="button"
+            onClick={() => void handleClosureExport()}
+            disabled={exporting}
+            className="h-10 px-4 inline-flex items-center justify-center gap-2 rounded-xl border border-background-300 text-sm font-semibold hover:bg-background-50 disabled:opacity-50"
+          >
+            {exporting ? <i className="ri-loader-4-line animate-spin"></i> : <i className="ri-download-cloud-2-line"></i>}
+            {exporting ? 'Preparing export…' : 'Download organisation export'}
+          </button>
+        </section>
+      )}
 
       {canEdit && (
         <div className="flex justify-end">
