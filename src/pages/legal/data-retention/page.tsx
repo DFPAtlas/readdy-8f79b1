@@ -49,13 +49,13 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          The proposed policy gives the customer seven days from the end of paid access to export workspace data.
-          After that period, customer workspace records and stored files are to be securely deleted.
+          The proposed default gives the customer seven days from the end of paid access to export workspace data.
+          At the end of that period, customer workspace records and stored files are to be securely deleted unless
+          the customer has given a documented instruction to return them or the law requires retention.
         </p>
         <p>
-          BuildNerve billing and accounting records, and records that must be retained by law, are excluded from
-          that workspace deletion and kept only for their applicable required period. This account-closure deletion
-          workflow is not yet implemented in production.
+          BuildNerve billing and accounting records are handled separately and kept only for their applicable
+          required period. This account-closure export and deletion workflow is not yet implemented in production.
         </p>
       </>
     ),
