@@ -27,7 +27,7 @@ function redactSecrets(value: unknown): unknown {
   if (!value || typeof value !== "object") return value;
   const result: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (/(^|_)(access_token|refresh_token|api_key|secret|password|credential|private_key)(_|$)/i.test(key)) {
+    if (/(^|_)(token|api_key|secret|password|credential|private_key)(_|$)/i.test(key)) {
       result[key] = "[redacted]";
     } else {
       result[key] = redactSecrets(child);
@@ -37,7 +37,11 @@ function redactSecrets(value: unknown): unknown {
 }
 
 function safeZipPath(value: string) {
-  return value.split("/").map((segment) => segment.replace(/[^a-zA-Z0-9._ -]/g, "_")).join("/");
+  const segments = value.split("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === "..")) {
+    throw new Error("Storage path is not safe to include in the export");
+  }
+  return segments.map((segment) => segment.replace(/[^a-zA-Z0-9._ -]/g, "_")).join("/");
 }
 
 async function listOrganisationFiles(admin: ReturnType<typeof createClient>, bucket: string, orgId: string) {
@@ -115,6 +119,7 @@ serve(async (req) => {
 
     const zip = new JSZip();
     const tableCounts: Record<string, number> = {};
+    let exportedJsonBytes = 0;
     for (const table of tableNames) {
       if (typeof table !== "string" || !/^[a-z][a-z0-9_]{0,62}$/.test(table)) {
         throw new Error("Export catalogue contains an invalid table name");
@@ -132,7 +137,10 @@ serve(async (req) => {
         if (data.length < PAGE_SIZE) break;
       }
       tableCounts[table] = records.length;
-      zip.file(`data/${table}.json`, JSON.stringify(redactSecrets(records), null, 2));
+      const tableJson = JSON.stringify(redactSecrets(records), null, 2);
+      exportedJsonBytes += new TextEncoder().encode(tableJson).byteLength;
+      if (exportedJsonBytes > MAX_EXPORT_BYTES) throw new Error("Export exceeds the 250 MB safety limit");
+      zip.file(`data/${table}.json`, tableJson);
     }
 
     let objectCount = 0;
@@ -169,6 +177,17 @@ serve(async (req) => {
     }, null, 2));
 
     const bytes = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 5 } });
+    const { error: auditError } = await admin.from("audit_events").insert({
+      organisation_id: orgId,
+      actor_id: authData.user.id,
+      action: "organisation_closure_export_downloaded",
+      entity_type: "organisation",
+      entity_id: orgId,
+      source: "account_closure",
+      note: `Downloaded ${Object.keys(tableCounts).length} table exports and ${objectCount} stored objects`,
+    });
+    if (auditError) throw new Error("Export audit record could not be saved");
+
     const filename = `buildnerve-organisation-export-${orgId}-${generatedAt.slice(0, 10)}.zip`;
     return new Response(bytes, {
       status: 200,
