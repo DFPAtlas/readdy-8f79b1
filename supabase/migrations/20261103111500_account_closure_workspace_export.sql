@@ -98,7 +98,6 @@ BEGIN
         JOIN pg_catalog.pg_class parent ON parent.oid = fk.confrelid
         JOIN pg_catalog.pg_namespace parent_schema ON parent_schema.oid = parent.relnamespace
         WHERE fk.conrelid = v_table_oid AND fk.contype = 'f'
-          AND cardinality(fk.conkey) = 1 AND cardinality(fk.confkey) = 1
           AND parent_schema.nspname = 'public' AND parent.relkind IN ('r', 'p')
         UNION ALL
         SELECT path.table_path || fk.confrelid,
@@ -109,8 +108,7 @@ BEGIN
         JOIN pg_catalog.pg_constraint fk ON fk.conrelid = path.current_oid AND fk.contype = 'f'
         JOIN pg_catalog.pg_class parent ON parent.oid = fk.confrelid
         JOIN pg_catalog.pg_namespace parent_schema ON parent_schema.oid = parent.relnamespace
-        WHERE cardinality(fk.conkey) = 1 AND cardinality(fk.confkey) = 1
-          AND parent_schema.nspname = 'public' AND parent.relkind IN ('r', 'p')
+        WHERE parent_schema.nspname = 'public' AND parent.relkind IN ('r', 'p')
           AND NOT fk.confrelid = ANY(path.table_path)
       )
       SELECT path.table_path, path.constraint_path
@@ -128,18 +126,23 @@ BEGIN
       FOR v_i IN 1..cardinality(v_path_constraints) LOOP
         SELECT child.relname AS child_name,
                parent.relname AS parent_name,
-               child_col.attname AS child_column,
-               parent_col.attname AS parent_column
+               string_agg(
+                 format('t%s.%I = t%s.%I', v_i - 1, child_col.attname, v_i, parent_col.attname),
+                 ' AND ' ORDER BY child_key.ordinality
+               ) AS join_condition
         INTO v_fk
         FROM pg_catalog.pg_constraint fk
         JOIN pg_catalog.pg_class child ON child.oid = fk.conrelid
         JOIN pg_catalog.pg_class parent ON parent.oid = fk.confrelid
-        JOIN pg_catalog.pg_attribute child_col ON child_col.attrelid = fk.conrelid AND child_col.attnum = fk.conkey[1]
-        JOIN pg_catalog.pg_attribute parent_col ON parent_col.attrelid = fk.confrelid AND parent_col.attnum = fk.confkey[1]
+        JOIN LATERAL unnest(fk.conkey) WITH ORDINALITY child_key(attnum, ordinality) ON true
+        JOIN LATERAL unnest(fk.confkey) WITH ORDINALITY parent_key(attnum, ordinality)
+          ON parent_key.ordinality = child_key.ordinality
+        JOIN pg_catalog.pg_attribute child_col ON child_col.attrelid = fk.conrelid AND child_col.attnum = child_key.attnum
+        JOIN pg_catalog.pg_attribute parent_col ON parent_col.attrelid = fk.confrelid AND parent_col.attnum = parent_key.attnum
         WHERE fk.oid = v_path_constraints[v_i];
         v_join_sql := v_join_sql || format(
-          ' JOIN public.%I t%s ON t%s.%I = t%s.%I',
-          v_fk.parent_name, v_i, v_i - 1, v_fk.child_column, v_i, v_fk.parent_column
+          ' JOIN public.%I t%s ON %s',
+          v_fk.parent_name, v_i, v_fk.join_condition
         );
       END LOOP;
       v_where_sql := format('t%s.organisation_id = $1', cardinality(v_path_tables) - 1);
